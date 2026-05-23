@@ -1,0 +1,11 @@
+node_modules
+apps/*/node_modules
+packages/*/node_modules
+dist
+apps/*/dist
+packages/*/dist
+.git
+*.local
+apps/api/tcg-collection.sqlite
+apps/api/tcg-collection.sqlite-*
+apps/web/src/paraglide

@@ -1,0 +1,19 @@
+{
+  "name": "@tcg-collection/shared",
+  "private": true,
+  "type": "module",
+  "exports": {
+    ".": "./src/index.ts"
+  },
+  "scripts": {
+    "dev": "tsc --noEmit --watch",
+    "build": "tsc --noEmit",
+    "lint": "tsc --noEmit",
+    "test": "bun test --pass-with-no-tests",
+    "typecheck": "tsc --noEmit"
+  },
+  "devDependencies": {
+    "typescript": "~6.0.3"
+  },
+  "dependencies": {}
+}

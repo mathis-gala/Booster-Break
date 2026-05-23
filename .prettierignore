@@ -1,0 +1,10 @@
+node_modules
+dist
+apps/*/dist
+apps/*/node_modules
+packages/*/dist
+packages/*/node_modules
+apps/web/src/paraglide
+apps/api/tcg-collection.sqlite
+*.local
+bun.lock

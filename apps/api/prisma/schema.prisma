@@ -1,0 +1,113 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+model User {
+  id           String        @id
+  pseudo       String
+  displayName  String?       @map("display_name")
+  avatarUrl    String?       @map("avatar_url")
+  slackUserId  String        @unique @map("slack_user_id")
+  slackTeamId  String?       @map("slack_team_id")
+  createdAt    DateTime      @default(now()) @map("created_at")
+  updatedAt    DateTime      @updatedAt @map("updated_at")
+  sessions     Session[]
+  cards        UserCard[]
+  packOpenings PackOpening[]
+
+  @@map("users")
+}
+
+model Session {
+  id        String   @id
+  userId    String   @map("user_id")
+  expiresAt DateTime @map("expires_at")
+  createdAt DateTime @default(now()) @map("created_at")
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@map("sessions")
+}
+
+model PokemonSet {
+  id          String        @id
+  name        String
+  nameEn      String?       @map("name_en")
+  nameFr      String?       @map("name_fr")
+  series      String
+  seriesEn    String?       @map("series_en")
+  seriesFr    String?       @map("series_fr")
+  total       Int
+  releaseDate String        @map("release_date")
+  symbolUrl   String?       @map("symbol_url")
+  logoUrl     String?       @map("logo_url")
+  boosterImageUrl String?   @map("booster_image_url")
+  rawJson     String        @map("raw_json")
+  syncedAt    String        @map("synced_at")
+  cards       PokemonCard[]
+  openings    PackOpening[]
+
+  @@map("pokemon_sets")
+}
+
+model PokemonCard {
+  id                String            @id
+  setId             String            @map("set_id")
+  localId           String            @map("number")
+  name              String
+  nameEn            String?           @map("name_en")
+  nameFr            String?           @map("name_fr")
+  rarity            String?
+  category          String?           @map("supertype")
+  imageSmall        String?           @map("image_small")
+  imageLarge        String?           @map("image_large")
+  rawJson           String            @map("raw_json")
+  syncedAt          String            @map("synced_at")
+  set               PokemonSet        @relation(fields: [setId], references: [id], onDelete: Cascade)
+  userCards         UserCard[]
+  openingCards      PackOpeningCard[]
+
+  @@index([setId])
+  @@map("pokemon_cards")
+}
+
+model UserCard {
+  userId           String      @map("user_id")
+  cardId           String      @map("card_id")
+  finish           String      @default("normal")
+  quantity         Int
+  firstCollectedAt DateTime    @map("first_collected_at")
+  updatedAt        DateTime    @map("updated_at")
+  user             User        @relation(fields: [userId], references: [id], onDelete: Cascade)
+  card             PokemonCard @relation(fields: [cardId], references: [id], onDelete: Cascade)
+
+  @@id([userId, cardId, finish])
+  @@map("user_cards")
+}
+
+model PackOpening {
+  id                String            @id
+  userId            String            @map("user_id")
+  setId             String            @map("set_id")
+  openedAt          DateTime          @map("opened_at")
+  user              User              @relation(fields: [userId], references: [id], onDelete: Cascade)
+  set               PokemonSet        @relation(fields: [setId], references: [id])
+  cards             PackOpeningCard[]
+
+  @@map("pack_openings")
+}
+
+model PackOpeningCard {
+  packOpeningId String      @map("pack_opening_id")
+  cardId        String      @map("card_id")
+  finish        String      @default("normal")
+  position      Int
+  packOpening   PackOpening @relation(fields: [packOpeningId], references: [id], onDelete: Cascade)
+  card          PokemonCard @relation(fields: [cardId], references: [id])
+
+  @@id([packOpeningId, position])
+  @@map("pack_opening_cards")
+}

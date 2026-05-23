@@ -1,0 +1,3 @@
+export const POKEMON_SYNC_START_DATE = '2024-01-01'
+export const SYNCED_BOOSTER_LIMIT = 6
+export const PACK_OPEN_COOLDOWN_SECONDS = 2 * 60 * 60

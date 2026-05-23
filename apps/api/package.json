@@ -1,0 +1,30 @@
+{
+  "name": "@tcg-collection/api",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "prisma generate --schema prisma/schema.prisma && bun --watch src/index.ts",
+    "build": "prisma generate --schema prisma/schema.prisma && bun build src/index.ts --outdir dist --target bun",
+    "lint": "prisma generate --schema prisma/schema.prisma && tsc --noEmit",
+    "prisma:generate": "prisma generate --schema prisma/schema.prisma",
+    "prisma:push": "prisma db push --schema prisma/schema.prisma",
+    "test": "bun test",
+    "typecheck": "prisma generate --schema prisma/schema.prisma && tsc --noEmit"
+  },
+  "dependencies": {
+    "@elysiajs/cors": "latest",
+    "@prisma/adapter-pg": "^7.8.0",
+    "@prisma/client": "^7.8.0",
+    "@tcg-collection/shared": "workspace:*",
+    "@tcgdex/sdk": "^2.9.0",
+    "elysia": "latest",
+    "pg": "^8.21.0",
+    "zod": "^4.4.3"
+  },
+  "devDependencies": {
+    "@types/bun": "latest",
+    "@types/pg": "^8.20.0",
+    "prisma": "^7.8.0",
+    "typescript": "~6.0.3"
+  }
+}
