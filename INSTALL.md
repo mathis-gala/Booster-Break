@@ -45,39 +45,83 @@ https://mathis-gala.github.io/Booster-Break/
 
 ## Server Deployment
 
-Use one folder and one env file per deployed project:
+The fastest production setup is the bundled Caddy deployment. Caddy handles HTTPS automatically,
+Postgres runs next to the API, and the API image is pulled from GitHub Container Registry.
+
+On the server:
+
+```bash
+mkdir -p /opt/booster-break
+cd /opt/booster-break
+```
+
+Copy these files from the repository to `/opt/booster-break`:
 
 ```text
-/opt/booster-break/
-  docker-compose.yml
-  booster-break.env
+deploy/docker-compose.server.yml -> docker-compose.yml
+deploy/Caddyfile -> Caddyfile
+deploy/booster-break.env.example -> booster-break.env
 ```
 
-Do not use a global `.env` shared by multiple projects.
-
-The server should pull the GitHub Container Registry image and inject credentials at runtime:
-
-```yaml
-services:
-  api:
-    image: ghcr.io/mathis-gala/booster-break/api:latest
-    env_file:
-      - booster-break.env
-```
-
-The CI/CD pipeline builds and pushes images only. Database URLs, Slack secrets, and Postgres
-passwords stay in server-side env files or a secret manager.
-
-Set these production origins in `booster-break.env`:
+Fill `booster-break.env`:
 
 ```env
+API_DOMAIN=api.example.com
+
+POSTGRES_DB=booster_break
+POSTGRES_USER=booster_break
+POSTGRES_PASSWORD=<long-random-password>
+DATABASE_URL=postgresql://booster_break:<long-random-password>@postgres:5432/booster_break
+
 API_ORIGIN=https://api.example.com
 WEB_ORIGIN=https://mathis-gala.github.io/Booster-Break/
 SLACK_REDIRECT_URI=https://api.example.com/auth/slack/callback
+
+SLACK_CLIENT_ID=<slack-client-id>
+SLACK_CLIENT_SECRET=<slack-client-secret>
+
+SECURE_COOKIES=true
+SESSION_COOKIE_NAME=booster_break_session
 ```
 
+Keep this env file private:
+
+```bash
+chmod 600 booster-break.env
+```
+
+Start everything:
+
+```bash
+docker compose pull
+docker compose up -d
+```
+
+Caddy will request and renew the HTTPS certificate for `API_DOMAIN`. Make sure DNS points
+`API_DOMAIN` to the server and ports `80` and `443` are open.
+
+The CI/CD pipeline builds and pushes images only. Database URLs, Slack secrets, and Postgres
+passwords stay in `booster-break.env` or a server secret manager.
+
+To update later:
+
+```bash
+cd /opt/booster-break
+docker compose pull api
+docker compose up -d api
+```
+
+## GitHub Pages Frontend
+
 For the GitHub Pages build, set the repository variable `VITE_API_ORIGIN` to the same API origin
-without a trailing slash.
+without a trailing slash:
+
+```text
+https://api.example.com
+```
+
+This is a repository variable, not a secret. The frontend bundle is public, so database credentials,
+Slack secrets, and private API keys must never be stored in `VITE_*` values.
 
 The hosted frontend falls back to `VITE_LOCAL_API_ORIGIN` when `VITE_API_ORIGIN` cannot be reached.
 By default that local fallback is:
@@ -91,3 +135,26 @@ If you use the hosted GitHub Pages frontend with a locally running API, your API
 ```env
 WEB_ORIGIN=https://mathis-gala.github.io/Booster-Break/
 ```
+
+## Slack OAuth
+
+In the Slack app OAuth settings, add the exact production callback:
+
+```text
+https://api.example.com/auth/slack/callback
+```
+
+It must match `SLACK_REDIRECT_URI`.
+
+## Domains and Cookies
+
+The cleanest production setup is to use the same registrable domain for frontend and API:
+
+```text
+https://booster.example.com
+https://api.example.com
+```
+
+If the frontend stays on `https://mathis-gala.github.io/Booster-Break/` and the API is on your own
+domain, authentication cookies are cross-site and browser cookie rules can be stricter. Prefer a
+custom GitHub Pages domain such as `booster.example.com` when deploying for real users.

@@ -11,3 +11,4 @@ dist
 .DS_Store
 .playwright-cli
 output/playwright
+deploy/booster-break.env

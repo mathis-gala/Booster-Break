@@ -63,6 +63,14 @@ export function SetupPage() {
           <SetupPoint text={m.setup_credentials_docker()} />
           <SetupPoint text={m.setup_credentials_production()} />
         </section>
+
+        <section className="grid gap-3 rounded-lg border bg-card p-5 text-card-foreground">
+          <h2 className="text-base font-black">{m.setup_production_title()}</h2>
+          <SetupPoint text={m.setup_production_github_pages()} />
+          <SetupPoint text={m.setup_production_server_env()} />
+          <SetupPoint text={m.setup_production_slack()} />
+          <SetupPoint text={m.setup_production_domains()} />
+        </section>
       </div>
     </main>
   )
