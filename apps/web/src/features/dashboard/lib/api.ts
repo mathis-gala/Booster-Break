@@ -167,10 +167,9 @@ export async function fetchUserCollection(
 }
 
 const configuredApiOrigin = (import.meta.env.VITE_API_ORIGIN ?? '').replace(/\/$/, '')
-const localApiOrigin = (import.meta.env.VITE_LOCAL_API_ORIGIN ?? 'http://127.0.0.1:3100').replace(
-  /\/$/,
-  '',
-)
+const localApiOrigin = (
+  import.meta.env.VITE_LOCAL_API_ORIGIN ?? (import.meta.env.DEV ? 'http://127.0.0.1:3100' : '')
+).replace(/\/$/, '')
 let activeApiOrigin = configuredApiOrigin
 let hasShownLocalFallbackToast = false
 

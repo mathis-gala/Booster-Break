@@ -124,12 +124,8 @@ https://api.example.com
 This is a repository variable, not a secret. The frontend bundle is public, so database credentials,
 Slack secrets, and private API keys must never be stored in `VITE_*` values.
 
-The hosted frontend falls back to `VITE_LOCAL_API_ORIGIN` when `VITE_API_ORIGIN` cannot be reached.
-By default that local fallback is:
-
-```text
-http://127.0.0.1:3100
-```
+In production, leave `VITE_LOCAL_API_ORIGIN` empty. It is only a development fallback. Setting it in
+the hosted frontend can trigger browser prompts asking for access to local-network devices.
 
 If you use the hosted GitHub Pages frontend with a locally running API, your API env still needs:
 

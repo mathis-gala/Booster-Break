@@ -118,12 +118,9 @@ origin, for example:
 https://api.example.com
 ```
 
-The hosted frontend first tries `VITE_API_ORIGIN`. If that API cannot be reached at the
-network/CORS layer, the browser falls back to `VITE_LOCAL_API_ORIGIN`, which defaults to:
-
-```text
-http://127.0.0.1:3100
-```
+The hosted frontend first tries `VITE_API_ORIGIN`. In production, leave `VITE_LOCAL_API_ORIGIN`
+empty. It is only a development fallback; setting it for the hosted frontend can trigger browser
+prompts asking for access to local-network devices.
 
 Leave `VITE_API_ORIGIN` empty only for local development, where the Vite dev server proxies `/api`
 to `http://127.0.0.1:3100`. When using the GitHub Pages frontend with a local backend, the backend
