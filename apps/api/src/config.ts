@@ -2,8 +2,10 @@ export interface ApiConfig {
   port: number
   host: string
   webOrigin: string
+  webAppUrl: string
   apiOrigin: string
   sessionCookieName: string
+  sessionCookieSameSite: 'Lax' | 'None'
   secureCookies: boolean
   slackClientId?: string
   slackClientSecret?: string
@@ -14,18 +16,27 @@ export interface ApiConfig {
 
 export const getConfig = (): ApiConfig => {
   const apiOrigin = Bun.env.API_ORIGIN ?? 'http://127.0.0.1:3100'
+  const webAppUrl = Bun.env.WEB_APP_URL ?? Bun.env.WEB_ORIGIN ?? 'http://127.0.0.1:5173'
+  const webOrigin = toOrigin(Bun.env.WEB_ORIGIN ?? webAppUrl)
+  const secureCookies = Bun.env.SECURE_COOKIES === 'true' || apiOrigin.startsWith('https://')
 
   return {
     port: Number(Bun.env.PORT ?? 3100),
     host: Bun.env.HOST ?? '127.0.0.1',
-    webOrigin: Bun.env.WEB_ORIGIN ?? 'http://127.0.0.1:5173',
+    webOrigin,
+    webAppUrl,
     apiOrigin,
     sessionCookieName: Bun.env.SESSION_COOKIE_NAME ?? 'tcg_session',
-    secureCookies: Bun.env.SECURE_COOKIES === 'true' || apiOrigin.startsWith('https://'),
+    sessionCookieSameSite: secureCookies && webOrigin !== toOrigin(apiOrigin) ? 'None' : 'Lax',
+    secureCookies,
     slackClientId: Bun.env.SLACK_CLIENT_ID,
     slackClientSecret: Bun.env.SLACK_CLIENT_SECRET,
     slackRedirectUri: Bun.env.SLACK_REDIRECT_URI ?? `${apiOrigin}/auth/slack/callback`,
     scrydexApiKey: Bun.env.SCRYDEX_API_KEY,
     scrydexTeamId: Bun.env.SCRYDEX_TEAM_ID,
   }
+}
+
+const toOrigin = (url: string): string => {
+  return new URL(url).origin
 }

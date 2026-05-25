@@ -64,12 +64,12 @@ export const createAuthController = ({ config, service, store }: AuthControllerO
         )
 
         if (isAuthServiceError(result)) {
-          return createOAuthRedirectResponse(config.webOrigin, config, slackStateCookieName)
+          return createOAuthRedirectResponse(config.webAppUrl, config, slackStateCookieName)
         }
 
         return createAuthResponse(result, 302, config, {
           clearCookieName: slackStateCookieName,
-          location: config.webOrigin,
+          location: config.webAppUrl,
         })
       },
       {
@@ -84,6 +84,7 @@ export const createAuthController = ({ config, service, store }: AuthControllerO
         headers: {
           'Set-Cookie': serializeCookie(config.sessionCookieName, '', {
             maxAge: 0,
+            sameSite: config.sessionCookieSameSite,
             secure: config.secureCookies,
           }),
         },
@@ -101,6 +102,7 @@ const createAuthResponse = (
     'Content-Type': 'application/json',
     'Set-Cookie': serializeCookie(config.sessionCookieName, result.sessionId, {
       maxAge: result.maxAge,
+      sameSite: config.sessionCookieSameSite,
       secure: config.secureCookies,
     }),
   })

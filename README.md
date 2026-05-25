@@ -130,7 +130,8 @@ to `http://127.0.0.1:3100`. When using the GitHub Pages frontend with a local ba
 must allow the Pages origin with:
 
 ```text
-WEB_ORIGIN=https://mathis-gala.github.io/Booster-Break/
+WEB_ORIGIN=https://mathis-gala.github.io
+WEB_APP_URL=https://mathis-gala.github.io/Booster-Break/
 ```
 
 The same workflow builds and pushes the backend image to GitHub Container Registry:
@@ -141,10 +142,11 @@ ghcr.io/mathis-gala/booster-break/api:sha-<commit>
 ```
 
 Deploy the API container with runtime environment values, not baked image secrets. In production,
-`WEB_ORIGIN` should be:
+`WEB_ORIGIN` and `WEB_APP_URL` should be:
 
 ```text
-https://mathis-gala.github.io/Booster-Break/
+WEB_ORIGIN=https://mathis-gala.github.io
+WEB_APP_URL=https://mathis-gala.github.io/Booster-Break/
 ```
 
 ## Slack Auth

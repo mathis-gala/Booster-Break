@@ -74,7 +74,8 @@ POSTGRES_PASSWORD=<long-random-password>
 DATABASE_URL=postgresql://booster_break:<long-random-password>@postgres:5432/booster_break
 
 API_ORIGIN=https://api.example.com
-WEB_ORIGIN=https://mathis-gala.github.io/Booster-Break/
+WEB_ORIGIN=https://mathis-gala.github.io
+WEB_APP_URL=https://mathis-gala.github.io/Booster-Break/
 SLACK_REDIRECT_URI=https://api.example.com/auth/slack/callback
 
 SLACK_CLIENT_ID=<slack-client-id>
@@ -133,7 +134,8 @@ http://127.0.0.1:3100
 If you use the hosted GitHub Pages frontend with a locally running API, your API env still needs:
 
 ```env
-WEB_ORIGIN=https://mathis-gala.github.io/Booster-Break/
+WEB_ORIGIN=https://mathis-gala.github.io
+WEB_APP_URL=https://mathis-gala.github.io/Booster-Break/
 ```
 
 ## Slack OAuth

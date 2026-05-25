@@ -78,6 +78,7 @@ if (import.meta.main) {
   })
   console.log(`API listening on ${config.apiOrigin}`)
   console.log(`Web origin ${config.webOrigin}`)
+  console.log(`Web app URL ${config.webAppUrl}`)
   console.log(`Slack redirect ${config.slackRedirectUri}`)
 }
 

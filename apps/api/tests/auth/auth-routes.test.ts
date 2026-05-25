@@ -10,8 +10,10 @@ const config: ApiConfig = {
   port: 3100,
   host: '127.0.0.1',
   webOrigin: 'http://127.0.0.1:5173',
+  webAppUrl: 'http://127.0.0.1:5173',
   apiOrigin: 'http://127.0.0.1:3100',
   sessionCookieName: 'tcg_session',
+  sessionCookieSameSite: 'Lax',
   secureCookies: false,
   slackRedirectUri: 'http://127.0.0.1:3100/auth/slack/callback',
 }
@@ -80,7 +82,7 @@ describe('auth routes', () => {
     )
 
     expect(response.status).toBe(302)
-    expect(response.headers.get('location')).toBe(config.webOrigin)
+    expect(response.headers.get('location')).toBe(config.webAppUrl)
     expect(response.headers.get('set-cookie')).toContain('tcg_session=')
   })
 
