@@ -5,14 +5,22 @@ services:
     env_file:
       - ${BOOSTER_BREAK_ENV_FILE:-booster-break.env}
     depends_on:
+      - web
       - api
     ports:
       - '80:80'
       - '443:443'
     volumes:
       - ./Caddyfile:/etc/caddy/Caddyfile:ro
+      - ./certs:/certs:ro
       - caddy-data:/data
       - caddy-config:/config
+
+  web:
+    image: ghcr.io/mathis-gala/booster-break/web:latest
+    restart: unless-stopped
+    expose:
+      - '80'
 
   postgres:
     image: postgres:17-alpine

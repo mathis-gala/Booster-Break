@@ -37,10 +37,12 @@ bun run build
 The web app runs on `http://localhost:5173` and proxies `/api/*` to the Elysia API on
 `http://localhost:3100`.
 
-The production web app is deployed to GitHub Pages:
+The public GitHub Pages build is still available, but the recommended WiFi/server
+deployment serves the web app and API from the same Raspberry Pi origin:
 
 ```text
-https://mathis-gala.github.io/Booster-Break/
+https://booster.example.com
+https://booster.example.com/api
 ```
 
 ## Local Environment
@@ -74,8 +76,7 @@ per-project env file next to that server's Compose file, for example:
 
 Do not reuse a global `.env` across projects.
 
-See [INSTALL.md](./INSTALL.md) for the standalone setup guide that will be completed with CI/CD
-deployment details later.
+See [INSTALL.md](./INSTALL.md) for the standalone setup guide.
 
 ## Docker Development
 
@@ -111,39 +112,46 @@ bun run typecheck
 ```
 
 On pushes to `main`, the workflow builds the web app with the GitHub Pages base path and deploys
-`apps/web/dist` to GitHub Pages. Set the repository variable `VITE_API_ORIGIN` to the deployed API
-origin, for example:
+`apps/web/dist` to GitHub Pages. It also builds and pushes same-origin Docker images for the
+Raspberry Pi/server deployment:
 
 ```text
-https://api.example.com
+ghcr.io/mathis-gala/booster-break/web:latest
+ghcr.io/mathis-gala/booster-break/api:latest
 ```
 
-The hosted frontend first tries `VITE_API_ORIGIN`. In production, leave `VITE_LOCAL_API_ORIGIN`
-empty. It is only a development fallback; setting it for the hosted frontend can trigger browser
-prompts asking for access to local-network devices.
+For the server deployment, leave `VITE_API_ORIGIN` empty in the web image. The frontend calls
+same-origin `/api/*`, and Caddy proxies those requests to the API container.
+
+If you still use the GitHub Pages frontend, set repository variable `VITE_API_ORIGIN` to a public
+HTTPS API origin. Do not point GitHub Pages at a private WiFi/LAN IP: modern browsers can show a
+permission prompt because a public origin is trying to access local-network devices.
 
 Leave `VITE_API_ORIGIN` empty only for local development, where the Vite dev server proxies `/api`
-to `http://127.0.0.1:3100`. When using the GitHub Pages frontend with a local backend, the backend
-must allow the Pages origin with:
+to `http://127.0.0.1:3100`.
+
+For the recommended same-origin server deployment, use:
 
 ```text
+API_ORIGIN=https://booster.example.com/api
+WEB_ORIGIN=https://booster.example.com
+WEB_APP_URL=https://booster.example.com
+SLACK_REDIRECT_URI=https://booster.example.com/api/auth/slack/callback
+```
+
+The GitHub Pages fallback can use:
+
+```text
+VITE_API_ORIGIN=https://api.example.com
 WEB_ORIGIN=https://mathis-gala.github.io
 WEB_APP_URL=https://mathis-gala.github.io/Booster-Break/
 ```
 
-The same workflow builds and pushes the backend image to GitHub Container Registry:
+GitHub Container Registry also publishes commit-pinned images:
 
 ```text
-ghcr.io/mathis-gala/booster-break/api:latest
+ghcr.io/mathis-gala/booster-break/web:sha-<commit>
 ghcr.io/mathis-gala/booster-break/api:sha-<commit>
-```
-
-Deploy the API container with runtime environment values, not baked image secrets. In production,
-`WEB_ORIGIN` and `WEB_APP_URL` should be:
-
-```text
-WEB_ORIGIN=https://mathis-gala.github.io
-WEB_APP_URL=https://mathis-gala.github.io/Booster-Break/
 ```
 
 ## Slack Auth
@@ -187,6 +195,8 @@ Downloaded users run the image with their own runtime env file:
 
 ```yaml
 services:
+  web:
+    image: ghcr.io/mathis-gala/booster-break/web:latest
   api:
     image: ghcr.io/mathis-gala/booster-break/api:latest
     env_file:

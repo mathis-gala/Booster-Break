@@ -1,4 +1,6 @@
 {$API_DOMAIN} {
+	tls /certs/fullchain.pem /certs/privkey.pem
+
 	encode zstd gzip
 
 	header {
@@ -7,5 +9,11 @@
 		Referrer-Policy "strict-origin-when-cross-origin"
 	}
 
-	reverse_proxy api:3100
+	handle_path /api/* {
+		reverse_proxy api:3100
+	}
+
+	handle {
+		reverse_proxy web:80
+	}
 }
