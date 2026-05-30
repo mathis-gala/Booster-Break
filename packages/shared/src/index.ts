@@ -93,6 +93,102 @@ export interface OpenPackResponse {
   cards: PokemonCardSummary[]
 }
 
+export type TradeAuctionStatus = 'active' | 'accepted' | 'cancelled' | 'expired'
+
+export type TradeOfferStatus = 'pending' | 'accepted' | 'rejected' | 'cancelled'
+
+export interface AuctionRequirements {
+  cardIds?: string[]
+  setIds?: string[]
+  rarities?: string[]
+  types?: string[]
+  finishes?: CardFinish[]
+}
+
+export interface AuctionFilters {
+  excludedCardIds?: string[]
+  excludedSetIds?: string[]
+  excludedRarities?: string[]
+  excludedTypes?: string[]
+  excludedFinishes?: CardFinish[]
+}
+
+export interface TradeOfferItem {
+  cardId: string
+  finish: CardFinish
+  quantity: number
+}
+
+export interface CreateAuctionRequest {
+  offeredCardId: string
+  offeredCardFinish: CardFinish
+  requirements?: AuctionRequirements
+  filters?: AuctionFilters
+}
+
+export interface CreateOfferRequest {
+  cards: TradeOfferItem[]
+}
+
+export interface TradeOfferCardResponse {
+  card: PokemonCardSummary
+  finish: CardFinish
+  quantity: number
+}
+
+export interface TradeOfferResponse {
+  id: string
+  proposerId: string
+  proposerPseudo: string
+  status: TradeOfferStatus
+  createdAt: string
+  updatedAt: string
+  cards: TradeOfferCardResponse[]
+}
+
+export interface TradeAuctionResponse {
+  id: string
+  creatorId: string
+  creatorPseudo: string
+  offeredCard: PokemonCardSummary
+  offeredCardFinish: CardFinish
+  requirements: AuctionRequirements
+  filters: AuctionFilters
+  status: TradeAuctionStatus
+  createdAt: string
+  expiresAt: string
+  offerCount: number
+  offers: TradeOfferResponse[]
+}
+
+export interface TradeAuctionListResponse {
+  auctions: TradeAuctionResponse[]
+}
+
+export interface TradeApiError {
+  error: TradeErrorCode
+  message: string
+}
+
+export type TradeErrorCode =
+  | 'auction_not_found'
+  | 'auction_not_owned'
+  | 'auction_not_active'
+  | 'auction_closed'
+  | 'auction_expired'
+  | 'card_not_owned'
+  | 'cannot_trade_self'
+  | 'max_auctions_reached'
+  | 'auction_limit_reached'
+  | 'card_in_auction'
+  | 'max_offers_reached'
+  | 'offer_not_found'
+  | 'offer_not_owned'
+  | 'offer_invalid'
+  | 'requirements_mismatch'
+  | 'trade_unavailable'
+  | 'unauthenticated'
+
 export {
   getFinishRank,
   getPackRarityChance,

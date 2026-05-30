@@ -18,6 +18,8 @@ model User {
   sessions     Session[]
   cards        UserCard[]
   packOpenings PackOpening[]
+  tradeAuctions TradeAuction[] @relation("TradeAuctionCreator")
+  tradeOffers   TradeOffer[] @relation("TradeOfferProposer")
 
   @@map("users")
 }
@@ -69,9 +71,75 @@ model PokemonCard {
   set               PokemonSet        @relation(fields: [setId], references: [id], onDelete: Cascade)
   userCards         UserCard[]
   openingCards      PackOpeningCard[]
+  tradeAuctions     TradeAuction[]
+  tradeOfferCards   TradeOfferCard[]
 
   @@index([setId])
   @@map("pokemon_cards")
+}
+
+enum TradeAuctionStatus {
+  active
+  accepted
+  cancelled
+  expired
+}
+
+enum TradeOfferStatus {
+  pending
+  accepted
+  rejected
+  cancelled
+}
+
+model TradeAuction {
+  id                String             @id
+  creatorId         String             @map("creator_id")
+  offeredCardId     String             @map("offered_card_id")
+  offeredCardFinish String             @default("normal") @map("offered_card_finish")
+  requirements      Json
+  filters           Json
+  status            TradeAuctionStatus  @default(active)
+  expiresAt         DateTime           @map("expires_at")
+  createdAt         DateTime           @default(now()) @map("created_at")
+  updatedAt         DateTime           @updatedAt @map("updated_at")
+  creator           User               @relation("TradeAuctionCreator", fields: [creatorId], references: [id], onDelete: Cascade)
+  offeredCard       PokemonCard         @relation(fields: [offeredCardId], references: [id], onDelete: Cascade)
+  offers            TradeOffer[]
+
+  @@index([creatorId, status])
+  @@index([status, expiresAt])
+  @@map("trade_auctions")
+}
+
+model TradeOffer {
+  id         String         @id
+  auctionId  String         @map("auction_id")
+  proposerId String         @map("proposer_id")
+  status     TradeOfferStatus @default(pending)
+  createdAt  DateTime       @default(now()) @map("created_at")
+  updatedAt  DateTime       @updatedAt @map("updated_at")
+  auction    TradeAuction   @relation(fields: [auctionId], references: [id], onDelete: Cascade)
+  proposer   User           @relation("TradeOfferProposer", fields: [proposerId], references: [id], onDelete: Cascade)
+  cards      TradeOfferCard[]
+
+  @@index([auctionId, status])
+  @@index([proposerId, status])
+  @@map("trade_offers")
+}
+
+model TradeOfferCard {
+  offerId  String   @map("offer_id")
+  cardId   String   @map("card_id")
+  finish   String
+  quantity Int
+  offer    TradeOffer @relation(fields: [offerId], references: [id], onDelete: Cascade)
+  card     PokemonCard @relation(fields: [cardId], references: [id], onDelete: Cascade)
+
+  @@id([offerId, cardId, finish])
+  @@index([offerId])
+  @@index([cardId, finish])
+  @@map("trade_offer_cards")
 }
 
 model UserCard {

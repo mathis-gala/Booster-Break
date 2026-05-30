@@ -1,13 +1,19 @@
 import type { SupportedLocale } from '@tcg-collection/shared'
 import { Elysia } from 'elysia'
-import { z } from 'zod'
 import { AuthService } from '../auth/auth-service'
+import { createAuthRequiredPlugin } from '../auth/auth-required-plugin'
 import type { AuthStore } from '../auth/session-store'
 import type { ApiConfig } from '../config'
 import { PokemonRepository } from './pokemon-repository'
 import { isPokemonServiceError, PokemonService } from './pokemon-service'
 import { ScrydexSealedClient } from './scrydex-sealed-client'
 import { TcgDexClient } from './tcgdex-client'
+import {
+  cardsQuerySchema,
+  collectionQuerySchema,
+  localeQuerySchema,
+  openPackBodySchema,
+} from './pokemon-controller-schemas'
 
 interface PokemonControllerOptions {
   authService?: AuthService
@@ -30,22 +36,26 @@ export const createPokemonController = ({
   sealedClient,
   service,
 }: PokemonControllerOptions) => {
+  const resolvedAuthService =
+    authService ??
+    (service
+      ? undefined
+      : new AuthService({
+          sessionCookieName: config.sessionCookieName,
+          store: mustProvideAuthStore(authStore),
+        }))
+
   const pokemonService =
     service ??
     new PokemonService({
-      authService:
-        authService ??
-        new AuthService({
-          sessionCookieName: config.sessionCookieName,
-          store: mustProvideAuthStore(authStore),
-        }),
+      authService: resolvedAuthService!,
       localizedPokemonClients,
       pokemonClient,
       pokemonRepository,
       sealedClient,
     })
 
-  return new Elysia({ prefix: '/pokemon' })
+  const publicRoutes = new Elysia()
     .get(
       '/sets',
       async ({ query }) => ({
@@ -64,6 +74,19 @@ export const createPokemonController = ({
         query: cardsQuerySchema,
       },
     )
+
+  const authenticatedRoutes = new Elysia()
+
+  if (resolvedAuthService) {
+    authenticatedRoutes.use(
+      createAuthRequiredPlugin({
+        authService: resolvedAuthService,
+        unauthenticatedMessage: 'Sign in to access Pokémon collection features.',
+      }),
+    )
+  }
+
+  authenticatedRoutes
     .get(
       '/collection',
       async ({ headers, query, status }) => {
@@ -100,31 +123,9 @@ export const createPokemonController = ({
         body: openPackBodySchema,
       },
     )
+
+  return new Elysia({ prefix: '/pokemon' }).use(publicRoutes).use(authenticatedRoutes)
 }
-
-const localeSchema = z.enum(['fr', 'en'])
-const collectionSortSchema = z.enum(['recent', 'quantity', 'name', 'rarity'])
-
-const localeQuerySchema = z.object({
-  locale: localeSchema.optional(),
-})
-
-const cardsQuerySchema = z.object({
-  setId: z.string().optional(),
-  locale: localeSchema.optional(),
-})
-
-const collectionQuerySchema = z.object({
-  page: z.coerce.number().int().min(1).optional(),
-  pageSize: z.coerce.number().int().min(1).max(60).optional(),
-  sort: collectionSortSchema.optional(),
-  locale: localeSchema.optional(),
-})
-
-const openPackBodySchema = z.object({
-  setId: z.string().optional(),
-  locale: localeSchema.optional(),
-})
 
 const toPokemonErrorStatus = (error: string): 401 | 404 | 409 => {
   switch (error) {
