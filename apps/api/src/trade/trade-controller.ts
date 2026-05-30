@@ -1,7 +1,7 @@
 import { Elysia } from 'elysia'
 import { createAuthRequiredPlugin } from '../auth/auth-required-plugin'
 import type { TradeService } from './trade-service'
-import { isTradeServiceError } from './trade-service'
+import { isTradeServiceError } from './trade-service-result'
 import type { TradeControllerErrorCode, TradeControllerOptions } from './trade-types'
 import { DEFAULT_LOCALE } from '@tcg-collection/shared'
 import {
@@ -9,6 +9,7 @@ import {
   createOfferSchema,
   offerIdSchema,
   offerPathSchema,
+  notificationIdSchema,
   tradeIdSchema,
   tradeLocaleQuerySchema,
 } from './trade-controller-schemas'
@@ -134,6 +135,36 @@ const createAuthenticatedTradeRoutes = (
         params: tradeIdSchema,
       },
     )
+    .get(
+      '/notifications',
+      async ({ headers, status }) => {
+        const result = await service.listTradeNotifications(headers.cookie)
+
+        if (isTradeServiceError(result)) {
+          return status(toTradeErrorStatus(result.error), result)
+        }
+
+        return result
+      },
+    )
+    .post(
+      '/notifications/:notificationId/viewed',
+      async ({ headers, params, status }) => {
+        const result = await service.markTradeNotificationViewed(
+          headers.cookie,
+          params.notificationId,
+        )
+
+        if (isTradeServiceError(result)) {
+          return status(toTradeErrorStatus(result.error), result)
+        }
+
+        return status(204)
+      },
+      {
+        params: notificationIdSchema,
+      },
+    )
 }
 
 const toTradeErrorStatus = (error: TradeControllerErrorCode): 401 | 403 | 404 | 409 => {
@@ -147,6 +178,10 @@ const toTradeErrorStatus = (error: TradeControllerErrorCode): 401 | 403 | 404 | 
     case 'auction_not_found':
     case 'offer_not_found':
       return 404
+    case 'notification_not_found':
+      return 404
+    case 'notification_not_owned':
+      return 403
     default:
       return 409
   }

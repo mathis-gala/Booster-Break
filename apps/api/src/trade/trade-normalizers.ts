@@ -45,11 +45,42 @@ const normalizeStringList = (value: unknown): string[] | undefined => {
   return [...new Set(values)]
 }
 
+const normalizeCardFinishValue = (value: string): string => {
+  return value.trim().toLowerCase().replace(/[-\s]+/g, '_')
+}
+
 const isCardFinish = (value: string): value is CardFinish =>
   value === 'normal' || value === 'holo' || value === 'reverse_holo'
 
-export const normalizeCardFinish = (value: string): CardFinish | undefined =>
-  isCardFinish(value) ? value : undefined
+const normalizeKnownCardFinish = (value: string): string => {
+  if (value === 'normal' || value === 'holo' || value === 'reverse_holo') {
+    return value
+  }
+
+  if (value === 'reverseholo' || value === 'reverse_holofoil' || value === 'reverse_holo_foil') {
+    return 'reverse_holo'
+  }
+
+  if (value === 'holofoil' || value === 'holo_foil') {
+    return 'holo'
+  }
+
+  if (value.includes('reverse')) {
+    return 'reverse_holo'
+  }
+
+  if (value.includes('holo')) {
+    return 'holo'
+  }
+
+  return value
+}
+
+export const normalizeCardFinish = (value: string): CardFinish | undefined => {
+  const normalized = normalizeKnownCardFinish(normalizeCardFinishValue(value))
+
+  return isCardFinish(normalized) ? normalized : undefined
+}
 
 const normalizeFinishes = (value: unknown): CardFinish[] | undefined => {
   const list = normalizeStringList(value)

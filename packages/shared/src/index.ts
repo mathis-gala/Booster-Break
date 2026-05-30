@@ -176,6 +176,59 @@ export interface TradeApiError {
   message: string
 }
 
+export type TradeNotificationType = 'trade_offer_accepted' | 'trade_offer_received'
+
+export interface TradeNotificationCardPayload {
+  cardId: string
+  name: string
+  imageSmall?: string
+  imageLarge?: string
+  finish: CardFinish
+  quantity: number
+  setId?: string
+  number?: string
+}
+
+export interface TradeOfferAcceptedNotificationPayload {
+  offerId: string
+  auctionId: string
+  proposerId: string
+  proposerPseudo: string
+  proposerDisplayName?: string
+  proposerAvatarUrl?: string
+  offeredCard: TradeNotificationCardPayload
+  offeredTo?: string
+  exchangedCards: TradeNotificationCardPayload[]
+}
+
+export interface TradeOfferReceivedNotificationPayload {
+  offerId: string
+  auctionId: string
+  proposerId: string
+  proposerPseudo: string
+  proposerDisplayName?: string
+  proposerAvatarUrl?: string
+  offeredCard: TradeNotificationCardPayload
+  offeredCards: TradeNotificationCardPayload[]
+}
+
+export type TradeNotificationPayload =
+  | TradeOfferAcceptedNotificationPayload
+  | TradeOfferReceivedNotificationPayload
+
+export interface TradeNotificationResponse {
+  id: string
+  type: TradeNotificationType
+  message: string
+  payload: TradeNotificationPayload
+  viewed: boolean
+  createdAt: string
+}
+
+export interface TradeNotificationListResponse {
+  notifications: TradeNotificationResponse[]
+}
+
 export type TradeErrorCode =
   | 'auction_not_found'
   | 'auction_not_owned'
@@ -194,6 +247,8 @@ export type TradeErrorCode =
   | 'requirements_mismatch'
   | 'trade_unavailable'
   | 'unauthenticated'
+  | 'notification_not_found'
+  | 'notification_not_owned'
 
 export {
   getFinishRank,

@@ -2,6 +2,8 @@ import type {
   SupportedLocale,
   TradeAuctionResponse,
   TradeOfferResponse,
+  TradeNotificationPayload,
+  TradeNotificationResponse,
 } from '@tcg-collection/shared'
 import { DEFAULT_LOCALE } from '@tcg-collection/shared'
 import type {
@@ -11,6 +13,7 @@ import type {
   TradeOfferCardRow,
   TradeOfferRow,
   TradeOfferWithCards,
+  TradeNotificationRow,
 } from './trade-types'
 import type {
   TradeAuctionWithOffersPayload,
@@ -113,9 +116,23 @@ export const mapTradeOfferWithAuction = (offer: TradeOfferWithAuctionPayload): T
         offeredCardId: offer.auction.offeredCardId,
         offeredCardFinish: normalizeCardFinish(offer.auction.offeredCardFinish) ?? 'normal',
         expiresAt: offer.auction.expiresAt,
+        offeredCard: offer.auction.offeredCard
+          ? cloneCardSummary(resolveCardSummary(offer.auction.offeredCard))
+          : undefined,
       }
     : null,
   cards: cloneOfferCards((offer.cards as TradeOfferCardPayload[] | undefined) ?? []),
+})
+
+export const toTradeNotificationResponse = (
+  notification: TradeNotificationRow,
+): TradeNotificationResponse => ({
+  id: notification.id,
+  type: notification.type,
+  message: notification.message,
+  viewed: notification.viewed,
+  createdAt: notification.createdAt.toISOString(),
+  payload: notification.payload as TradeNotificationPayload,
 })
 
 const mapTradeOfferCardsToResponseSafe = (
@@ -185,3 +202,25 @@ export const toTradeAuctionResponse = (
   offerCount: resolveOfferCount(auction._count),
   offers: offers.map((offer) => toTradeOfferResponse(offer, locale)),
 })
+
+export const isTradeAuctionResponse = (
+  value: TradeAuctionResponse | null,
+): value is TradeAuctionResponse => value !== null
+
+export const safeToTradeAuctionResponse = (
+  auction: TradeAuctionRow,
+  offers: TradeOfferWithCards[] = [],
+  locale: SupportedLocale,
+): TradeAuctionResponse | null => {
+  try {
+    return toTradeAuctionResponse(auction, offers, locale)
+  } catch (error: unknown) {
+    const baseLog = {
+      auctionId: auction.id,
+      message: error instanceof Error ? error.message : 'Unknown error',
+    }
+
+    console.error('Unable to serialize trade auction for list response', baseLog)
+    return null
+  }
+}

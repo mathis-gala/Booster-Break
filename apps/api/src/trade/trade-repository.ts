@@ -4,6 +4,7 @@ import type {
   AuctionRequirements,
   CardFinish,
   TradeOfferStatus,
+  TradeNotificationType,
 } from '@tcg-collection/shared'
 import type { AppPrisma } from '../db/prisma'
 import {
@@ -15,6 +16,7 @@ import {
   tradeAuctionIdSelect,
   tradeAuctionWithOffersInclude,
   tradeOfferWithAuctionAndCardsInclude,
+  tradeNotificationSelect,
   tradePokemonCardsByIdsSelect,
   tradeUserCardQuantitySelect,
   type TradeAuctionWithCardPayload,
@@ -26,10 +28,13 @@ import type {
   TradeAuctionCardSummary,
   TradeAuctionRow,
   TradeAuctionWithOffers,
-  TradeOfferCardWrite,
+  CreateTradeAuctionCommand,
+  CreateTradeOfferCommand,
   TradeOfferRow,
+  TradeNotificationRow,
   TradeRepository,
   TradeRepositoryError,
+  TradeRepositoryNotificationInput,
 } from './trade-types'
 import { TradeRepositoryErrorException } from './trade-types'
 import {
@@ -84,14 +89,7 @@ export class PrismaTradeRepository implements TradeRepository {
     return Boolean(auction)
   }
 
-  async createAuction(input: {
-    creatorId: string
-    offeredCardId: string
-    offeredCardFinish: CardFinish
-    requirements?: AuctionRequirements
-    filters?: AuctionFilters
-    expiresAt: Date
-  }): Promise<TradeAuctionRow> {
+  async createAuction(input: CreateTradeAuctionCommand): Promise<TradeAuctionRow> {
     return this.db.$transaction(async (tx) => {
       const activeAuctionsCount = await tx.tradeAuction.count({
         where: {
@@ -243,12 +241,7 @@ export class PrismaTradeRepository implements TradeRepository {
     })
   }
 
-  async createOffer(input: {
-    auctionId: string
-    proposerId: string
-    cards: TradeOfferCardWrite[]
-    now: Date
-  }): Promise<{ id: string }> {
+  async createOffer(input: CreateTradeOfferCommand): Promise<{ id: string }> {
     if (input.cards.length === 0) {
       throw new TradeRepositoryErrorException('offer_invalid')
     }
@@ -491,6 +484,11 @@ export class PrismaTradeRepository implements TradeRepository {
         }
       }
 
+      console.error('Unexpected error while accepting trade offer', {
+        auctionId,
+        offerId,
+        error,
+      })
       return { ok: false, error: 'trade_unavailable' }
     }
   }
@@ -529,6 +527,77 @@ export class PrismaTradeRepository implements TradeRepository {
     return userCard?.quantity
   }
 
+  async listTradeNotifications(userId: string): Promise<TradeNotificationRow[]> {
+    try {
+      const notifications = await this.db.tradeNotification.findMany({
+        where: {
+          userId,
+          viewed: false,
+        },
+        select: tradeNotificationSelect,
+        orderBy: {
+          createdAt: 'desc',
+        },
+      })
+
+      return notifications.map((notification) => ({
+        ...notification,
+        type: notification.type as TradeNotificationType,
+        viewed: notification.viewed ?? false,
+        payload: notification.payload as TradeNotificationRow['payload'],
+      }))
+    } catch (error: unknown) {
+      if (this.isNotificationTableMissing(error)) {
+        return []
+      }
+
+      throw error
+    }
+  }
+
+  async markTradeNotificationViewed(notificationId: string, userId: string): Promise<boolean> {
+    try {
+      const updated = await this.db.tradeNotification.updateMany({
+        where: {
+          id: notificationId,
+          userId,
+          viewed: false,
+        },
+        data: {
+          viewed: true,
+          updatedAt: new Date(),
+        },
+      })
+
+      return updated.count === 1
+    } catch (error: unknown) {
+      if (this.isNotificationTableMissing(error)) {
+        return false
+      }
+
+      throw error
+    }
+  }
+
+  async createTradeNotification(input: TradeRepositoryNotificationInput): Promise<TradeNotificationRow> {
+    const created = await this.db.tradeNotification.create({
+      data: {
+        id: crypto.randomUUID(),
+        userId: input.userId,
+        type: input.type,
+        message: input.message,
+        payload: input.payload,
+      },
+      select: tradeNotificationSelect,
+    })
+
+    return {
+      ...created,
+      type: created.type as TradeNotificationType,
+      payload: created.payload as TradeNotificationRow['payload'],
+    }
+  }
+
   private normalizeAuctionRow<
     T extends {
       requirements: AuctionRequirements | Prisma.JsonValue
@@ -548,6 +617,14 @@ export class PrismaTradeRepository implements TradeRepository {
       filters: normalizeTradeFilters(row.filters),
       offeredCardFinish: normalizeTradeCardFinish(row.offeredCardFinish),
     }
+  }
+
+  private isNotificationTableMissing(error: unknown): boolean {
+    return (
+      error instanceof Prisma.PrismaClientKnownRequestError &&
+      error.code === 'P2021' &&
+      /trade_notifications/.test(error.message)
+    )
   }
 
   private async decrementUserCardQuantity(
@@ -620,6 +697,9 @@ const normalizeTradeCardFinish = (value: string): CardFinish => {
   const normalized = normalizeCardFinish(value)
 
   if (!normalized) {
+    console.error('Unsupported trade card finish value', {
+      value,
+    })
     throw new TradeRepositoryErrorException('trade_unavailable')
   }
 

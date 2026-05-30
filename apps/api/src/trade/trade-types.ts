@@ -1,6 +1,8 @@
 import type {
   TradeApiError,
   TradeErrorCode,
+  TradeNotificationPayload,
+  TradeNotificationType,
   CardFinish,
   AuctionRequirements,
   AuctionFilters,
@@ -38,6 +40,8 @@ export type TradeRepositoryError =
   | 'offer_invalid'
   | 'card_not_owned'
   | 'max_offers_reached'
+  | 'notification_not_found'
+  | 'notification_not_owned'
   | 'trade_unavailable'
 
 export class TradeRepositoryErrorException extends Error {
@@ -114,6 +118,7 @@ export interface TradeOfferRow {
     offeredCardId: string
     offeredCardFinish: CardFinish
     expiresAt: Date
+    offeredCard?: TradeAuctionCardSummary
   } | null
   cards: TradeOfferCardRow[]
 }
@@ -134,6 +139,47 @@ export interface TradeOfferWithCards {
   cards: TradeOfferCardRow[]
 }
 
+export interface TradeNotificationRow {
+  id: string
+  userId: string
+  type: TradeNotificationType
+  message: string
+  payload: TradeNotificationPayload
+  viewed: boolean
+  createdAt: Date
+  updatedAt: Date
+}
+
+export interface TradeRepositoryNotificationInput {
+  userId: string
+  type: TradeNotificationType
+  message: string
+  payload: TradeNotificationPayload
+}
+
+export interface TradeCardFilterCandidate {
+  id: string
+  setId: string
+  rarity: string | null
+  category: string | null
+}
+
+export interface CreateTradeAuctionCommand {
+  creatorId: string
+  offeredCardId: string
+  offeredCardFinish: CardFinish
+  requirements?: AuctionRequirements
+  filters?: AuctionFilters
+  expiresAt: Date
+}
+
+export interface CreateTradeOfferCommand {
+  auctionId: string
+  proposerId: string
+  cards: TradeOfferCardWrite[]
+  now: Date
+}
+
 export interface TradeAuctionWithOffers extends TradeAuctionRow {
   offers: TradeOfferWithCards[]
 }
@@ -148,14 +194,7 @@ export interface TradeRepository {
   cleanupExpiredAuctions(referenceDate: Date): Promise<number>
   countActiveAuctionsByCreator(creatorId: string): Promise<number>
   isCardInActiveAuction(offeredCardId: string, offeredCardFinish: CardFinish): Promise<boolean>
-  createAuction(input: {
-    creatorId: string
-    offeredCardId: string
-    offeredCardFinish: CardFinish
-    requirements?: AuctionRequirements
-    filters?: AuctionFilters
-    expiresAt: Date
-  }): Promise<TradeAuctionRow>
+  createAuction(input: CreateTradeAuctionCommand): Promise<TradeAuctionRow>
   listActiveAuctions(): Promise<TradeAuctionRow[]>
   getAuctionById(
     auctionId: string,
@@ -163,12 +202,7 @@ export interface TradeRepository {
   ): Promise<TradeAuctionRow | TradeAuctionWithOffers | null>
   cancelAuction(auctionId: string, creatorId: string): Promise<boolean>
   countPendingOffersByUser(auctionId: string, proposerId: string): Promise<number>
-  createOffer(input: {
-    auctionId: string
-    proposerId: string
-    cards: TradeOfferCardWrite[]
-    now: Date
-  }): Promise<{ id: string }>
+  createOffer(input: CreateTradeOfferCommand): Promise<{ id: string }>
   getOfferById(offerId: string): Promise<TradeOfferRow | null>
   updateOfferStatus(offerId: string, status: TradeOfferStatus): Promise<boolean>
   acceptOffer(
@@ -182,4 +216,7 @@ export interface TradeRepository {
     cardId: string,
     finish: CardFinish,
   ): Promise<number | undefined>
+  listTradeNotifications(userId: string): Promise<TradeNotificationRow[]>
+  markTradeNotificationViewed(notificationId: string, userId: string): Promise<boolean>
+  createTradeNotification(input: TradeRepositoryNotificationInput): Promise<TradeNotificationRow>
 }

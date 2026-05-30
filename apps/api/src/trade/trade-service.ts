@@ -1,33 +1,44 @@
 import type {
-  AuctionFilters,
-  AuctionRequirements,
-  SupportedLocale,
-  CardFinish,
   CreateAuctionRequest,
   CreateOfferRequest,
+  SupportedLocale,
   TradeAuctionListResponse,
   TradeAuctionResponse,
+  TradeNotificationListResponse,
   TradeOfferResponse,
-  TradeOfferStatus,
 } from '@tcg-collection/shared'
 import { DEFAULT_LOCALE } from '@tcg-collection/shared'
-import type { TradeAuctionRow, TradeOfferWithCards } from './trade-types'
-import { toTradeAuctionResponse, toTradeOfferResponse } from './trade-mappers'
-import { TRADE_AUCTION_DURATION_MS } from './trade-config'
+
 import {
-  type TradeOfferCardWrite,
-  type TradeRepository,
+  isTradeAuctionResponse,
+  safeToTradeAuctionResponse,
+  toTradeAuctionResponse,
+  toTradeOfferResponse,
+  toTradeNotificationResponse,
+} from './trade-mappers'
+import { TRADE_AUCTION_DURATION_MS } from './trade-config'
+import { normalizeTradeFilters, normalizeTradeRequirements } from './trade-normalizers'
+import {
+  buildTradeOfferAcceptedNotificationInput,
+  buildTradeOfferReceivedNotificationInput,
+} from './trade-notification-factory'
+import { resolveAuthenticatedTradeUser } from './trade-auth'
+import { normalizeOfferCards } from './trade-offer-utils'
+import {
+  isCardFilteredOutByAuction,
+  isSupportedTradeCardFinish,
+  matchesAuctionRequirements,
+} from './trade-offer-validation'
+import { toTradeServiceError } from './trade-error-mapper'
+import {
   TradeRepositoryErrorException,
-  type TradeServiceError,
+  type TradeAuctionRow,
+  type TradeOfferStatus,
   type TradeServiceOptions,
   type TradeServiceResult,
 } from './trade-types'
-import { normalizeTradeFilters, normalizeTradeRequirements } from './trade-normalizers'
-import { normalizeRarity } from '@tcg-collection/shared'
 
 const now = () => new Date()
-const isTradeAuctionResponse = (value: TradeAuctionResponse | null): value is TradeAuctionResponse =>
-  value !== null
 
 export class TradeService {
   constructor(private readonly options: TradeServiceOptions) {}
@@ -37,7 +48,7 @@ export class TradeService {
 
     const auctions = await this.options.tradeRepository.listActiveAuctions()
     const mappedAuctions = auctions
-      .map((auction) => safeTradeAuctionResponse(auction, [], locale))
+      .map((auction) => safeToTradeAuctionResponse(auction, [], locale))
       .filter(isTradeAuctionResponse)
 
     return {
@@ -62,12 +73,65 @@ export class TradeService {
 
     try {
       return toTradeAuctionResponse(auction, 'offers' in auction ? auction.offers : [], locale)
-    } catch (error: unknown) {
+    } catch {
       return {
         error: 'trade_unavailable',
         message: 'Unable to load this auction right now.',
       }
     }
+  }
+
+  async listTradeNotifications(
+    cookieHeader: string | undefined,
+  ): Promise<TradeServiceResult<TradeNotificationListResponse>> {
+    const userOrError = await resolveAuthenticatedTradeUser(
+      this.options.authService,
+      cookieHeader,
+      'Sign in to load your notifications.',
+    )
+
+    if ('error' in userOrError) {
+      return userOrError
+    }
+
+    const user = userOrError
+
+    const notifications = await this.options.tradeRepository.listTradeNotifications(user.id)
+
+    return {
+      notifications: notifications.map((notification) => toTradeNotificationResponse(notification)),
+    }
+  }
+
+  async markTradeNotificationViewed(
+    cookieHeader: string | undefined,
+    notificationId: string,
+  ): Promise<TradeServiceResult<void>> {
+    const userOrError = await resolveAuthenticatedTradeUser(
+      this.options.authService,
+      cookieHeader,
+      'Sign in to update notifications.',
+    )
+
+    if ('error' in userOrError) {
+      return userOrError
+    }
+
+    const user = userOrError
+
+    const updated = await this.options.tradeRepository.markTradeNotificationViewed(
+      notificationId,
+      user.id,
+    )
+
+    if (!updated) {
+      return {
+        error: 'notification_not_found',
+        message: 'This notification does not exist.',
+      }
+    }
+
+    return
   }
 
   async createAuction(
@@ -77,14 +141,17 @@ export class TradeService {
   ): Promise<TradeServiceResult<TradeAuctionResponse>> {
     await this.expireAuctions(now())
 
-    const user = await this.options.authService.getCurrentUser(cookieHeader)
+    const userOrError = await resolveAuthenticatedTradeUser(
+      this.options.authService,
+      cookieHeader,
+      'Sign in to create a trade auction.',
+    )
 
-    if (!user) {
-      return {
-        error: 'unauthenticated',
-        message: 'Sign in to create a trade auction.',
-      }
+    if ('error' in userOrError) {
+      return userOrError
     }
+
+    const user = userOrError
 
     if (!input.offeredCardId || !input.offeredCardFinish) {
       return {
@@ -96,7 +163,7 @@ export class TradeService {
     const requirements = normalizeTradeRequirements(input.requirements)
     const filters = normalizeTradeFilters(input.filters)
 
-    if (!isCardFinish(input.offeredCardFinish)) {
+    if (!isSupportedTradeCardFinish(input.offeredCardFinish)) {
       return {
         error: 'trade_unavailable',
         message: 'Unsupported card finish for the offered card.',
@@ -135,14 +202,17 @@ export class TradeService {
   ): Promise<TradeServiceResult<TradeOfferResponse>> {
     await this.expireAuctions(now())
 
-    const user = await this.options.authService.getCurrentUser(cookieHeader)
+    const userOrError = await resolveAuthenticatedTradeUser(
+      this.options.authService,
+      cookieHeader,
+      'Sign in to submit a trade offer.',
+    )
 
-    if (!user) {
-      return {
-        error: 'unauthenticated',
-        message: 'Sign in to submit a trade offer.',
-      }
+    if ('error' in userOrError) {
+      return userOrError
     }
+
+    const user = userOrError
 
     const auction = await this.options.tradeRepository.getAuctionById(auctionId)
 
@@ -174,7 +244,7 @@ export class TradeService {
       }
     }
 
-    const offerCards = this.normalizeOfferCards(input.cards)
+    const offerCards = normalizeOfferCards(input.cards)
 
     if (offerCards.length === 0) {
       return {
@@ -213,14 +283,21 @@ export class TradeService {
         }
       }
 
-      if (!matchesRequirements(card, offerCard.finish, requirements)) {
+      const filterCard = {
+        id: card.id,
+        setId: card.setId,
+        rarity: card.rarity,
+        category: card.category,
+      }
+
+      if (!matchesAuctionRequirements(filterCard, offerCard.finish, requirements)) {
         return {
           error: 'requirements_mismatch',
           message: 'One or more cards do not satisfy the auction requirements.',
         }
       }
 
-      if (isFilteredOut(card, offerCard.finish, filters)) {
+      if (isCardFilteredOutByAuction(filterCard, offerCard.finish, filters)) {
         return {
           error: 'offer_invalid',
           message: 'One or more cards are blocked by the auction filters.',
@@ -256,6 +333,18 @@ export class TradeService {
       }
     }
 
+    try {
+      await this.options.tradeRepository.createTradeNotification(
+        buildTradeOfferReceivedNotificationInput(auction, createdOffer),
+      )
+    } catch (error: unknown) {
+      console.error('Unable to create trade offer received notification', {
+        error: error instanceof Error ? error.message : 'Unknown error',
+        offerId: createdOffer.id,
+        auctionId: createdOffer.auctionId,
+      })
+    }
+
     return toTradeOfferResponse(createdOffer, locale)
   }
 
@@ -265,14 +354,17 @@ export class TradeService {
   ): Promise<TradeServiceResult<void>> {
     await this.expireAuctions(now())
 
-    const user = await this.options.authService.getCurrentUser(cookieHeader)
+    const userOrError = await resolveAuthenticatedTradeUser(
+      this.options.authService,
+      cookieHeader,
+      'Sign in to cancel a trade offer.',
+    )
 
-    if (!user) {
-      return {
-        error: 'unauthenticated',
-        message: 'Sign in to cancel a trade offer.',
-      }
+    if ('error' in userOrError) {
+      return userOrError
     }
+
+    const user = userOrError
 
     const offer = await this.options.tradeRepository.getOfferById(offerId)
 
@@ -316,14 +408,17 @@ export class TradeService {
   ): Promise<TradeServiceResult<void>> {
     await this.expireAuctions(now())
 
-    const user = await this.options.authService.getCurrentUser(cookieHeader)
+    const userOrError = await resolveAuthenticatedTradeUser(
+      this.options.authService,
+      cookieHeader,
+      'Sign in to cancel an auction.',
+    )
 
-    if (!user) {
-      return {
-        error: 'unauthenticated',
-        message: 'Sign in to cancel an auction.',
-      }
+    if ('error' in userOrError) {
+      return userOrError
     }
+
+    const user = userOrError
 
     const auction = await this.options.tradeRepository.getAuctionById(auctionId)
 
@@ -367,14 +462,17 @@ export class TradeService {
   ): Promise<TradeServiceResult<void>> {
     await this.expireAuctions(now())
 
-    const user = await this.options.authService.getCurrentUser(cookieHeader)
+    const userOrError = await resolveAuthenticatedTradeUser(
+      this.options.authService,
+      cookieHeader,
+      'Sign in to accept a trade offer.',
+    )
 
-    if (!user) {
-      return {
-        error: 'unauthenticated',
-        message: 'Sign in to accept a trade offer.',
-      }
+    if ('error' in userOrError) {
+      return userOrError
     }
+
+    const user = userOrError
 
     const offer = await this.options.tradeRepository.getOfferById(offerId)
 
@@ -405,194 +503,22 @@ export class TradeService {
       return toTradeServiceError(result.error)
     }
 
+    try {
+      await this.options.tradeRepository.createTradeNotification(
+        buildTradeOfferAcceptedNotificationInput(offer),
+      )
+    } catch (error: unknown) {
+      console.error('Unable to create trade accepted notification', {
+        error: error instanceof Error ? error.message : 'Unknown error',
+        offerId: offer.id,
+        userId: offer.proposerId,
+      })
+    }
+
     return
   }
 
   private async expireAuctions(referenceDate: Date): Promise<void> {
     await this.options.tradeRepository.cleanupExpiredAuctions(referenceDate)
-  }
-
-  private normalizeOfferCards(cards: CreateOfferRequest['cards']): TradeOfferCardWrite[] {
-    const merged = new Map<string, TradeOfferCardWrite>()
-
-    for (const card of cards) {
-      const key = `${card.cardId}:${card.finish}`
-      const existing = merged.get(key)
-
-      if (existing) {
-        existing.quantity += card.quantity
-        continue
-      }
-
-      merged.set(key, {
-        cardId: card.cardId,
-        finish: card.finish,
-        quantity: card.quantity,
-      })
-    }
-
-    return Array.from(merged.values()).filter((card) => card.quantity > 0)
-  }
-}
-
-const safeTradeAuctionResponse = (
-  auction: TradeAuctionRow,
-  offers: TradeOfferWithCards[] = [],
-  locale: SupportedLocale,
-): TradeAuctionResponse | null => {
-  try {
-    return toTradeAuctionResponse(auction, offers, locale)
-  } catch (error: unknown) {
-    const baseLog = {
-      auctionId: auction.id,
-      message: error instanceof Error ? error.message : 'Unknown error',
-    }
-
-    console.error('Unable to serialize trade auction for list response', baseLog)
-    return null
-  }
-}
-
-export const isTradeServiceError = (result: unknown): result is TradeServiceError => {
-  return typeof result === 'object' && result !== null && 'error' in result
-}
-
-const isCardFinish = (value: string): value is CardFinish => {
-  return value === 'normal' || value === 'holo' || value === 'reverse_holo'
-}
-
-const matchesRequirements = (
-  card: {
-    id: string
-    setId: string
-    rarity: string | null
-    category: string | null
-  },
-  finish: CardFinish,
-  requirements: AuctionRequirements,
-): boolean => {
-  if (requirements.cardIds?.length && !requirements.cardIds.includes(card.id)) {
-    return false
-  }
-
-  if (requirements.setIds?.length && !requirements.setIds.includes(card.setId)) {
-    return false
-  }
-
-  if (
-    requirements.rarities?.length &&
-    !requirements.rarities.some(
-      (rarity) => normalizeRarity(rarity) === normalizeRarity(card.rarity ?? ''),
-    )
-  ) {
-    return false
-  }
-
-  if (requirements.types?.length && !requirements.types.includes(card.category ?? '')) {
-    return false
-  }
-
-  if (requirements.finishes?.length && !requirements.finishes.includes(finish)) {
-    return false
-  }
-
-  return true
-}
-
-const isFilteredOut = (
-  card: {
-    id: string
-    setId: string
-    rarity: string | null
-    category: string | null
-  },
-  finish: CardFinish,
-  filters: AuctionFilters,
-): boolean => {
-  if (filters.excludedCardIds?.length && filters.excludedCardIds.includes(card.id)) {
-    return true
-  }
-
-  if (filters.excludedSetIds?.length && filters.excludedSetIds.includes(card.setId)) {
-    return true
-  }
-
-  if (
-    filters.excludedRarities?.length &&
-    filters.excludedRarities.some(
-      (rarity) => normalizeRarity(rarity) === normalizeRarity(card.rarity ?? ''),
-    )
-  ) {
-    return true
-  }
-
-  if (filters.excludedTypes?.length && filters.excludedTypes.includes(card.category ?? '')) {
-    return true
-  }
-
-  if (filters.excludedFinishes?.length && filters.excludedFinishes.includes(finish)) {
-    return true
-  }
-
-  return false
-}
-
-const toTradeServiceError = (error: string): TradeServiceError => {
-  switch (error) {
-    case 'max_auctions_reached':
-      return {
-        error: 'max_auctions_reached',
-        message: 'You already reached the maximum number of active auctions.',
-      }
-    case 'card_in_auction':
-      return {
-        error: 'card_in_auction',
-        message: 'This card is already locked in another active auction.',
-      }
-    case 'max_offers_reached':
-      return {
-        error: 'max_offers_reached',
-        message: 'You reached the maximum number of offers for this auction.',
-      }
-    case 'auction_not_found':
-      return {
-        error: 'auction_not_found',
-        message: 'The selected auction does not exist.',
-      }
-    case 'auction_expired':
-      return {
-        error: 'auction_expired',
-        message: 'The selected auction has expired.',
-      }
-    case 'auction_closed':
-      return {
-        error: 'auction_closed',
-        message: 'The selected auction is closed.',
-      }
-    case 'cannot_trade_self':
-      return {
-        error: 'cannot_trade_self',
-        message: 'You cannot offer cards on your own auction.',
-      }
-    case 'offer_not_found':
-      return {
-        error: 'offer_not_found',
-        message: 'This offer does not exist anymore.',
-      }
-    case 'offer_invalid':
-      return {
-        error: 'offer_invalid',
-        message: 'This offer cannot be accepted right now.',
-      }
-    case 'card_not_owned':
-      return {
-        error: 'card_not_owned',
-        message: 'A player does not have enough cards for this trade anymore.',
-      }
-    default:
-      return {
-        error: 'trade_unavailable',
-        message: 'Trade operation is not available right now.',
-      }
   }
 }

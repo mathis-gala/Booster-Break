@@ -1,29 +1,6 @@
 import type { Prisma } from '@prisma/client'
 
-export const tradeAuctionCreatorSelect = {
-  id: true,
-  pseudo: true,
-  displayName: true,
-  avatarUrl: true,
-} satisfies Prisma.UserSelect
-
-export const tradeOfferAuctionSelect = {
-  id: true,
-  creatorId: true,
-  status: true,
-  offeredCardId: true,
-  offeredCardFinish: true,
-  expiresAt: true,
-} satisfies Prisma.TradeAuctionSelect
-
-export const tradeOfferProposerSelect = {
-  id: true,
-  pseudo: true,
-  displayName: true,
-  avatarUrl: true,
-} satisfies Prisma.UserSelect
-
-export const tradePokemonCardSelect = {
+const buildTradePokemonCardSelect = (): Prisma.PokemonCardSelect => ({
   id: true,
   setId: true,
   name: true,
@@ -35,14 +12,42 @@ export const tradePokemonCardSelect = {
   rawJson: true,
   imageSmall: true,
   imageLarge: true,
-} satisfies Prisma.PokemonCardSelect
+})
+
+export const tradeAuctionCreatorSelect = {
+  id: true,
+  pseudo: true,
+  displayName: true,
+  avatarUrl: true,
+} satisfies Prisma.UserSelect
+
+export const tradePokemonCardSelect = buildTradePokemonCardSelect()
+
+export const tradeOfferAuctionSelect = {
+  id: true,
+  creatorId: true,
+  status: true,
+  offeredCardId: true,
+  offeredCardFinish: true,
+  offeredCard: {
+    select: buildTradePokemonCardSelect(),
+  },
+  expiresAt: true,
+} satisfies Prisma.TradeAuctionSelect
+
+export const tradeOfferProposerSelect = {
+  id: true,
+  pseudo: true,
+  displayName: true,
+  avatarUrl: true,
+} satisfies Prisma.UserSelect
 
 export const tradeAuctionCardInclude = {
   creator: {
     select: tradeAuctionCreatorSelect,
   },
   offeredCard: {
-    select: tradePokemonCardSelect,
+    select: buildTradePokemonCardSelect(),
   },
   _count: {
     select: {
@@ -57,7 +62,7 @@ export const tradeAuctionCardInclude = {
 
 export const tradeOfferCardInclude = {
   card: {
-    select: tradePokemonCardSelect,
+    select: buildTradePokemonCardSelect(),
   },
 } satisfies Prisma.TradeOfferCardInclude
 
@@ -101,12 +106,27 @@ export const tradeOfferWithAuctionAndCardsInclude = {
   },
 } satisfies Prisma.TradeOfferInclude
 
+export const tradeNotificationSelect = {
+  id: true,
+  userId: true,
+  type: true,
+  message: true,
+  payload: true,
+  viewed: true,
+  createdAt: true,
+  updatedAt: true,
+} satisfies Prisma.TradeNotificationSelect
+
 export type TradeAuctionWithCardPayload = Prisma.TradeAuctionGetPayload<{
   include: typeof tradeAuctionCardInclude
 }>
 
 export type TradeOfferWithAuctionPayload = Prisma.TradeOfferGetPayload<{
   include: typeof tradeOfferWithAuctionAndCardsInclude
+}>
+
+export type TradeNotificationEntityPayload = Prisma.TradeNotificationGetPayload<{
+  select: typeof tradeNotificationSelect
 }>
 
 export type TradeAuctionWithOffersPayload = Prisma.TradeAuctionGetPayload<{

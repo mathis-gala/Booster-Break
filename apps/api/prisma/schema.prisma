@@ -20,6 +20,7 @@ model User {
   packOpenings PackOpening[]
   tradeAuctions TradeAuction[] @relation("TradeAuctionCreator")
   tradeOffers   TradeOffer[] @relation("TradeOfferProposer")
+  tradeNotifications TradeNotification[] @relation("TradeUserNotifications")
 
   @@map("users")
 }
@@ -140,6 +141,22 @@ model TradeOfferCard {
   @@index([offerId])
   @@index([cardId, finish])
   @@map("trade_offer_cards")
+}
+
+model TradeNotification {
+  id       String   @id
+  userId   String   @map("user_id")
+  type     String
+  message  String
+  payload  Json     @default("{}")
+  viewed   Boolean  @default(false)
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+  user     User     @relation("TradeUserNotifications", fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId, viewed])
+  @@index([createdAt])
+  @@map("trade_notifications")
 }
 
 model UserCard {

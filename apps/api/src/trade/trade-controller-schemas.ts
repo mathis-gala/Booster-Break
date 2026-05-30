@@ -57,3 +57,7 @@ export const offerPathSchema = z.object({
   auctionId: z.string().trim().min(1),
   offerId: z.string().trim().min(1),
 })
+
+export const notificationIdSchema = z.object({
+  notificationId: z.string().trim().min(1),
+})
