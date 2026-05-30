@@ -1,5 +1,7 @@
-export const supportedLocales = ['fr', 'en'] as const
-export type SupportedLocale = (typeof supportedLocales)[number]
+export const supportedLocaleValues = ['fr', 'en'] as const
+export type SupportedLocale = (typeof supportedLocaleValues)[number]
+export const supportedLocales = supportedLocaleValues
+export const DEFAULT_LOCALE: SupportedLocale = 'fr'
 
 export interface HealthResponse {
   ok: boolean
@@ -140,6 +142,8 @@ export interface TradeOfferResponse {
   id: string
   proposerId: string
   proposerPseudo: string
+  proposerDisplayName?: string
+  proposerAvatarUrl?: string
   status: TradeOfferStatus
   createdAt: string
   updatedAt: string
@@ -150,6 +154,8 @@ export interface TradeAuctionResponse {
   id: string
   creatorId: string
   creatorPseudo: string
+  creatorDisplayName?: string
+  creatorAvatarUrl?: string
   offeredCard: PokemonCardSummary
   offeredCardFinish: CardFinish
   requirements: AuctionRequirements

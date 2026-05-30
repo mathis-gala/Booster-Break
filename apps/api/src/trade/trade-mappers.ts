@@ -1,4 +1,9 @@
-import type { TradeAuctionResponse, TradeOfferResponse } from '@tcg-collection/shared'
+import type {
+  SupportedLocale,
+  TradeAuctionResponse,
+  TradeOfferResponse,
+} from '@tcg-collection/shared'
+import { DEFAULT_LOCALE } from '@tcg-collection/shared'
 import type {
   TradeAuctionCardSummary,
   TradeAuctionRow,
@@ -25,11 +30,46 @@ const cloneCardSummary = (card: TradeAuctionCardSummary): TradeAuctionCardSummar
   ...card,
 })
 
+const UNKNOWN_TRADE_CARD: TradeAuctionCardSummary = {
+  id: '',
+  setId: '',
+  name: 'Unknown card',
+  nameEn: null,
+  nameFr: null,
+  localId: '',
+  rarity: null,
+  category: null,
+  rawJson: '{}',
+  imageSmall: null,
+  imageLarge: null,
+}
+
+const UNKNOWN_TRADE_USER: {
+  id: string
+  pseudo: string
+  displayName: string | null
+  avatarUrl: string | null
+} = {
+  id: '',
+  pseudo: 'Anonymous',
+  displayName: null,
+  avatarUrl: null,
+}
+
+const resolveCardSummary = (card: TradeAuctionCardSummary | undefined): TradeAuctionCardSummary =>
+  card ?? UNKNOWN_TRADE_CARD
+
+const resolveUserSummary = (
+  user:
+    | { id: string; pseudo: string; displayName: string | null; avatarUrl: string | null }
+    | undefined,
+) => user ?? UNKNOWN_TRADE_USER
+
 const cloneOfferCards = (cards: TradeOfferCardPayload[]): TradeOfferCardRow[] =>
   cards.map((card) => ({
     ...card,
     finish: normalizeCardFinish(card.finish) ?? 'normal',
-    card: cloneCardSummary(card.card),
+    card: cloneCardSummary(resolveCardSummary(card.card as TradeAuctionCardSummary | undefined)),
   }))
 
 export const mapTradeOfferWithCards = (offer: TradeOfferWithCardsPayload): TradeOfferWithCards => ({
@@ -40,9 +80,9 @@ export const mapTradeOfferWithCards = (offer: TradeOfferWithCardsPayload): Trade
   createdAt: offer.createdAt,
   updatedAt: offer.updatedAt,
   proposer: {
-    ...offer.proposer,
+    ...resolveUserSummary(offer.proposer),
   },
-  cards: cloneOfferCards(offer.cards),
+  cards: cloneOfferCards((offer.cards as TradeOfferCardPayload[] | undefined) ?? []),
 })
 
 export const mapTradeAuctionWithOffers = (
@@ -63,7 +103,7 @@ export const mapTradeOfferWithAuction = (offer: TradeOfferWithAuctionPayload): T
   createdAt: offer.createdAt,
   updatedAt: offer.updatedAt,
   proposer: {
-    ...offer.proposer,
+    ...resolveUserSummary(offer.proposer),
   },
   auction: offer.auction
     ? {
@@ -75,45 +115,66 @@ export const mapTradeOfferWithAuction = (offer: TradeOfferWithAuctionPayload): T
         expiresAt: offer.auction.expiresAt,
       }
     : null,
-  cards: cloneOfferCards(offer.cards),
+  cards: cloneOfferCards((offer.cards as TradeOfferCardPayload[] | undefined) ?? []),
 })
 
-const mapTradeOfferCardsToResponse = (cards: TradeOfferCardRow[]): TradeOfferResponse['cards'] =>
+const mapTradeOfferCardsToResponseSafe = (
+  cards: TradeOfferCardRow[],
+  locale: SupportedLocale = DEFAULT_LOCALE,
+): TradeOfferResponse['cards'] =>
   cards.map((offerCard) => ({
     finish: normalizeCardFinish(offerCard.finish) ?? 'normal',
     card: toCardSummary(
       {
-        ...offerCard.card,
+        ...resolveCardSummary(offerCard.card),
       },
       normalizeCardFinish(offerCard.finish),
+      locale,
     ),
     quantity: offerCard.quantity,
   }))
 
 export const toTradeOfferResponse = (
   offer: TradeOfferRow | TradeOfferWithCards,
+  locale: SupportedLocale = DEFAULT_LOCALE,
 ): TradeOfferResponse => ({
   id: offer.id,
   proposerId: offer.proposerId,
-  proposerPseudo: offer.proposer.pseudo,
+  proposerPseudo: resolveUserSummary(offer.proposer).pseudo,
+  proposerDisplayName: resolveUserSummary(offer.proposer).displayName ?? undefined,
+  proposerAvatarUrl: resolveUserSummary(offer.proposer).avatarUrl ?? undefined,
   status: offer.status,
   createdAt: offer.createdAt.toISOString(),
   updatedAt: offer.updatedAt.toISOString(),
-  cards: mapTradeOfferCardsToResponse(offer.cards),
+  cards: mapTradeOfferCardsToResponseSafe(offer.cards ?? [], locale),
 })
+
+const resolveOfferCount = (offerCount: { offers?: number } | undefined): number => {
+  const safeCount = offerCount?.offers
+
+  if (typeof safeCount !== 'number' || !Number.isFinite(safeCount)) {
+    return 0
+  }
+
+  return Math.max(0, safeCount)
+}
 
 export const toTradeAuctionResponse = (
   auction: TradeAuctionRow,
   offers: TradeOfferWithCards[],
+  locale: SupportedLocale = DEFAULT_LOCALE,
 ): TradeAuctionResponse => ({
   id: auction.id,
   creatorId: auction.creatorId,
-  creatorPseudo: auction.creator.pseudo,
+  creatorPseudo: resolveUserSummary(auction.creator).pseudo,
+  creatorDisplayName: resolveUserSummary(auction.creator).displayName ?? undefined,
+  creatorAvatarUrl: resolveUserSummary(auction.creator).avatarUrl ?? undefined,
   offeredCard: toCardSummary(
     {
-      ...auction.offeredCard,
+      ...resolveCardSummary(auction.offeredCard),
     },
     normalizeCardFinish(auction.offeredCardFinish),
+    locale,
   ),
   offeredCardFinish: normalizeCardFinish(auction.offeredCardFinish) ?? 'normal',
   requirements: auction.requirements,
@@ -121,6 +182,6 @@ export const toTradeAuctionResponse = (
   status: auction.status,
   createdAt: auction.createdAt.toISOString(),
   expiresAt: auction.expiresAt.toISOString(),
-  offerCount: auction._count.offers,
-  offers: offers.map((offer) => toTradeOfferResponse(offer)),
+  offerCount: resolveOfferCount(auction._count),
+  offers: offers.map((offer) => toTradeOfferResponse(offer, locale)),
 })

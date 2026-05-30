@@ -1,4 +1,5 @@
 import type { SupportedLocale } from '@tcg-collection/shared'
+import { DEFAULT_LOCALE } from '@tcg-collection/shared'
 import { Elysia } from 'elysia'
 import { AuthService } from '../auth/auth-service'
 import { createAuthRequiredPlugin } from '../auth/auth-required-plugin'
@@ -59,7 +60,7 @@ export const createPokemonController = ({
     .get(
       '/sets',
       async ({ query }) => ({
-        sets: await pokemonService.listSets(query.locale ?? 'fr'),
+        sets: await pokemonService.listSets(query.locale ?? DEFAULT_LOCALE),
       }),
       {
         query: localeQuerySchema,
@@ -68,7 +69,7 @@ export const createPokemonController = ({
     .get(
       '/cards',
       async ({ query }) => ({
-        cards: await pokemonService.listCards(query.setId, query.locale ?? 'fr'),
+        cards: await pokemonService.listCards(query.setId, query.locale ?? DEFAULT_LOCALE),
       }),
       {
         query: cardsQuerySchema,
@@ -94,7 +95,7 @@ export const createPokemonController = ({
           page: query.page ?? 1,
           pageSize: query.pageSize ?? 24,
           sort: query.sort ?? 'recent',
-          locale: query.locale ?? 'fr',
+          locale: query.locale ?? DEFAULT_LOCALE,
         })
 
         if (!isPokemonServiceError(result)) {

@@ -2,27 +2,31 @@ import { Elysia } from 'elysia'
 import { createAuthRequiredPlugin } from '../auth/auth-required-plugin'
 import type { TradeService } from './trade-service'
 import { isTradeServiceError } from './trade-service'
-import type {
-  TradeControllerErrorCode,
-  TradeControllerOptions,
-} from './trade-types'
+import type { TradeControllerErrorCode, TradeControllerOptions } from './trade-types'
+import { DEFAULT_LOCALE } from '@tcg-collection/shared'
 import {
   createAuctionSchema,
   createOfferSchema,
   offerIdSchema,
   offerPathSchema,
   tradeIdSchema,
+  tradeLocaleQuerySchema,
 } from './trade-controller-schemas'
 
-export const createTradeController = ({ service, authService }: TradeControllerOptions<TradeService>) => {
+export const createTradeController = ({
+  service,
+  authService,
+}: TradeControllerOptions<TradeService>) => {
   const authenticatedRoutes = createAuthenticatedTradeRoutes(service, authService)
 
   return new Elysia({ prefix: '/trade' })
-    .get('/auctions', async () => service.listAuctions())
+    .get('/auctions', async ({ query }) => service.listAuctions(query.locale ?? DEFAULT_LOCALE), {
+      query: tradeLocaleQuerySchema,
+    })
     .get(
       '/auctions/:auctionId',
-      async ({ params, status }) => {
-        const result = await service.getAuction(params.auctionId)
+      async ({ params, query, status }) => {
+        const result = await service.getAuction(params.auctionId, query.locale ?? DEFAULT_LOCALE)
 
         if (isTradeServiceError(result)) {
           return status(toTradeErrorStatus(result.error), result)
@@ -32,6 +36,7 @@ export const createTradeController = ({ service, authService }: TradeControllerO
       },
       {
         params: tradeIdSchema,
+        query: tradeLocaleQuerySchema,
       },
     )
     .use(authenticatedRoutes)
@@ -48,19 +53,31 @@ const createAuthenticatedTradeRoutes = (
         unauthenticatedMessage: 'Sign in to use trade actions.',
       }),
     )
-    .post('/auctions', async ({ body, headers, status }) => {
-      const result = await service.createAuction(headers.cookie, body)
+    .post(
+      '/auctions',
+      async ({ body, headers, query, status }) => {
+        const result = await service.createAuction(headers.cookie, body, query.locale ?? DEFAULT_LOCALE)
 
-      if (isTradeServiceError(result)) {
-        return status(toTradeErrorStatus(result.error), result)
-      }
+        if (isTradeServiceError(result)) {
+          return status(toTradeErrorStatus(result.error), result)
+        }
 
-      return status(201, result)
-    }, { body: createAuctionSchema })
+        return status(201, result)
+      },
+      {
+        body: createAuctionSchema,
+        query: tradeLocaleQuerySchema,
+      },
+    )
     .post(
       '/auctions/:auctionId/offers',
-      async ({ body, headers, params, status }) => {
-        const result = await service.createOffer(headers.cookie, params.auctionId, body)
+      async ({ body, headers, params, query, status }) => {
+        const result = await service.createOffer(
+          headers.cookie,
+          params.auctionId,
+          body,
+          query.locale ?? DEFAULT_LOCALE,
+        )
 
         if (isTradeServiceError(result)) {
           return status(toTradeErrorStatus(result.error), result)
@@ -71,17 +88,22 @@ const createAuthenticatedTradeRoutes = (
       {
         params: tradeIdSchema,
         body: createOfferSchema,
+        query: tradeLocaleQuerySchema,
       },
     )
-    .delete('/offers/:offerId', async ({ headers, params, status }) => {
-      const result = await service.cancelOffer(headers.cookie, params.offerId)
+    .delete(
+      '/offers/:offerId',
+      async ({ headers, params, status }) => {
+        const result = await service.cancelOffer(headers.cookie, params.offerId)
 
-      if (isTradeServiceError(result)) {
-        return status(toTradeErrorStatus(result.error), result)
-      }
+        if (isTradeServiceError(result)) {
+          return status(toTradeErrorStatus(result.error), result)
+        }
 
-      return status(204)
-    }, { params: offerIdSchema })
+        return status(204)
+      },
+      { params: offerIdSchema },
+    )
     .post(
       '/auctions/:auctionId/offer/:offerId/accept',
       async ({ headers, params, status }) => {

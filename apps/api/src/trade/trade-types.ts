@@ -104,6 +104,8 @@ export interface TradeOfferRow {
   proposer: {
     id: string
     pseudo: string
+    displayName: string | null
+    avatarUrl: string | null
   }
   auction?: {
     id: string
@@ -126,6 +128,8 @@ export interface TradeOfferWithCards {
   proposer: {
     id: string
     pseudo: string
+    displayName: string | null
+    avatarUrl: string | null
   }
   cards: TradeOfferCardRow[]
 }

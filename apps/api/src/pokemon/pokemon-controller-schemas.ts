@@ -1,6 +1,7 @@
 import { z } from 'zod'
+import { supportedLocaleValues } from '@tcg-collection/shared'
 
-export const localeSchema = z.enum(['fr', 'en'])
+export const localeSchema = z.enum(supportedLocaleValues)
 
 export const collectionSortSchema = z.enum(['recent', 'quantity', 'name', 'rarity'])
 

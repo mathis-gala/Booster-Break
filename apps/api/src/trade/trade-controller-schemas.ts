@@ -1,4 +1,5 @@
 import { z } from 'zod'
+import { supportedLocaleValues } from '@tcg-collection/shared'
 import {
   MAX_FILTER_LIST_LENGTH,
   MAX_OFFER_CARDS_PER_REQUEST,
@@ -6,6 +7,10 @@ import {
 } from './trade-config'
 
 export const cardFinishSchema = z.enum(['normal', 'holo', 'reverse_holo'])
+
+export const tradeLocaleQuerySchema = z.object({
+  locale: z.enum(supportedLocaleValues).optional(),
+})
 
 export const auctionRequirementsSchema = z.object({
   cardIds: z.array(z.string().trim().min(1)).max(MAX_REQUIREMENT_LIST_LENGTH).optional(),

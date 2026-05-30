@@ -1,6 +1,7 @@
 import type {
   AuctionFilters,
   AuctionRequirements,
+  SupportedLocale,
   CardFinish,
   CreateAuctionRequest,
   CreateOfferRequest,
@@ -9,7 +10,8 @@ import type {
   TradeOfferResponse,
   TradeOfferStatus,
 } from '@tcg-collection/shared'
-import type { TradeAuctionRow } from './trade-types'
+import { DEFAULT_LOCALE } from '@tcg-collection/shared'
+import type { TradeAuctionRow, TradeOfferWithCards } from './trade-types'
 import { toTradeAuctionResponse, toTradeOfferResponse } from './trade-mappers'
 import { TRADE_AUCTION_DURATION_MS } from './trade-config'
 import {
@@ -23,21 +25,29 @@ import {
 import { normalizeTradeFilters, normalizeTradeRequirements } from './trade-normalizers'
 
 const now = () => new Date()
+const isTradeAuctionResponse = (value: TradeAuctionResponse | null): value is TradeAuctionResponse =>
+  value !== null
 
 export class TradeService {
   constructor(private readonly options: TradeServiceOptions) {}
 
-  async listAuctions(): Promise<TradeAuctionListResponse> {
+  async listAuctions(locale: SupportedLocale = DEFAULT_LOCALE): Promise<TradeAuctionListResponse> {
     await this.expireAuctions(now())
 
     const auctions = await this.options.tradeRepository.listActiveAuctions()
+    const mappedAuctions = auctions
+      .map((auction) => safeTradeAuctionResponse(auction, [], locale))
+      .filter(isTradeAuctionResponse)
 
     return {
-      auctions: auctions.map((auction) => toTradeAuctionResponse(auction, [])),
+      auctions: mappedAuctions,
     }
   }
 
-  async getAuction(auctionId: string): Promise<TradeServiceResult<TradeAuctionResponse>> {
+  async getAuction(
+    auctionId: string,
+    locale: SupportedLocale = DEFAULT_LOCALE,
+  ): Promise<TradeServiceResult<TradeAuctionResponse>> {
     await this.expireAuctions(now())
 
     const auction = await this.options.tradeRepository.getAuctionById(auctionId, true)
@@ -49,12 +59,20 @@ export class TradeService {
       }
     }
 
-    return toTradeAuctionResponse(auction, 'offers' in auction ? auction.offers : [])
+    try {
+      return toTradeAuctionResponse(auction, 'offers' in auction ? auction.offers : [], locale)
+    } catch (error: unknown) {
+      return {
+        error: 'trade_unavailable',
+        message: 'Unable to load this auction right now.',
+      }
+    }
   }
 
   async createAuction(
     cookieHeader: string | undefined,
     input: CreateAuctionRequest,
+    locale: SupportedLocale = DEFAULT_LOCALE,
   ): Promise<TradeServiceResult<TradeAuctionResponse>> {
     await this.expireAuctions(now())
 
@@ -105,13 +123,14 @@ export class TradeService {
       }
     }
 
-    return toTradeAuctionResponse(auction, [])
+    return toTradeAuctionResponse(auction, [], locale)
   }
 
   async createOffer(
     cookieHeader: string | undefined,
     auctionId: string,
     input: CreateOfferRequest,
+    locale: SupportedLocale = DEFAULT_LOCALE,
   ): Promise<TradeServiceResult<TradeOfferResponse>> {
     await this.expireAuctions(now())
 
@@ -236,7 +255,7 @@ export class TradeService {
       }
     }
 
-    return toTradeOfferResponse(createdOffer)
+    return toTradeOfferResponse(createdOffer, locale)
   }
 
   async cancelOffer(
@@ -412,6 +431,24 @@ export class TradeService {
     }
 
     return Array.from(merged.values()).filter((card) => card.quantity > 0)
+  }
+}
+
+const safeTradeAuctionResponse = (
+  auction: TradeAuctionRow,
+  offers: TradeOfferWithCards[] = [],
+  locale: SupportedLocale,
+): TradeAuctionResponse | null => {
+  try {
+    return toTradeAuctionResponse(auction, offers, locale)
+  } catch (error: unknown) {
+    const baseLog = {
+      auctionId: auction.id,
+      message: error instanceof Error ? error.message : 'Unknown error',
+    }
+
+    console.error('Unable to serialize trade auction for list response', baseLog)
+    return null
   }
 }
 

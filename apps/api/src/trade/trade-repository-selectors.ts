@@ -19,6 +19,8 @@ export const tradeOfferAuctionSelect = {
 export const tradeOfferProposerSelect = {
   id: true,
   pseudo: true,
+  displayName: true,
+  avatarUrl: true,
 } satisfies Prisma.UserSelect
 
 export const tradePokemonCardSelect = {
