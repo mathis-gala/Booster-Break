@@ -174,6 +174,10 @@ let activeApiOrigin = configuredApiOrigin
 let hasShownLocalFallbackToast = false
 
 export const getApiUrl = (path: `/${string}`): string => {
+  if (import.meta.env.DEV && !activeApiOrigin) {
+    return `${localApiOrigin}${path}`
+  }
+
   return activeApiOrigin ? `${activeApiOrigin}${path}` : `/api${path}`
 }
 

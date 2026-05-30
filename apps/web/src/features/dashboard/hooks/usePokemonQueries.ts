@@ -1,5 +1,10 @@
+import { useSyncExternalStore } from 'react'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
-import type { CollectionSort, OpenPackResponse, SupportedLocale } from '@tcg-collection/shared'
+import type {
+  CollectionSort,
+  PackOpenStatusResponse,
+  SupportedLocale,
+} from '@tcg-collection/shared'
 
 import {
   fetchPackOpenStatus,
@@ -9,6 +14,7 @@ import {
   openPokemonPack,
 } from '../lib/api'
 import { preloadPackImages } from '../lib/preload-pack-images'
+import { packOpenClock } from '../lib/pack-open-clock'
 import { pokemonQueryKeys } from '../lib/query-keys'
 
 interface CollectionQueryParams {
@@ -21,7 +27,7 @@ interface CollectionQueryParams {
 interface OpenPackMutationOptions {
   locale: SupportedLocale
   onPreparingChange: (isPreparing: boolean) => void
-  onPrepared: (pack: OpenPackResponse) => void
+  onPrepared: () => void
 }
 
 export function usePokemonSetsQuery(locale: SupportedLocale) {
@@ -54,15 +60,16 @@ export function usePokemonPreviewCardsQuery(setId: string | undefined, locale: S
 }
 
 export function usePackOpenStatusQuery() {
-  return useQuery({
+  const query = useQuery({
     queryKey: pokemonQueryKeys.packStatus(),
     queryFn: fetchPackOpenStatus,
-    refetchInterval: (query) => {
-      const status = query.state.data
-
-      return status?.authenticated && !status.canOpen ? 1_000 : false
-    },
+    refetchInterval: false,
   })
+
+  return {
+    ...query,
+    data: usePackOpenStatusClock(query.data),
+  }
 }
 
 export function useOpenPokemonPackMutation({
@@ -77,7 +84,7 @@ export function useOpenPokemonPackMutation({
     onSuccess: async (pack) => {
       onPreparingChange(true)
       await preloadPackImages(pack)
-      onPrepared(pack)
+      onPrepared()
       onPreparingChange(false)
       queryClient.invalidateQueries({ queryKey: pokemonQueryKeys.collection.all })
       queryClient.invalidateQueries({ queryKey: pokemonQueryKeys.packStatus() })
@@ -86,4 +93,47 @@ export function useOpenPokemonPackMutation({
       onPreparingChange(false)
     },
   })
+}
+
+const usePackOpenStatusClock = (
+  status: PackOpenStatusResponse | undefined,
+): PackOpenStatusResponse | undefined => {
+  const isCooldownActive =
+    status?.authenticated === true && !status.canOpen && Boolean(status.nextOpenAt)
+
+  const now = usePackOpenClock(isCooldownActive)
+
+  if (!isCooldownActive || !status?.nextOpenAt) {
+    return status
+  }
+
+  const cooldownSeconds = getRemainingCooldownSeconds(status.nextOpenAt, now)
+
+  if (cooldownSeconds <= 0) {
+    return {
+      ...status,
+      canOpen: true,
+      cooldownSeconds: 0,
+    }
+  }
+
+  return {
+    ...status,
+    canOpen: false,
+    cooldownSeconds,
+  }
+}
+
+const usePackOpenClock = (enabled: boolean) => {
+  return useSyncExternalStore(
+    enabled ? packOpenClock.subscribe : noOpSubscribe,
+    packOpenClock.getSnapshot,
+    packOpenClock.getSnapshot,
+  )
+}
+
+const noOpSubscribe = () => () => {}
+
+const getRemainingCooldownSeconds = (nextOpenAt: string, now = Date.now()): number => {
+  return Math.max(0, Math.ceil((new Date(nextOpenAt).getTime() - now) / 1000))
 }
