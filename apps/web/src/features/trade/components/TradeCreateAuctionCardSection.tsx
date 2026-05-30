@@ -1,9 +1,11 @@
-import { type CollectionSort, type UserCollectionCard } from '@tcg-collection/shared'
+import { useState } from 'react'
+import { CardImageDialog } from '@/features/dashboard/components/CardImageDialog'
 import { m } from '@/paraglide/messages'
 import { FoilCardImage } from '@/features/dashboard/components/FoilCardImage'
 import { TradeCollectionCardItem } from './TradeCollectionCardItem'
 import { TradeSortPreferenceMenu } from './TradeSortPreferenceMenu'
 import { offerCardKey } from '../lib/trade-utils'
+import type { CollectionSort, UserCollectionCard } from '@tcg-collection/shared'
 
 interface TradeCreateAuctionCardSectionProps {
   preference: CollectionSort
@@ -42,6 +44,8 @@ export function TradeCreateAuctionCardSection({
   selectedSummary,
   onSelectCard,
 }: TradeCreateAuctionCardSectionProps) {
+  const [selectedPreviewCard, setSelectedPreviewCard] = useState<UserCollectionCard | null>(null)
+
   return (
     <div>
       <div className="flex flex-wrap items-center justify-between gap-2">
@@ -96,7 +100,10 @@ export function TradeCreateAuctionCardSection({
               <TradeCollectionCardItem
                 key={key}
                 card={card}
-                onSelect={() => onSelectCard(card)}
+                onSelect={() => {
+                  onSelectCard(card)
+                  setSelectedPreviewCard(card)
+                }}
                 selected={isSelected}
                 className="transition enabled:hover:border-sidebar enabled:hover:bg-sidebar/5"
                 badge={isSelected ? m.trade_used() : null}
@@ -146,10 +153,24 @@ export function TradeCreateAuctionCardSection({
                 finish={selectedCard.finish}
                 className="w-full rounded-md"
               />
-              <p className="mt-1 text-center text-sm font-black">{selectedSummary ?? selectedCard.name}</p>
+              <p className="mt-1 text-center text-sm font-black">
+                {selectedSummary ?? selectedCard.name}
+              </p>
             </div>
           </div>
         </div>
+      ) : null}
+
+      {selectedPreviewCard ? (
+        <CardImageDialog
+          card={{
+            ...selectedPreviewCard,
+            finish: selectedPreviewCard.finish ?? 'normal',
+          }}
+          onClose={() => {
+            setSelectedPreviewCard(null)
+          }}
+        />
       ) : null}
     </div>
   )

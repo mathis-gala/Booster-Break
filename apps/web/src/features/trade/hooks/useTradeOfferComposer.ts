@@ -1,10 +1,17 @@
 import { useMemo, useState } from 'react'
 import type { FormEvent } from 'react'
-import type { CollectionSort, SupportedLocale, TradeAuctionResponse, TradeOfferItem, UserCollectionCard } from '@tcg-collection/shared'
-import { usePokemonCollectionQuery } from '@/features/dashboard/hooks/usePokemonQueries'
+import type {
+  CollectionSort,
+  SupportedLocale,
+  TradeAuctionResponse,
+  TradeOfferItem,
+  UserCollectionCard,
+} from '@tcg-collection/shared'
+import { usePokemonCollectionAllQuery } from '@/features/dashboard/hooks/usePokemonQueries'
 import { toast } from '@/features/toast/toast-store'
 import {
   MAX_PENDING_OFFERS_PER_AUCTION_BY_USER,
+  cardMatchesAuctionFilters,
   offerCardKey,
   toCardFinish,
 } from '../lib/trade-utils'
@@ -12,12 +19,8 @@ import { useCreateTradeOfferMutation } from './useTradeQueries'
 import { m } from '@/paraglide/messages'
 
 interface SelectedOfferCard {
-  cardId: string
-  finish: string
+  card: UserCollectionCard
   quantity: number
-  available: number
-  name: string
-  imageSmall?: string
 }
 
 const PAGE_SIZE = 16
@@ -67,13 +70,10 @@ export function useTradeOfferComposer({
   const [searchQuery, setSearchQuery] = useState('')
   const [selection, setSelection] = useState<Record<string, SelectedOfferCard>>({})
 
-  const collection = usePokemonCollectionQuery({
-    page,
-    pageSize: PAGE_SIZE,
+  const collection = usePokemonCollectionAllQuery({
     sort: preference,
     locale,
     enabled: Boolean(userId),
-    keepPreviousData: true,
   })
 
   const createOffer = useCreateTradeOfferMutation({
@@ -118,18 +118,28 @@ export function useTradeOfferComposer({
   })()
 
   const availableCards = collection.data?.cards ?? []
-  const collectionPage = collection.data?.pagination.page ?? page
-  const collectionPageCount = collection.data?.pagination.pageCount ?? 1
-
+  const eligibleCards = useMemo(() => {
+    return availableCards.filter((card) =>
+      cardMatchesAuctionFilters(card, auction.requirements, auction.filters),
+    )
+  }, [availableCards, auction.requirements, auction.filters])
   const filteredCards = useMemo(() => {
     const query = searchQuery.trim().toLowerCase()
 
     if (query.length === 0) {
-      return availableCards
+      return eligibleCards
     }
 
-    return availableCards.filter((card) => card.name.toLowerCase().includes(query))
-  }, [availableCards, searchQuery])
+    return eligibleCards.filter((card) => card.name.toLowerCase().includes(query))
+  }, [eligibleCards, searchQuery])
+
+  const collectionPageCount = Math.max(1, Math.ceil(filteredCards.length / PAGE_SIZE))
+  const collectionPage = Math.max(1, Math.min(page, collectionPageCount))
+  const pagedCards = useMemo(() => {
+    const start = (collectionPage - 1) * PAGE_SIZE
+
+    return filteredCards.slice(start, start + PAGE_SIZE)
+  }, [collectionPage, filteredCards])
 
   const selectedEntries = Object.values(selection)
   const selectedCardsCount = selectedEntries.length
@@ -161,12 +171,8 @@ export function useTradeOfferComposer({
     setSelection((current) => ({
       ...current,
       [key]: {
-        cardId: card.id,
-        finish: toCardFinish(card.finish),
+        card,
         quantity: clampedQuantity,
-        available: card.quantity,
-        name: card.name,
-        imageSmall: card.imageSmall,
       },
     }))
   }
@@ -179,8 +185,8 @@ export function useTradeOfferComposer({
     return selectedEntries
       .filter((card) => card.quantity > 0)
       .map((card) => ({
-        cardId: card.cardId,
-        finish: toCardFinish(card.finish),
+        cardId: card.card.id,
+        finish: toCardFinish(card.card.finish),
         quantity: card.quantity,
       }))
   }
@@ -228,7 +234,7 @@ export function useTradeOfferComposer({
     collectionPageCount,
     collectionPage,
     isCollectionPending: collection.isPending,
-    filteredCards,
+    filteredCards: pagedCards,
     selectedEntries,
     selectedCardsCount,
     selectedCardsTotal,

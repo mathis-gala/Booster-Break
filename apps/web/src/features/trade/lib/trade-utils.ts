@@ -3,7 +3,9 @@ import type {
   AuctionRequirements,
   CardFinish,
   SupportedLocale,
+  UserCollectionCard,
 } from '@tcg-collection/shared'
+import { normalizeRarity } from '@tcg-collection/shared'
 import { DEFAULT_LOCALE } from '@tcg-collection/shared'
 import { m } from '@/paraglide/messages'
 import { formatCardFinish } from '@/features/dashboard/lib/card-format'
@@ -158,3 +160,69 @@ export const summarizeTradeFilters = (filters: AuctionFilters = {}): string => {
 export const offerCardKey = (cardId: string, finish: CardFinish | null | undefined): string => {
   return `${cardId}:${finish ?? 'normal'}`
 }
+
+const getCardType = (card: UserCollectionCard): string => {
+  return card.supertype ?? ''
+}
+
+const hasNormalizedValue = (
+  value: string,
+  candidates?: string[] | null,
+): boolean => {
+  const normalized = normalizeRarity(value)
+
+  return candidates?.some((candidate) => normalizeRarity(candidate) === normalized) ?? false
+}
+
+export const cardMatchesAuctionFilters = (
+  card: UserCollectionCard,
+  requirements?: AuctionRequirements,
+  filters?: AuctionFilters,
+): boolean => {
+  const normalizedFinish = toCardFinish(card.finish)
+
+  if (requirements?.cardIds?.length && !requirements.cardIds.includes(card.id)) {
+    return false
+  }
+
+  if (requirements?.setIds?.length && !requirements.setIds.includes(card.setId)) {
+    return false
+  }
+
+  if (requirements?.types?.length && !requirements.types.includes(getCardType(card))) {
+    return false
+  }
+
+  if (requirements?.rarities?.length && !hasNormalizedValue(card.rarity ?? '', requirements.rarities)) {
+    return false
+  }
+
+  if (requirements?.finishes?.length && !requirements.finishes.includes(normalizedFinish)) {
+    return false
+  }
+
+  if (filters?.excludedCardIds?.length && filters.excludedCardIds.includes(card.id)) {
+    return false
+  }
+
+  if (filters?.excludedSetIds?.length && filters.excludedSetIds.includes(card.setId)) {
+    return false
+  }
+
+  if (filters?.excludedRarities?.length && hasNormalizedValue(card.rarity ?? '', filters.excludedRarities)) {
+    return false
+  }
+
+  if (filters?.excludedTypes?.length && filters.excludedTypes.includes(getCardType(card))) {
+    return false
+  }
+
+  if (filters?.excludedFinishes?.length && filters.excludedFinishes.includes(normalizedFinish)) {
+    return false
+  }
+
+  return true
+}
+
+export { formatCardFinish }
+export { formatRarity }

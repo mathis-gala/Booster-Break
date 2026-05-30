@@ -1,5 +1,8 @@
 import { m } from '@/paraglide/messages'
 import type { CollectionSort, UserCollectionCard } from '@tcg-collection/shared'
+import { MinusIcon, PlusIcon } from 'lucide-react'
+import { useState } from 'react'
+import { CardImageDialog } from '@/features/dashboard/components/CardImageDialog'
 import { TradeCollectionCardItem } from './TradeCollectionCardItem'
 import { TradeSortPreferenceMenu } from './TradeSortPreferenceMenu'
 import {
@@ -46,6 +49,8 @@ export function TradeOfferComposerCardsSection({
   getCardQuantity,
   updateSelection,
 }: TradeOfferComposerCardsSectionProps) {
+  const [selectedPreviewCard, setSelectedPreviewCard] = useState<UserCollectionCard | null>(null)
+
   return (
     <>
       <label className="flex items-center justify-between gap-2 rounded-md bg-background px-3 py-2 text-xs text-muted-foreground">
@@ -91,36 +96,72 @@ export function TradeOfferComposerCardsSection({
       <div className="flex min-h-[14rem] min-w-0 flex-wrap content-start justify-center gap-3">
         {filteredCards.length === 0 ? (
           <p className="rounded-md bg-background p-3 text-sm text-muted-foreground">
-            {searchQuery.length > 0 ? m.trade_search_no_match() : m.trade_loading_cards_for_offer()}
+            {isLoading && searchQuery.length === 0
+              ? m.trade_loading_cards_for_offer()
+              : m.trade_search_no_match()}
           </p>
         ) : (
           filteredCards.map((card) => {
             const selectedQuantity = getCardQuantity(card)
             const key = offerCardKey(card.id, card.finish)
+            const hasSelection = selectedQuantity > 0
 
             return (
-              <TradeCollectionCardItem key={key} card={card}>
+              <TradeCollectionCardItem
+                key={key}
+                card={card}
+                className={`rounded-lg ${
+                  hasSelection ? 'border-orange-500/90 ring-2 ring-orange-500/80' : ''
+                }`}
+                onImageClick={() => {
+                  setSelectedPreviewCard(card)
+                }}
+              >
                 <label
                   className="mt-2 block text-xs text-muted-foreground"
-                  htmlFor={`trade-offer-${key}`}
                 >
                   {m.trade_offer_quantity()}
                 </label>
-                <input
-                  id={`trade-offer-${key}`}
-                  type="number"
-                  min="0"
-                  max={card.quantity}
-                  inputMode="numeric"
-                  className="mt-1 h-9 w-full rounded-md border bg-background px-2 text-sm tabular-nums"
-                  value={selectedQuantity}
-                  onChange={(event) => updateSelection(card, event.target.value)}
-                />
+                <div className="mt-1 flex items-center justify-center gap-2">
+                  <button
+                    type="button"
+                    className="flex h-7 w-7 shrink-0 items-center justify-center rounded-md border bg-background text-xs font-black transition hover:bg-sidebar/10 hover:text-sidebar-foreground disabled:cursor-not-allowed disabled:opacity-50"
+                    disabled={selectedQuantity <= 0}
+                    onClick={() => updateSelection(card, String(selectedQuantity - 1))}
+                    aria-label={m.trade_offer_remove_card()}
+                  >
+                    <MinusIcon className="size-4" aria-hidden="true" />
+                  </button>
+                  <span className="min-w-6 text-center text-sm font-black tabular-nums">
+                    {selectedQuantity}
+                  </span>
+                  <button
+                    type="button"
+                    className="flex h-7 w-7 shrink-0 items-center justify-center rounded-md border bg-background text-xs font-black transition hover:bg-sidebar/10 hover:text-sidebar-foreground disabled:cursor-not-allowed disabled:opacity-50"
+                    disabled={selectedQuantity >= card.quantity}
+                    onClick={() => updateSelection(card, String(selectedQuantity + 1))}
+                    aria-label={m.trade_offer_add_card()}
+                  >
+                    <PlusIcon className="size-4" aria-hidden="true" />
+                  </button>
+                </div>
               </TradeCollectionCardItem>
             )
           })
         )}
       </div>
+
+      {selectedPreviewCard ? (
+        <CardImageDialog
+          card={{
+            ...selectedPreviewCard,
+            finish: selectedPreviewCard.finish ?? 'normal',
+          }}
+          onClose={() => {
+            setSelectedPreviewCard(null)
+          }}
+        />
+      ) : null}
 
       <div className="flex items-center justify-between text-xs text-muted-foreground">
         <button

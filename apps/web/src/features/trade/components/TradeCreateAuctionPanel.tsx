@@ -2,9 +2,9 @@ import { useMemo } from 'react'
 import { type CollectionSort, type SupportedLocale } from '@tcg-collection/shared'
 import type { AuthMeResponse } from '@tcg-collection/shared'
 import { m } from '@/paraglide/messages'
+import { formatCardFinish } from '@/features/dashboard/lib/card-format'
+import { formatRarity } from '@/features/i18n/rarity-labels'
 import {
-  formatCardFinish,
-  formatRarity,
   formatTradeType,
   MAX_ACTIVE_AUCTIONS_PER_USER,
 } from '../lib/trade-utils'

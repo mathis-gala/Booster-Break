@@ -9,6 +9,7 @@ interface ConfirmationDialogProps {
   onConfirm: () => void
   onCancel: () => void
   isBusy?: boolean
+  className?: string
 }
 
 export function ConfirmationDialog({
@@ -20,6 +21,7 @@ export function ConfirmationDialog({
   onConfirm,
   onCancel,
   isBusy = false,
+  className,
 }: ConfirmationDialogProps) {
   if (!open) {
     return null
@@ -27,7 +29,11 @@ export function ConfirmationDialog({
 
   return (
     <div
-      className="fixed inset-0 z-40 flex items-center justify-center bg-slate-950/78 p-3 backdrop-blur-sm"
+      className={
+        className !== undefined
+          ? `fixed inset-0 ${className} flex items-center justify-center bg-slate-950/78 p-3 backdrop-blur-sm`
+          : 'fixed inset-0 z-40 flex items-center justify-center bg-slate-950/78 p-3 backdrop-blur-sm'
+      }
       role="alertdialog"
       aria-modal="true"
       aria-label={title}

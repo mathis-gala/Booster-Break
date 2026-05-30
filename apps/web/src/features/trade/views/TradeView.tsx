@@ -1,5 +1,5 @@
 import { useState, useSyncExternalStore } from 'react'
-import { Clock3Icon, EyeIcon, UserRoundIcon, XIcon } from 'lucide-react'
+import { CheckCircle2Icon, Clock3Icon, EyeIcon, UserRoundIcon, XIcon } from 'lucide-react'
 
 import type { AuctionFilters, AuctionRequirements } from '@tcg-collection/shared'
 import { Button } from '@/components/ui/button'
@@ -149,6 +149,7 @@ export function TradeView() {
   const [isAuctionCardOpen, setIsAuctionCardOpen] = useState(false)
   const [isAuctionSetPreviewOpen, setIsAuctionSetPreviewOpen] = useState(false)
   const [auctionPage, setAuctionPage] = useState(1)
+  const [isOfferSuccessDialogOpen, setIsOfferSuccessDialogOpen] = useState(false)
 
   const auth = useCurrentUserQuery()
   const auctions = useTradeAuctionsQuery(locale)
@@ -195,6 +196,9 @@ export function TradeView() {
     setSelectedAuctionId(undefined)
     setIsAuctionCardOpen(false)
     setIsAuctionSetPreviewOpen(false)
+  }
+  const closeOfferSuccessDialog = () => {
+    setIsOfferSuccessDialogOpen(false)
   }
 
   const isAnyActionRunning =
@@ -546,6 +550,8 @@ export function TradeView() {
                   userId={currentUserId}
                   onOfferCreated={() => {
                     auctionQuery.refetch()
+                    closeAuctionDetails()
+                    setIsOfferSuccessDialogOpen(true)
                   }}
                 />
               </div>
@@ -591,6 +597,39 @@ export function TradeView() {
           }
           onClose={() => setIsAuctionSetPreviewOpen(false)}
         />
+      ) : null}
+
+      {isOfferSuccessDialogOpen ? (
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/78 p-3 backdrop-blur-sm"
+          role="dialog"
+          aria-modal="true"
+          aria-label={m.trade_offer_success_title()}
+          onClick={closeOfferSuccessDialog}
+        >
+          <div
+            className="w-full max-w-sm rounded-lg border bg-background p-4 shadow-2xl"
+            onClick={(event) => {
+              event.stopPropagation()
+            }}
+          >
+            <div className="flex items-start gap-3">
+              <CheckCircle2Icon
+                className="mt-0.5 size-6 shrink-0 text-green-600"
+                aria-hidden="true"
+              />
+              <div className="min-w-0">
+                <p className="text-sm font-black">{m.trade_offer_success_title()}</p>
+                <p className="mt-1 text-sm text-muted-foreground">{m.trade_offer_success_message()}</p>
+              </div>
+            </div>
+            <div className="mt-4 flex justify-end">
+              <Button type="button" onClick={closeOfferSuccessDialog}>
+                {m.trade_offer_success_ok()}
+              </Button>
+            </div>
+          </div>
+        </div>
       ) : null}
     </div>
   )

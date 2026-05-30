@@ -23,6 +23,7 @@ import {
   type TradeServiceResult,
 } from './trade-types'
 import { normalizeTradeFilters, normalizeTradeRequirements } from './trade-normalizers'
+import { normalizeRarity } from '@tcg-collection/shared'
 
 const now = () => new Date()
 const isTradeAuctionResponse = (value: TradeAuctionResponse | null): value is TradeAuctionResponse =>
@@ -478,7 +479,12 @@ const matchesRequirements = (
     return false
   }
 
-  if (requirements.rarities?.length && !requirements.rarities.includes(card.rarity ?? '')) {
+  if (
+    requirements.rarities?.length &&
+    !requirements.rarities.some(
+      (rarity) => normalizeRarity(rarity) === normalizeRarity(card.rarity ?? ''),
+    )
+  ) {
     return false
   }
 
@@ -511,7 +517,12 @@ const isFilteredOut = (
     return true
   }
 
-  if (filters.excludedRarities?.length && filters.excludedRarities.includes(card.rarity ?? '')) {
+  if (
+    filters.excludedRarities?.length &&
+    filters.excludedRarities.some(
+      (rarity) => normalizeRarity(rarity) === normalizeRarity(card.rarity ?? ''),
+    )
+  ) {
     return true
   }
 

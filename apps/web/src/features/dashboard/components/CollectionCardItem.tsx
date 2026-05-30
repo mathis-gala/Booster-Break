@@ -11,6 +11,7 @@ interface CollectionCardItemProps {
   card: UserCollectionCard
   selected?: boolean
   onSelect?: () => void
+  onImageClick?: () => void
   badge?: ReactNode
   className?: string
   children?: ReactNode
@@ -20,6 +21,7 @@ export const CollectionCardItem = memo(function CollectionCardItem({
   card,
   selected = false,
   onSelect,
+  onImageClick,
   badge,
   className,
   children,
@@ -32,7 +34,27 @@ export const CollectionCardItem = memo(function CollectionCardItem({
   const content = (
     <article className="relative">
       <div className="relative">
-        {card.imageSmall ? (
+        {onImageClick ? (
+          <button
+            type="button"
+            className="block w-full cursor-pointer rounded-md focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+            onClick={(event) => {
+              event.stopPropagation()
+              onImageClick()
+            }}
+          >
+            {card.imageSmall ? (
+              <FoilCardImage
+                src={card.imageSmall}
+                alt={card.name}
+                finish={card.finish}
+                className="aspect-[63/88] w-full rounded-md object-cover transition-transform hover:-translate-y-0.5"
+              />
+            ) : (
+              <div className="aspect-[63/88] w-full rounded-md bg-muted" aria-hidden="true" />
+            )}
+          </button>
+        ) : card.imageSmall ? (
           <FoilCardImage
             src={card.imageSmall}
             alt={card.name}

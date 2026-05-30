@@ -1,7 +1,10 @@
 import type { TradeAuctionResponse } from '@tcg-collection/shared'
+import { useState } from 'react'
 import { UserRoundIcon } from 'lucide-react'
 import { m } from '@/paraglide/messages'
-import { formatCardFinish } from '@/features/dashboard/lib/card-format'
+import { ConfirmationDialog } from '@/components/ConfirmationDialog'
+import { CardImageDialog } from '@/features/dashboard/components/CardImageDialog'
+import type { TradeOfferCardResponse } from '@tcg-collection/shared'
 import { FoilCardImage } from '@/features/dashboard/components/FoilCardImage'
 
 interface TradeOffersPanelProps {
@@ -19,6 +22,74 @@ export function TradeOffersPanel({
   onAcceptOffer,
   isBusy,
 }: TradeOffersPanelProps) {
+  const [selectedOfferCard, setSelectedOfferCard] = useState<TradeOfferCardResponse | null>(null)
+  const [offerIdToCancel, setOfferIdToCancel] = useState<string | null>(null)
+
+  const pendingOfferToCancel =
+    offerIdToCancel === null
+      ? null
+      : auction.offers.find((offer) => offer.id === offerIdToCancel && offer.status === 'pending') ?? null
+
+  const requestOfferCancel = (offerId: string) => {
+    setOfferIdToCancel(offerId)
+  }
+
+  const closeOfferCancelDialog = () => {
+    setOfferIdToCancel(null)
+  }
+
+  const confirmOfferCancel = () => {
+    if (!pendingOfferToCancel) {
+      return
+    }
+
+    onCancelOffer(pendingOfferToCancel.id)
+    setOfferIdToCancel(null)
+  }
+
+  const renderOfferCards = (offer: TradeAuctionResponse['offers'][number], isPending: boolean) => {
+    if (offer.cards.length === 0) {
+      return (
+        <p className="rounded-md border border-dashed bg-background px-3 py-2 text-xs text-muted-foreground">
+          {m.trade_offer_no_selected()}
+        </p>
+      )
+    }
+
+    if (!isPending) {
+      return null
+    }
+
+    return (
+      <div className="mt-2 flex w-full flex-wrap items-center justify-center gap-3">
+        {offer.cards.map((card) => (
+          <button
+            type="button"
+            key={`${offer.id}-${card.card.id}-${card.finish}`}
+            className="inline-flex w-48 shrink-0 flex-col items-center gap-1 rounded-lg border bg-card px-3 py-3 text-center transition hover:border-sidebar/60"
+            onClick={() => {
+              setSelectedOfferCard(card)
+            }}
+          >
+            {card.card.imageSmall ? (
+              <FoilCardImage
+                src={card.card.imageSmall}
+                alt={card.card.name}
+                finish={card.finish}
+                className="aspect-[63/88] w-32 rounded-md"
+              />
+            ) : (
+              <div className="aspect-[63/88] w-32 rounded-md bg-muted" aria-hidden="true" />
+            )}
+            <p className="mt-1 max-w-full truncate text-sm font-black">{card.card.name}</p>
+            <p className="text-sm font-black text-muted-foreground">x{card.quantity}</p>
+            <p className="text-sm text-muted-foreground">{card.card.supertype ?? m.trade_other_type()}</p>
+          </button>
+        ))}
+      </div>
+    )
+  }
+
   if (auction.offers.length === 0) {
     return (
       <p className="rounded-lg border bg-background p-3 text-sm font-semibold text-muted-foreground">
@@ -82,7 +153,7 @@ export function TradeOffersPanel({
                         type="button"
                         className="cursor-pointer rounded-md border border-destructive/60 bg-destructive/10 px-2 py-1 text-xs font-black text-destructive disabled:cursor-not-allowed disabled:opacity-50"
                         disabled={isBusy}
-                        onClick={() => onCancelOffer(offer.id)}
+                        onClick={() => requestOfferCancel(offer.id)}
                       >
                         {m.trade_reject_offer()}
                       </button>
@@ -92,7 +163,7 @@ export function TradeOffersPanel({
                       type="button"
                       className="cursor-pointer rounded-md border border-amber-700 bg-amber-700/10 px-2 py-1 text-xs font-black text-amber-700 disabled:cursor-not-allowed disabled:opacity-50"
                       disabled={isBusy}
-                      onClick={() => onCancelOffer(offer.id)}
+                      onClick={() => requestOfferCancel(offer.id)}
                     >
                       {m.trade_cancel_offer()}
                     </button>
@@ -101,32 +172,36 @@ export function TradeOffersPanel({
               ) : null}
             </div>
 
-            <div className="mt-2 grid grid-cols-2 gap-2 sm:grid-cols-3 md:grid-cols-4">
-              {offer.cards.map((card) => (
-                <div
-                  key={`${offer.id}-${card.card.id}-${card.finish}`}
-                  className="rounded-md border bg-card p-1.5"
-                >
-                  {card.card.imageSmall ? (
-                    <FoilCardImage
-                      src={card.card.imageSmall}
-                      alt={card.card.name}
-                      finish={card.finish}
-                      className="aspect-[63/88] w-12 rounded-sm"
-                    />
-                  ) : (
-                    <div className="aspect-[63/88] w-12 rounded-sm bg-muted" aria-hidden="true" />
-                  )}
-                  <p className="mt-1 truncate text-[0.64rem] font-black">{card.card.name}</p>
-                  <p className="text-[0.64rem] font-semibold text-muted-foreground">
-                    x{card.quantity} · {formatCardFinish(card.finish)}
-                  </p>
-                </div>
-              ))}
-            </div>
+            {renderOfferCards(offer, isPending)}
           </article>
         )
       })}
+
+      {pendingOfferToCancel ? (
+        <ConfirmationDialog
+          open
+          className="z-50"
+          title={m.trade_cancel_offer_title()}
+          description={m.trade_cancel_offer_message()}
+          confirmLabel={m.trade_cancel_offer_confirm()}
+          cancelLabel={m.trade_cancel()}
+          onConfirm={confirmOfferCancel}
+          onCancel={closeOfferCancelDialog}
+          isBusy={isBusy}
+        />
+      ) : null}
+
+      {selectedOfferCard ? (
+        <CardImageDialog
+          card={{
+            ...selectedOfferCard.card,
+            finish: selectedOfferCard.finish,
+          }}
+          onClose={() => {
+            setSelectedOfferCard(null)
+          }}
+        />
+      ) : null}
     </div>
   )
 }

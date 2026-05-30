@@ -32,6 +32,19 @@ const rarityRank: Record<string, number> = {
   'Hyper Rare': 80,
 }
 
+const normalizeRarityValue = (value: string): string => {
+  return value
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .replace(/\s+/g, ' ')
+    .trim()
+    .toLowerCase()
+}
+
+export const normalizeRarity = (value: string | null | undefined): string => {
+  return normalizeRarityValue(value ?? '')
+}
+
 const finishRank: Record<CardFinish, number> = {
   normal: 10,
   reverse_holo: 20,

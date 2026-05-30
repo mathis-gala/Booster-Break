@@ -1,52 +1,65 @@
-import { formatCardFinish } from '@/features/dashboard/lib/card-format'
+import { useState } from 'react'
+import { CardImageDialog } from '@/features/dashboard/components/CardImageDialog'
+import { FoilCardImage } from '@/features/dashboard/components/FoilCardImage'
+import type { UserCollectionCard } from '@tcg-collection/shared'
 import { m } from '@/paraglide/messages'
 
 interface TradeOfferComposerPreviewSectionProps {
   selectedEntries: {
-    cardId: string
-    finish: string
+    card: UserCollectionCard
     quantity: number
-    available: number
-    name: string
-    imageSmall?: string
   }[]
 }
 
 export function TradeOfferComposerPreviewSection({
   selectedEntries,
 }: TradeOfferComposerPreviewSectionProps) {
+  const [selectedPreviewCard, setSelectedPreviewCard] = useState<UserCollectionCard | null>(null)
+
   return (
     <div className="mt-4 space-y-2">
       <p className="text-sm font-black">{m.trade_offer_preview_title()}</p>
       {selectedEntries.length === 0 ? (
         <p className="text-sm text-muted-foreground">{m.trade_offer_no_selected()}</p>
       ) : (
-        <div className="grid gap-2">
+        <div className="inline-flex flex-wrap items-center justify-center gap-3 text-center">
           {selectedEntries.map((card) => (
-            <div
-              key={`${card.cardId}-${card.finish}`}
-              className="flex items-center gap-2 rounded-md bg-background p-2"
+            <button
+              key={`${card.card.id}-${card.card.finish}`}
+              type="button"
+              className="inline-flex w-48 shrink-0 cursor-pointer flex-col items-center gap-1 rounded-lg bg-card px-3 py-3 text-center"
+              onClick={() => {
+                setSelectedPreviewCard(card.card)
+              }}
             >
-              {card.imageSmall ? (
-                <img
-                  src={card.imageSmall}
-                  alt={card.name}
-                  className="size-8 rounded-sm object-cover"
+              {card.card.imageSmall ? (
+                <FoilCardImage
+                  src={card.card.imageSmall}
+                  alt={card.card.name}
+                  finish={card.card.finish}
+                  className="aspect-[63/88] w-32 rounded-md"
                 />
               ) : (
-                <div className="size-8 rounded-sm bg-muted" aria-hidden="true" />
+                <div className="aspect-[63/88] w-32 rounded-md bg-muted" aria-hidden="true" />
               )}
-              <p className="min-w-0 text-sm font-semibold">
-                <span className="truncate">{card.name}</span>
-                <span className="ml-1 text-muted-foreground">{formatCardFinish(card.finish)}</span>
+              <p className="mt-1 max-w-full truncate text-sm font-black">{card.card.name}</p>
+              <p className="text-sm font-black text-muted-foreground">x {card.quantity}</p>
+              <p className="text-sm text-muted-foreground">
+                {card.card.supertype ?? m.trade_other_type()}
               </p>
-              <p className="ml-auto text-sm font-black tabular-nums">
-                x {card.quantity} / {card.available}
-              </p>
-            </div>
+            </button>
           ))}
         </div>
       )}
+
+      {selectedPreviewCard ? (
+        <CardImageDialog
+          card={selectedPreviewCard}
+          onClose={() => {
+            setSelectedPreviewCard(null)
+          }}
+        />
+      ) : null}
     </div>
   )
 }
