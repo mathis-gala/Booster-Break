@@ -143,7 +143,7 @@ const navItems: NavItem[] = [
   { id: 'packs', icon: PackageOpenIcon },
   { id: 'collection', icon: BookOpenIcon },
   { id: 'boards', icon: GalleryHorizontalEndIcon, disabled: true },
-  { id: 'trade', icon: ArrowRightLeftIcon, disabled: true },
+  { id: 'trade', icon: ArrowRightLeftIcon },
   { id: 'leaders', icon: TrophyIcon, disabled: true },
 ]
 

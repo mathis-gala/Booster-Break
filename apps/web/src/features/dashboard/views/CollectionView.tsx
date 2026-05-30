@@ -10,7 +10,13 @@ export function CollectionView() {
   const [page, setPage] = useState(1)
   const [sort, setSort] = useState<CollectionSort>('recent')
   const pageSize = 24
-  const collection = usePokemonCollectionQuery({ page, pageSize, sort, locale })
+  const collection = usePokemonCollectionQuery({
+    page,
+    pageSize,
+    sort,
+    locale,
+    keepPreviousData: true,
+  })
 
   return (
     <div className="flex w-full justify-center">

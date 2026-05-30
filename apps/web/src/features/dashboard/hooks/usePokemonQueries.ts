@@ -1,5 +1,5 @@
 import { useSyncExternalStore } from 'react'
-import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
+import { keepPreviousData, useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import type {
   CollectionSort,
   PackOpenStatusResponse,
@@ -22,7 +22,17 @@ interface CollectionQueryParams {
   pageSize: number
   sort: CollectionSort
   locale: SupportedLocale
+  enabled?: boolean
+  keepPreviousData?: boolean
 }
+
+interface CollectionAllQueryParams {
+  sort: CollectionSort
+  locale: SupportedLocale
+  enabled?: boolean
+}
+
+const COLLECTION_PAGE_SIZE = 60
 
 interface OpenPackMutationOptions {
   locale: SupportedLocale
@@ -38,9 +48,58 @@ export function usePokemonSetsQuery(locale: SupportedLocale) {
 }
 
 export function usePokemonCollectionQuery(params: CollectionQueryParams) {
+  const {
+    enabled = true,
+    keepPreviousData: shouldKeepPreviousData = false,
+    ...queryParams
+  } = params
+
   return useQuery({
-    queryKey: pokemonQueryKeys.collection.page(params),
-    queryFn: () => fetchUserCollection(params),
+    queryKey: pokemonQueryKeys.collection.page(queryParams),
+    queryFn: () => fetchUserCollection(queryParams),
+    enabled,
+    placeholderData: shouldKeepPreviousData ? keepPreviousData : undefined,
+  })
+}
+
+export function usePokemonCollectionAllQuery(params: CollectionAllQueryParams) {
+  const { sort, locale, enabled = true } = params
+
+  return useQuery({
+    queryKey: pokemonQueryKeys.collection.allCards(locale, sort),
+    enabled,
+    placeholderData: keepPreviousData,
+    queryFn: async () => {
+      const firstPage = await fetchUserCollection({
+        page: 1,
+        pageSize: COLLECTION_PAGE_SIZE,
+        sort,
+        locale,
+      })
+
+      if (firstPage.pagination.pageCount <= 1) {
+        return firstPage
+      }
+
+      const remainingPages = Array.from(
+        { length: firstPage.pagination.pageCount - 1 },
+        (_, index) => {
+          return fetchUserCollection({
+            page: index + 2,
+            pageSize: COLLECTION_PAGE_SIZE,
+            sort,
+            locale,
+          })
+        },
+      )
+
+      const extraPages = await Promise.all(remainingPages)
+
+      return {
+        ...firstPage,
+        cards: [...firstPage.cards, ...extraPages.flatMap((page) => page.cards)],
+      }
+    },
   })
 }
 

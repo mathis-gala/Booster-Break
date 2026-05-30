@@ -13,6 +13,7 @@ import { useLocale } from '@/features/i18n/useLocale'
 import { cn } from '@/lib/utils'
 import { m } from '@/paraglide/messages'
 import { pokemonQueryKeys } from '../lib/query-keys'
+import { tradeQueryKeys } from '@/features/trade/lib/query-keys'
 
 const languages: Array<{ locale: SupportedLocale; flag: string; shortLabel: string }> = [
   { locale: 'fr', flag: '🇫🇷', shortLabel: 'FR' },
@@ -45,6 +46,7 @@ export function LanguageSelector({
 
     setLocale(nextLocale)
     queryClient.invalidateQueries({ queryKey: pokemonQueryKeys.all })
+    queryClient.invalidateQueries({ queryKey: tradeQueryKeys.all })
   }
 
   return (

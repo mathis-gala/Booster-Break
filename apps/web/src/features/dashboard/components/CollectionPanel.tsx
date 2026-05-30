@@ -1,9 +1,9 @@
-import { useState } from 'react'
+import { useMemo, useState } from 'react'
 import type { CollectionSort, UserCollectionCard } from '@tcg-collection/shared'
 
 import { Button } from '@/components/ui/button'
-import { formatRarity } from '@/features/i18n/rarity-labels'
 import { m } from '@/paraglide/messages'
+import { CollectionCardItem } from './CollectionCardItem'
 import { FoilCardImage } from './FoilCardImage'
 
 interface CollectionPanelProps {
@@ -52,6 +52,16 @@ export function CollectionPanel({
 }: CollectionPanelProps) {
   const [selectedCard, setSelectedCard] = useState<UserCollectionCard>()
   const sortActions = getSortActions()
+  const [searchQuery, setSearchQuery] = useState('')
+
+  const query = searchQuery.trim().toLowerCase()
+  const visibleCards = useMemo(() => {
+    if (query.length === 0) {
+      return cards
+    }
+
+    return cards.filter((card) => card.name.toLowerCase().includes(query))
+  }, [cards, query])
 
   return (
     <>
@@ -62,25 +72,41 @@ export function CollectionPanel({
             : 'min-w-0 rounded-lg border bg-card p-4'
         }
       >
-        <div className="flex flex-wrap items-start justify-between gap-4">
-          <div>
-            <h2 className="text-lg font-black">{m.collection_title()}</h2>
-            <p className="text-sm text-muted-foreground">
-              {m.collection_summary({ totalCards, total })}
-            </p>
-          </div>
-          <div className="flex flex-wrap gap-2">
-            {sortActions.map((action) => (
-              <Button
-                key={action.value}
-                type="button"
-                variant={sort === action.value ? 'default' : 'outline'}
-                className="h-9"
-                onClick={() => onSortChange(action.value)}
-              >
-                {action.label}
-              </Button>
-            ))}
+        <div className="space-y-4">
+          <div className="flex flex-wrap items-start justify-between gap-3">
+            <div>
+              <h2 className="text-lg font-black">{m.collection_title()}</h2>
+              <p className="text-sm text-muted-foreground">
+                {m.collection_summary({ totalCards, total })}
+              </p>
+            </div>
+            <div className="flex w-full min-w-[14rem] flex-wrap items-center justify-end gap-2 sm:w-auto">
+              <label className="mt-0 flex flex-1 min-w-[10rem] items-center gap-2 sm:w-auto">
+                <span className="shrink-0 text-xs font-black uppercase tracking-wide text-muted-foreground">
+                  {m.collection_search_label()}
+                </span>
+                <input
+                  value={searchQuery}
+                  onChange={(event) => setSearchQuery(event.target.value)}
+                  className="w-full rounded-md border bg-background px-2 py-2 text-sm placeholder:text-xs sm:w-auto"
+                  placeholder={m.trade_search_by_pokemon_placeholder()}
+                  aria-label={m.trade_search_by_pokemon_aria()}
+                />
+              </label>
+              <div className="flex flex-wrap gap-2">
+                {sortActions.map((action) => (
+                  <Button
+                    key={action.value}
+                    type="button"
+                    variant={sort === action.value ? 'default' : 'outline'}
+                    className="h-9"
+                    onClick={() => onSortChange(action.value)}
+                  >
+                    {action.label}
+                  </Button>
+                ))}
+              </div>
+            </div>
           </div>
         </div>
         {isPending ? (
@@ -89,43 +115,20 @@ export function CollectionPanel({
               <div key={index} className="h-44 rounded-lg bg-muted" />
             ))}
           </div>
-        ) : cards.length > 0 ? (
+        ) : visibleCards.length > 0 ? (
           <div className="mt-4 flex min-h-[39rem] min-w-0 max-w-full flex-wrap content-start justify-center gap-3">
-            {cards.map((card) => (
-              <article
+            {visibleCards.map((card) => (
+              <CollectionCardItem
                 key={`${card.id}-${card.finish ?? 'normal'}`}
-                className="w-28 rounded-lg border bg-background p-2"
-              >
-                <button
-                  type="button"
-                  className="relative w-full rounded-md focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
-                  onClick={() => setSelectedCard(card)}
-                  aria-label={m.packs_view_card_aria({ name: card.name })}
-                >
-                  {card.imageSmall ? (
-                    <FoilCardImage
-                      src={card.imageSmall}
-                      alt={card.name}
-                      finish={card.finish}
-                      className="aspect-[63/88] w-full rounded-md object-cover transition-transform hover:-translate-y-0.5"
-                    />
-                  ) : (
-                    <div className="aspect-[63/88] rounded-md bg-muted" aria-hidden="true" />
-                  )}
-                </button>
-                <div className="mt-2 flex items-start justify-between gap-2">
-                  <div className="min-w-0">
-                    <h3 className="truncate text-xs font-black">{card.name}</h3>
-                    <p className="truncate text-[0.68rem] font-semibold text-muted-foreground">
-                      {card.rarity ? formatRarity(card.rarity) : card.number}
-                    </p>
-                  </div>
-                  <span className="rounded-md bg-sidebar px-1.5 py-0.5 text-[0.66rem] font-black text-sidebar-foreground">
-                    {card.quantity}x
-                  </span>
-                </div>
-              </article>
+                card={card}
+                onSelect={() => setSelectedCard(card)}
+                className="focus-visible:ring-2 focus-visible:ring-ring"
+              />
             ))}
+          </div>
+        ) : searchQuery.trim() !== '' ? (
+          <div className="mt-4 rounded-lg border bg-background p-4 text-sm font-semibold text-muted-foreground">
+            {m.trade_search_no_match()}
           </div>
         ) : (
           <div className="mt-4 rounded-lg border bg-background p-4 text-sm font-semibold text-muted-foreground">

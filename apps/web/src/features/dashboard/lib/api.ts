@@ -8,6 +8,7 @@ import type {
   SupportedLocale,
   UserCollectionResponse,
 } from '@tcg-collection/shared'
+import { DEFAULT_LOCALE } from '@tcg-collection/shared'
 import { toast } from '@/features/toast/toast-store'
 import { m } from '@/paraglide/messages'
 
@@ -49,7 +50,7 @@ export async function logout(): Promise<void> {
 }
 
 export async function fetchPokemonSets(
-  locale: SupportedLocale = 'fr',
+  locale: SupportedLocale = DEFAULT_LOCALE,
 ): Promise<PokemonSetSummary[]> {
   const response = await apiFetch(`/pokemon/sets?locale=${encodeURIComponent(locale)}`)
 
@@ -64,7 +65,7 @@ export async function fetchPokemonSets(
 
 export async function fetchPokemonCards(
   setId: string,
-  locale: SupportedLocale = 'fr',
+  locale: SupportedLocale = DEFAULT_LOCALE,
 ): Promise<PokemonCardSummary[]> {
   const searchParams = new URLSearchParams({
     setId,
@@ -132,7 +133,7 @@ export async function fetchUserCollection(
     page: 1,
     pageSize: 24,
     sort: 'recent',
-    locale: 'fr',
+    locale: DEFAULT_LOCALE,
   },
 ): Promise<UserCollectionResponse> {
   const searchParams = new URLSearchParams({
@@ -181,7 +182,7 @@ export const getApiUrl = (path: `/${string}`): string => {
   return activeApiOrigin ? `${activeApiOrigin}${path}` : `/api${path}`
 }
 
-const apiFetch = async (path: `/${string}`, init?: RequestInit): Promise<Response> => {
+export const apiFetch = async (path: `/${string}`, init?: RequestInit): Promise<Response> => {
   try {
     return await fetch(getApiUrl(path), init)
   } catch (error) {
