@@ -11,11 +11,13 @@ import { DEFAULT_LOCALE } from '@tcg-collection/shared'
 
 import { tradeQueryKeys } from '../lib/query-keys'
 import {
+  fetchTradeNotifications,
   acceptTradeOffer,
   cancelTradeAuction,
   cancelTradeOffer,
   createTradeAuction,
   createTradeOffer,
+  markTradeNotificationViewed,
   fetchTradeAuction,
   fetchTradeAuctions,
 } from '../lib/api'
@@ -130,7 +132,10 @@ export function useCancelTradeAuctionMutation(options?: { onSuccess?: () => void
   })
 }
 
-export function useAcceptTradeOfferMutation(options?: { onSuccess?: () => void }) {
+export function useAcceptTradeOfferMutation(options?: {
+  onSuccess?: () => void
+  onError?: (error: Error) => void
+}) {
   const queryClient = useQueryClient()
 
   return useMutation({
@@ -139,6 +144,30 @@ export function useAcceptTradeOfferMutation(options?: { onSuccess?: () => void }
     onSuccess: async () => {
       await refreshTradeQueries(queryClient)
       options?.onSuccess?.()
+    },
+    onError: options?.onError,
+  })
+}
+
+export function useTradeNotificationsQuery(enabled = true) {
+  return useQuery({
+    queryKey: tradeQueryKeys.notifications,
+    queryFn: fetchTradeNotifications,
+    enabled,
+    staleTime: 0,
+    refetchOnWindowFocus: true,
+    refetchOnReconnect: true,
+    refetchInterval: 20_000,
+  })
+}
+
+export function useTradeNotificationViewedMutation() {
+  const queryClient = useQueryClient()
+
+  return useMutation({
+    mutationFn: (notificationId: string) => markTradeNotificationViewed(notificationId),
+    onSuccess: () => {
+      void queryClient.invalidateQueries({ queryKey: tradeQueryKeys.notifications })
     },
   })
 }

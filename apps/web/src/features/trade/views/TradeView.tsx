@@ -1,7 +1,10 @@
 import { useState, useSyncExternalStore } from 'react'
 import { CheckCircle2Icon, Clock3Icon, EyeIcon, UserRoundIcon, XIcon } from 'lucide-react'
 
-import type { AuctionFilters, AuctionRequirements } from '@tcg-collection/shared'
+import type {
+  AuctionFilters,
+  AuctionRequirements,
+} from '@tcg-collection/shared'
 import { Button } from '@/components/ui/button'
 import { useLocale } from '@/features/i18n/useLocale'
 import { m } from '@/paraglide/messages'
@@ -26,6 +29,7 @@ import { TradeCreateAuctionPanel } from '../components/TradeCreateAuctionPanel'
 import { TradeOfferComposer } from '../components/TradeOfferComposer'
 import { TradeOffersPanel } from '../components/TradeOffersPanel'
 import { TradeBadge } from '../components/TradeBadge'
+import { toast } from '@/features/toast/toast-store'
 import { FoilCardImage } from '@/features/dashboard/components/FoilCardImage'
 import { CardImageDialog } from '@/features/dashboard/components/CardImageDialog'
 import { formatRarity } from '@/features/i18n/rarity-labels'
@@ -189,7 +193,11 @@ export function TradeView() {
     },
   })
   const cancelOfferMutation = useCancelTradeOfferMutation()
-  const acceptOfferMutation = useAcceptTradeOfferMutation()
+  const acceptOfferMutation = useAcceptTradeOfferMutation({
+    onError: () => {
+      toast.show(m.trade_accept_offer_error())
+    },
+  })
 
   const closeAuctionDetails = () => {
     setIsDetailsDialogOpen(false)
@@ -534,12 +542,12 @@ export function TradeView() {
                   auction={selectedAuction}
                   userId={currentUserId}
                   onCancelOffer={(offerId) => cancelOfferMutation.mutate(offerId)}
-                  onAcceptOffer={(auctionId, offerId) =>
+                  onAcceptOffer={(offer) => {
                     acceptOfferMutation.mutate({
-                      auctionId,
-                      offerId,
+                      auctionId: offer.auctionId,
+                      offerId: offer.id,
                     })
-                  }
+                  }}
                   isBusy={isAnyActionRunning}
                 />
 
@@ -631,6 +639,7 @@ export function TradeView() {
           </div>
         </div>
       ) : null}
+
     </div>
   )
 }

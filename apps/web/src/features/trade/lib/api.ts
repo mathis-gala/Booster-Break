@@ -1,11 +1,13 @@
 import type {
   CreateAuctionRequest,
   CreateOfferRequest,
+  TradeNotificationListResponse,
   SupportedLocale,
   TradeAuctionListResponse,
   TradeAuctionResponse,
   TradeOfferResponse,
 } from '@tcg-collection/shared'
+import { DEFAULT_LOCALE } from '@tcg-collection/shared'
 import { m } from '@/paraglide/messages'
 
 import { apiFetch } from '@/features/dashboard/lib/api'
@@ -16,7 +18,7 @@ type TradeApiPayload = {
 }
 
 export async function fetchTradeAuctions(
-  locale: SupportedLocale = 'fr',
+  locale: SupportedLocale = DEFAULT_LOCALE,
 ): Promise<TradeAuctionListResponse> {
   const searchParams = new URLSearchParams({ locale })
 
@@ -33,7 +35,7 @@ export async function fetchTradeAuctions(
 
 export async function fetchTradeAuction(
   auctionId: string,
-  locale: SupportedLocale = 'fr',
+  locale: SupportedLocale = DEFAULT_LOCALE,
 ): Promise<TradeAuctionResponse> {
   const searchParams = new URLSearchParams({ locale })
 
@@ -53,7 +55,7 @@ export async function fetchTradeAuction(
 
 export async function createTradeAuction(
   input: CreateAuctionRequest,
-  locale: SupportedLocale = 'fr',
+  locale: SupportedLocale = DEFAULT_LOCALE,
 ): Promise<TradeAuctionResponse> {
   const searchParams = new URLSearchParams({ locale })
 
@@ -76,7 +78,7 @@ export async function createTradeAuction(
 export async function createTradeOffer(
   auctionId: string,
   input: CreateOfferRequest,
-  locale: SupportedLocale = 'fr',
+  locale: SupportedLocale = DEFAULT_LOCALE,
 ): Promise<TradeOfferResponse> {
   const searchParams = new URLSearchParams({ locale })
 
@@ -118,6 +120,32 @@ export async function cancelTradeOffer(offerId: string): Promise<void> {
 
   if (!response.ok) {
     throw new Error(await readTradeError(response, m.trade_cancel_offer_error()))
+  }
+}
+
+export async function fetchTradeNotifications(): Promise<TradeNotificationListResponse> {
+  const response = await apiFetch('/trade/notifications', {
+    credentials: 'include',
+  })
+
+  if (!response.ok) {
+    throw new Error(await readTradeError(response, m.trade_fetch_notifications_error()))
+  }
+
+  return response.json()
+}
+
+export async function markTradeNotificationViewed(notificationId: string): Promise<void> {
+  const response = await apiFetch(
+    `/trade/notifications/${encodeURIComponent(notificationId)}/viewed`,
+    {
+      method: 'POST',
+      credentials: 'include',
+    },
+  )
+
+  if (!response.ok) {
+    throw new Error(await readTradeError(response, m.trade_mark_notification_viewed_error()))
   }
 }
 

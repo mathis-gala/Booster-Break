@@ -1,17 +1,20 @@
-import type { TradeAuctionResponse } from '@tcg-collection/shared'
+import type {
+  TradeAuctionResponse,
+  TradeOfferCardResponse,
+  TradeOfferResponse,
+} from '@tcg-collection/shared'
 import { useState } from 'react'
 import { UserRoundIcon } from 'lucide-react'
 import { m } from '@/paraglide/messages'
 import { ConfirmationDialog } from '@/components/ConfirmationDialog'
 import { CardImageDialog } from '@/features/dashboard/components/CardImageDialog'
-import type { TradeOfferCardResponse } from '@tcg-collection/shared'
 import { FoilCardImage } from '@/features/dashboard/components/FoilCardImage'
 
 interface TradeOffersPanelProps {
   auction: TradeAuctionResponse
   userId?: string
   onCancelOffer: (offerId: string) => void
-  onAcceptOffer: (auctionId: string, offerId: string) => void
+  onAcceptOffer: (offer: TradeOfferResponse) => void
   isBusy: boolean
 }
 
@@ -145,7 +148,7 @@ export function TradeOffersPanel({
                         type="button"
                         className="cursor-pointer rounded-md border border-green-700 bg-green-700/10 px-2 py-1 text-xs font-black text-green-700 disabled:cursor-not-allowed disabled:opacity-50"
                         disabled={isBusy}
-                        onClick={() => onAcceptOffer(auction.id, offer.id)}
+                        onClick={() => onAcceptOffer(offer)}
                       >
                         {m.trade_accept_offer()}
                       </button>
