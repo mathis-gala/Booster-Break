@@ -37,8 +37,8 @@ bun run build
 The web app runs on `http://localhost:5173` and proxies `/api/*` to the Elysia API on
 `http://localhost:3100`.
 
-The public GitHub Pages build is still available, but the recommended WiFi/server
-deployment serves the web app and API from the same Raspberry Pi origin:
+The recommended WiFi/server deployment serves the web app and API from the same
+Raspberry Pi origin:
 
 ```text
 https://booster.example.com
@@ -111,8 +111,7 @@ bun run lint
 bun run typecheck
 ```
 
-On pushes to `main`, the workflow builds the web app with the GitHub Pages base path and deploys
-`apps/web/dist` to GitHub Pages. It also builds and pushes same-origin Docker images for the
+On pushes to `main`, the workflow builds and pushes same-origin Docker images for the
 Raspberry Pi/server deployment:
 
 ```text
@@ -122,10 +121,6 @@ ghcr.io/mathis-gala/booster-break/api:latest
 
 For the server deployment, leave `VITE_API_ORIGIN` empty in the web image. The frontend calls
 same-origin `/api/*`, and Caddy proxies those requests to the API container.
-
-If you still use the GitHub Pages frontend, set repository variable `VITE_API_ORIGIN` to a public
-HTTPS API origin. Do not point GitHub Pages at a private WiFi/LAN IP: modern browsers can show a
-permission prompt because a public origin is trying to access local-network devices.
 
 Leave `VITE_API_ORIGIN` empty only for local development, where the Vite dev server proxies `/api`
 to `http://127.0.0.1:3100`.
@@ -137,14 +132,6 @@ API_ORIGIN=https://booster.example.com/api
 WEB_ORIGIN=https://booster.example.com
 WEB_APP_URL=https://booster.example.com
 SLACK_REDIRECT_URI=https://booster.example.com/api/auth/slack/callback
-```
-
-The GitHub Pages fallback can use:
-
-```text
-VITE_API_ORIGIN=https://api.example.com
-WEB_ORIGIN=https://mathis-gala.github.io
-WEB_APP_URL=https://mathis-gala.github.io/Booster-Break/
 ```
 
 GitHub Container Registry also publishes commit-pinned images:

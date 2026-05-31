@@ -32,7 +32,7 @@
   "setup_credentials_docker": "In Docker Compose, DATABASE_URL uses the postgres host because it is the internal service name.",
   "setup_credentials_production": "In production, use the deploy bundle with Caddy. The web image contains a static Vite build served by nginx, with no Vite server running on the Raspberry Pi.",
   "setup_production_title": "Production deployment",
-  "setup_production_github_pages": "Avoid GitHub Pages when calling a private WiFi API: the browser can ask for permission to access local-network devices.",
+  "setup_production_same_origin": "Serve the interface and API from the same origin to avoid CORS, cross-site cookies, and local-network browser prompts.",
   "setup_production_server_env": "Copy deploy/docker-compose.server.yml, deploy/Caddyfile, and deploy/booster-break.env.example to /opt/booster-break, then fill the private booster-break.env file. No secrets are included in the GitHub Container Registry images.",
   "setup_production_slack": "Slack OAuth must use the exact Caddy-proxied callback URL, for example https://booster.example.com/api/auth/slack/callback.",
   "setup_production_domains": "Caddy serves the interface on https://booster.example.com and proxies the API on /api, which avoids CORS and cross-site cookies.",

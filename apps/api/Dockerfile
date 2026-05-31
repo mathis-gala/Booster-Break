@@ -24,7 +24,7 @@ ENV NODE_ENV=production
 ENV PORT=3100
 ENV HOST=0.0.0.0
 ENV API_ORIGIN=http://127.0.0.1:3100
-ENV WEB_ORIGIN=https://mathis-gala.github.io/Booster-Break/
+ENV WEB_ORIGIN=http://127.0.0.1:5173
 
 COPY --from=build /app/node_modules node_modules
 COPY --from=build /app/apps/api/dist apps/api/dist
