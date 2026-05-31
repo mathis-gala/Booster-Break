@@ -198,7 +198,7 @@ export interface TradeOfferCardWrite {
   quantity: number
 }
 
-export interface TradeRepository {
+export interface TradeAuctionRepository {
   cleanupExpiredAuctions(referenceDate: Date): Promise<number>
   countActiveAuctionsByCreator(creatorId: string): Promise<number>
   isCardInActiveAuction(offeredCardId: string, offeredCardFinish: CardFinish): Promise<boolean>
@@ -209,6 +209,9 @@ export interface TradeRepository {
     includeOffers?: boolean,
   ): Promise<TradeAuctionRow | TradeAuctionWithOffers | null>
   cancelAuction(auctionId: string, creatorId: string): Promise<boolean>
+}
+
+export interface TradeOfferRepository {
   countPendingOffersByUser(auctionId: string, proposerId: string): Promise<number>
   createOffer(input: CreateTradeOfferCommand): Promise<{ id: string }>
   getOfferById(offerId: string): Promise<TradeOfferRow | null>
@@ -221,13 +224,25 @@ export interface TradeRepository {
     | { ok: true }
     | { ok: false; error: TradeRepositoryError | 'trade_unavailable'; reason?: string }
   >
+}
+
+export interface TradeCardRepository {
   findCards(cardIds: string[]): Promise<TradeAuctionCardSummary[]>
   getUserCardQuantity(
     userId: string,
     cardId: string,
     finish: CardFinish,
   ): Promise<number | undefined>
+}
+
+export interface TradeNotificationRepository {
   listTradeNotifications(userId: string): Promise<TradeNotificationRow[]>
   markTradeNotificationViewed(notificationId: string, userId: string): Promise<boolean>
   createTradeNotification(input: TradeRepositoryNotificationInput): Promise<TradeNotificationRow>
 }
+
+export type TradeRepository =
+  TradeAuctionRepository &
+  TradeOfferRepository &
+  TradeCardRepository &
+  TradeNotificationRepository

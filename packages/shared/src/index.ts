@@ -1,3 +1,5 @@
+import { normalizeRarity } from './pokemon-rarity'
+
 export const supportedLocaleValues = ['fr', 'en'] as const
 export type SupportedLocale = (typeof supportedLocaleValues)[number]
 export const supportedLocales = supportedLocaleValues
@@ -113,6 +115,91 @@ export interface AuctionFilters {
   excludedRarities?: string[]
   excludedTypes?: string[]
   excludedFinishes?: CardFinish[]
+}
+
+export interface TradeConstraintCardCandidate {
+  id: string
+  setId: string
+  rarity?: string | null
+  type?: string | null
+}
+
+const hasNormalizedTradeValue = (
+  value: string | null | undefined,
+  candidates: string[] | undefined,
+): boolean => {
+  if (!candidates?.length) {
+    return false
+  }
+
+  const normalizedValue = normalizeRarity(value ?? '')
+
+  return candidates.some((candidate) => normalizeRarity(candidate) === normalizedValue)
+}
+
+export const matchesTradeRequirements = (
+  card: TradeConstraintCardCandidate,
+  finish: CardFinish,
+  requirements: AuctionRequirements = {},
+): boolean => {
+  if (requirements.cardIds?.length && !requirements.cardIds.includes(card.id)) {
+    return false
+  }
+
+  if (requirements.setIds?.length && !requirements.setIds.includes(card.setId)) {
+    return false
+  }
+
+  if (requirements.rarities?.length && !hasNormalizedTradeValue(card.rarity, requirements.rarities)) {
+    return false
+  }
+
+  if (requirements.types?.length && !requirements.types.includes(card.type ?? '')) {
+    return false
+  }
+
+  if (requirements.finishes?.length && !requirements.finishes.includes(finish)) {
+    return false
+  }
+
+  return true
+}
+
+export const isCardExcludedFromTrade = (
+  card: TradeConstraintCardCandidate,
+  finish: CardFinish,
+  filters: AuctionFilters = {},
+): boolean => {
+  if (filters.excludedCardIds?.length && filters.excludedCardIds.includes(card.id)) {
+    return true
+  }
+
+  if (filters.excludedSetIds?.length && filters.excludedSetIds.includes(card.setId)) {
+    return true
+  }
+
+  if (filters.excludedRarities?.length && hasNormalizedTradeValue(card.rarity, filters.excludedRarities)) {
+    return true
+  }
+
+  if (filters.excludedTypes?.length && filters.excludedTypes.includes(card.type ?? '')) {
+    return true
+  }
+
+  if (filters.excludedFinishes?.length && filters.excludedFinishes.includes(finish)) {
+    return true
+  }
+
+  return false
+}
+
+export const matchesTradeConstraints = (
+  card: TradeConstraintCardCandidate,
+  finish: CardFinish,
+  requirements: AuctionRequirements = {},
+  filters: AuctionFilters = {},
+): boolean => {
+  return matchesTradeRequirements(card, finish, requirements) && !isCardExcludedFromTrade(card, finish, filters)
 }
 
 export interface TradeOfferItem {

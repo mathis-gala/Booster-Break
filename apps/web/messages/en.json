@@ -53,6 +53,7 @@
   "api_unable_open_pack": "Unable to open pack",
   "api_unable_load_pack_status": "Unable to load pack timer",
   "api_unable_load_collection": "Unable to load collection",
+  "api_using_local_fallback": "Configured API is unreachable. Using local API at {origin}.",
   "api_pack_cooldown": "A booster was opened recently. Wait for the timer before opening another one.",
   "api_sign_in_collection": "Sign in to view your collection.",
   "api_sign_in_open_pack": "Sign in to open booster packs and save cards to your collection.",

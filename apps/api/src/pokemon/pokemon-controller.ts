@@ -75,6 +75,7 @@ export const createPokemonController = ({
         query: cardsQuerySchema,
       },
     )
+    .get('/packs/status', async ({ headers }) => pokemonService.getPackOpenStatus(headers.cookie))
 
   const authenticatedRoutes = new Elysia()
 
@@ -108,7 +109,6 @@ export const createPokemonController = ({
         query: collectionQuerySchema,
       },
     )
-    .get('/packs/status', async ({ headers }) => pokemonService.getPackOpenStatus(headers.cookie))
     .post(
       '/packs/open',
       async ({ headers, body, status }) => {

@@ -15,6 +15,7 @@ import {
   toAuctionRequirementsPayload,
   type TradeTextListFields,
   toCardFinish,
+  formatTradeType,
 } from '../lib/trade-utils'
 import { useCreateTradeAuctionMutation } from './useTradeQueries'
 import type { TradeFilterOption } from '../components/TradeFilterDropdown'
@@ -214,7 +215,7 @@ export function useTradeCreateAuctionForm({
   }, [selectorCards])
 
   const typeOptions = useMemo(() => {
-    const knownTypes: string[] = ['Pokémon', 'Trainer', 'Energy']
+    const knownTypes: string[] = ['Pokemon', 'Trainer', 'Energy']
     const values = new Set(knownTypes)
 
     for (const card of selectorCards) {
@@ -240,7 +241,7 @@ export function useTradeCreateAuctionForm({
       .sort((a, b) => a.localeCompare(b, 'en', { sensitivity: 'base' }))
       .map((value) => ({
         value,
-        label: value,
+        label: formatTradeType(value),
       }))
   }, [selectorCards])
 

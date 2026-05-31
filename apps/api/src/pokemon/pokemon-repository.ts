@@ -265,6 +265,9 @@ export class PokemonRepository {
     const rows = await this.db.userCard.findMany({
       where: {
         userId,
+        quantity: {
+          gt: 0,
+        },
       },
       include: {
         card: true,

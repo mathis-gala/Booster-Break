@@ -133,8 +133,13 @@ docker compose logs -f api
 
 The API log should show Prisma migrations finishing before `API listening ...`.
 
-Postgres is bound to `127.0.0.1:5432` on the server. To inspect production with Beekeeper Studio,
-use an SSH tunnel instead of exposing the database publicly:
+Postgres is not exposed by the default server compose file. To inspect production with Beekeeper
+Studio, start the temporary loopback-only override and use an SSH tunnel instead of exposing the
+database publicly:
+
+```bash
+docker compose -f docker-compose.server.yml -f docker-compose.db-access.yml up -d postgres
+```
 
 ```bash
 ssh -L 5432:127.0.0.1:5432 user@booster.example.com

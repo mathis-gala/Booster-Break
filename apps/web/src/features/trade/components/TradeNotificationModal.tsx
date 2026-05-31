@@ -28,7 +28,7 @@ const NotificationCardList = ({ title, cards }: NotificationCardListProps) => {
         {cards.map((card) => (
           <article
             key={`${card.cardId}-${card.finish}-${card.quantity}`}
-            className="inline-flex w-40 flex-col items-center gap-1 rounded-lg border bg-card p-2 text-center"
+            className="inline-flex w-40 min-w-0 flex-col items-center gap-1 rounded-lg border bg-card p-2 text-center"
           >
             {card.imageSmall ? (
               <FoilCardImage
@@ -40,7 +40,9 @@ const NotificationCardList = ({ title, cards }: NotificationCardListProps) => {
             ) : (
               <div className="aspect-[63/88] w-28 rounded-md bg-muted" aria-hidden="true" />
             )}
-            <p className="truncate text-xs font-black">{card.name}</p>
+            <p className="w-full min-w-0 break-words text-xs font-black leading-tight">
+              {card.name}
+            </p>
             <p className="text-xs text-muted-foreground">x{card.quantity}</p>
           </article>
         ))}

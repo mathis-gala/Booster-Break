@@ -94,62 +94,75 @@ export class PrismaTradeRepository implements TradeRepository {
   }
 
   async createAuction(input: CreateTradeAuctionCommand): Promise<TradeAuctionRow> {
-    return this.db.$transaction(async (tx) => {
-      const activeAuctionsCount = await tx.tradeAuction.count({
-        where: {
-          creatorId: input.creatorId,
-          status: 'active',
-        },
+    try {
+      return await this.db.$transaction(async (tx) => {
+        await tx.$executeRaw`SELECT pg_advisory_xact_lock(hashtext(${`trade-auction-creator:${input.creatorId}`}))`
+
+        const activeAuctionsCount = await tx.tradeAuction.count({
+          where: {
+            creatorId: input.creatorId,
+            status: 'active',
+          },
+        })
+
+        if (activeAuctionsCount >= MAX_ACTIVE_AUCTIONS_PER_USER) {
+          throw new TradeRepositoryErrorException('max_auctions_reached')
+        }
+
+        const activeCardAuction = await tx.tradeAuction.findFirst({
+          where: {
+            offeredCardId: input.offeredCardId,
+            offeredCardFinish: input.offeredCardFinish,
+            status: 'active',
+          },
+          select: tradeAuctionIdSelect,
+        })
+
+        if (activeCardAuction) {
+          throw new TradeRepositoryErrorException('card_in_auction')
+        }
+
+        const offeredCardQuantity = await tx.userCard.findUnique({
+          where: {
+            userId_cardId_finish: {
+              userId: input.creatorId,
+              cardId: input.offeredCardId,
+              finish: input.offeredCardFinish,
+            },
+          },
+          select: tradeUserCardQuantitySelect,
+        })
+
+        if (!offeredCardQuantity || offeredCardQuantity.quantity < 1) {
+          throw new TradeRepositoryErrorException('card_not_owned')
+        }
+
+        const created: TradeAuctionWithCardPayload = await tx.tradeAuction.create({
+          data: {
+            id: crypto.randomUUID(),
+            creatorId: input.creatorId,
+            offeredCardId: input.offeredCardId,
+            offeredCardFinish: input.offeredCardFinish,
+            requirements: normalizeTradeJsonInput(input.requirements),
+            filters: normalizeTradeJsonInput(input.filters),
+            status: 'active',
+            expiresAt: input.expiresAt,
+          },
+          include: tradeAuctionCardInclude,
+        })
+
+        return this.normalizeAuctionRow(created)
       })
-
-      if (activeAuctionsCount >= MAX_ACTIVE_AUCTIONS_PER_USER) {
-        throw new TradeRepositoryErrorException('max_auctions_reached')
-      }
-
-      const activeCardAuction = await tx.tradeAuction.findFirst({
-        where: {
-          offeredCardId: input.offeredCardId,
-          offeredCardFinish: input.offeredCardFinish,
-          status: 'active',
-        },
-        select: tradeAuctionIdSelect,
-      })
-
-      if (activeCardAuction) {
+    } catch (error: unknown) {
+      if (
+        error instanceof Prisma.PrismaClientKnownRequestError &&
+        error.code === 'P2002'
+      ) {
         throw new TradeRepositoryErrorException('card_in_auction')
       }
 
-      const offeredCardQuantity = await tx.userCard.findUnique({
-        where: {
-          userId_cardId_finish: {
-            userId: input.creatorId,
-            cardId: input.offeredCardId,
-            finish: input.offeredCardFinish,
-          },
-        },
-        select: tradeUserCardQuantitySelect,
-      })
-
-      if (!offeredCardQuantity || offeredCardQuantity.quantity < 1) {
-        throw new TradeRepositoryErrorException('card_not_owned')
-      }
-
-      const created: TradeAuctionWithCardPayload = await tx.tradeAuction.create({
-        data: {
-          id: crypto.randomUUID(),
-          creatorId: input.creatorId,
-          offeredCardId: input.offeredCardId,
-          offeredCardFinish: input.offeredCardFinish,
-          requirements: normalizeTradeJsonInput(input.requirements),
-          filters: normalizeTradeJsonInput(input.filters),
-          status: 'active',
-          expiresAt: input.expiresAt,
-        },
-        include: tradeAuctionCardInclude,
-      })
-
-      return this.normalizeAuctionRow(created)
-    })
+      throw error
+    }
   }
 
   async listActiveAuctions(): Promise<TradeAuctionRow[]> {
@@ -251,6 +264,8 @@ export class PrismaTradeRepository implements TradeRepository {
     }
 
     return this.db.$transaction(async (tx) => {
+      await tx.$executeRaw`SELECT pg_advisory_xact_lock(hashtext(${`trade-offer:${input.auctionId}:${input.proposerId}`}))`
+
       const auction = await tx.tradeAuction.findUnique({
         where: {
           id: input.auctionId,
@@ -499,7 +514,6 @@ export class PrismaTradeRepository implements TradeRepository {
       return {
         ok: false,
         error: 'trade_unavailable',
-        reason: error instanceof Error ? error.message : 'Unexpected repository error',
       }
     }
   }
@@ -539,59 +553,43 @@ export class PrismaTradeRepository implements TradeRepository {
   }
 
   async listTradeNotifications(userId: string): Promise<TradeNotificationRow[]> {
-    try {
-      const notifications = await this.db.tradeNotification.findMany({
-        where: {
-          userId,
-          viewed: false,
-        },
-        select: tradeNotificationSelect,
-        orderBy: {
-          createdAt: 'desc',
-        },
-      })
+    const notifications = await this.db.tradeNotification.findMany({
+      where: {
+        userId,
+        viewed: false,
+      },
+      select: tradeNotificationSelect,
+      orderBy: {
+        createdAt: 'desc',
+      },
+    })
 
-      return notifications.map((notification) => {
-        const type = notification.type as TradeNotificationType
+    return notifications.map((notification) => {
+      const type = notification.type as TradeNotificationType
 
-        return {
-          ...notification,
-          type,
-          viewed: notification.viewed ?? false,
-          payload: toTradeNotificationPayload(type, notification.payload),
-        }
-      })
-    } catch (error: unknown) {
-      if (this.isNotificationTableMissing(error)) {
-        return []
+      return {
+        ...notification,
+        type,
+        viewed: notification.viewed ?? false,
+        payload: toTradeNotificationPayload(type, notification.payload),
       }
-
-      throw error
-    }
+    })
   }
 
   async markTradeNotificationViewed(notificationId: string, userId: string): Promise<boolean> {
-    try {
-      const updated = await this.db.tradeNotification.updateMany({
-        where: {
-          id: notificationId,
-          userId,
-          viewed: false,
-        },
-        data: {
-          viewed: true,
-          updatedAt: new Date(),
-        },
-      })
+    const updated = await this.db.tradeNotification.updateMany({
+      where: {
+        id: notificationId,
+        userId,
+        viewed: false,
+      },
+      data: {
+        viewed: true,
+        updatedAt: new Date(),
+      },
+    })
 
-      return updated.count === 1
-    } catch (error: unknown) {
-      if (this.isNotificationTableMissing(error)) {
-        return false
-      }
-
-      throw error
-    }
+    return updated.count === 1
   }
 
   async createTradeNotification(input: TradeRepositoryNotificationInput): Promise<TradeNotificationRow> {
@@ -636,14 +634,6 @@ export class PrismaTradeRepository implements TradeRepository {
     }
   }
 
-  private isNotificationTableMissing(error: unknown): boolean {
-    return (
-      error instanceof Prisma.PrismaClientKnownRequestError &&
-      error.code === 'P2021' &&
-      /trade_notifications/.test(error.message)
-    )
-  }
-
   private async decrementUserCardQuantity(
     tx: AppPrisma | Prisma.TransactionClient,
     input: {
@@ -653,13 +643,13 @@ export class PrismaTradeRepository implements TradeRepository {
       quantity: number
     },
   ): Promise<boolean> {
-    const result = await tx.userCard.updateMany({
+    const decremented = await tx.userCard.updateMany({
       where: {
         userId: input.userId,
         cardId: input.cardId,
         finish: input.finish,
         quantity: {
-          gte: input.quantity,
+          gt: input.quantity,
         },
       },
       data: {
@@ -670,18 +660,20 @@ export class PrismaTradeRepository implements TradeRepository {
       },
     })
 
-    if (result.count === 1) {
-      await tx.userCard.deleteMany({
-        where: {
-          userId: input.userId,
-          cardId: input.cardId,
-          finish: input.finish,
-          quantity: 0,
-        },
-      })
+    if (decremented.count === 1) {
+      return true
     }
 
-    return result.count === 1
+    const deleted = await tx.userCard.deleteMany({
+      where: {
+        userId: input.userId,
+        cardId: input.cardId,
+        finish: input.finish,
+        quantity: input.quantity,
+      },
+    })
+
+    return deleted.count === 1
   }
 
   private async incrementUserCardQuantity(

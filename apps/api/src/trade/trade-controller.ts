@@ -26,8 +26,12 @@ export const createTradeController = ({
     })
     .get(
       '/auctions/:auctionId',
-      async ({ params, query, status }) => {
-        const result = await service.getAuction(params.auctionId, query.locale ?? DEFAULT_LOCALE)
+      async ({ headers, params, query, status }) => {
+        const result = await service.getAuction(
+          params.auctionId,
+          query.locale ?? DEFAULT_LOCALE,
+          headers.cookie,
+        )
 
         if (isTradeServiceError(result)) {
           return status(toTradeErrorStatus(result.error), result)

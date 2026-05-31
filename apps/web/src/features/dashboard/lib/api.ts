@@ -168,17 +168,11 @@ export async function fetchUserCollection(
 }
 
 const configuredApiOrigin = (import.meta.env.VITE_API_ORIGIN ?? '').replace(/\/$/, '')
-const localApiOrigin = (
-  import.meta.env.VITE_LOCAL_API_ORIGIN ?? (import.meta.env.DEV ? 'http://127.0.0.1:3100' : '')
-).replace(/\/$/, '')
+const localApiOrigin = (import.meta.env.VITE_LOCAL_API_ORIGIN ?? '').replace(/\/$/, '')
 let activeApiOrigin = configuredApiOrigin
 let hasShownLocalFallbackToast = false
 
 export const getApiUrl = (path: `/${string}`): string => {
-  if (import.meta.env.DEV && !activeApiOrigin) {
-    return `${localApiOrigin}${path}`
-  }
-
   return activeApiOrigin ? `${activeApiOrigin}${path}` : `/api${path}`
 }
 
@@ -194,7 +188,7 @@ export const apiFetch = async (path: `/${string}`, init?: RequestInit): Promise<
     activeApiOrigin = localApiOrigin
 
     if (!hasShownLocalFallbackToast) {
-      toast.show(`Configured API is unreachable. Using local API at ${localApiOrigin}.`, 'success')
+      toast.show(m.api_using_local_fallback({ origin: localApiOrigin }), 'success')
       hasShownLocalFallbackToast = true
     }
 

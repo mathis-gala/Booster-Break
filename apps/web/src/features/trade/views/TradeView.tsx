@@ -1,14 +1,7 @@
 import { useState, useSyncExternalStore } from 'react'
-import { CheckCircle2Icon, Clock3Icon, EyeIcon, UserRoundIcon, XIcon } from 'lucide-react'
+import { Clock3Icon, EyeIcon, UserRoundIcon, XIcon } from 'lucide-react'
 
-import type {
-  AuctionFilters,
-  AuctionRequirements,
-  TradeNotificationCardPayload,
-  TradeNotificationResponse,
-  TradeAuctionResponse,
-  TradeOfferResponse,
-} from '@tcg-collection/shared'
+import type { TradeAuctionResponse, TradeOfferResponse } from '@tcg-collection/shared'
 import { Button } from '@/components/ui/button'
 import { useLocale } from '@/features/i18n/useLocale'
 import { m } from '@/paraglide/messages'
@@ -18,7 +11,6 @@ import {
   describeAuctionRemaining,
   getAuctionRemainingMs,
   MAX_ACTIVE_AUCTIONS_PER_USER,
-  formatTradeType,
 } from '../lib/trade-utils'
 import { tradeClock } from '../lib/trade-clock'
 import {
@@ -29,11 +21,12 @@ import {
   useTradeAuctionsQuery,
 } from '../hooks/useTradeQueries'
 import { TradeAuctionList } from '../components/TradeAuctionList'
-import { TradeCreateAuctionPanel } from '../components/TradeCreateAuctionPanel'
 import { TradeOfferComposer } from '../components/TradeOfferComposer'
 import { TradeOffersPanel } from '../components/TradeOffersPanel'
 import { TradeBadge } from '../components/TradeBadge'
 import { TradeNotificationModal } from '../components/TradeNotificationModal'
+import { TradeCreateAuctionDialog } from '../components/TradeCreateAuctionDialog'
+import { TradeOfferSuccessDialog } from '../components/TradeOfferSuccessDialog'
 import { toast } from '@/features/toast/toast-store'
 import { FoilCardImage } from '@/features/dashboard/components/FoilCardImage'
 import { CardImageDialog } from '@/features/dashboard/components/CardImageDialog'
@@ -43,6 +36,8 @@ import {
   usePokemonSetsQuery,
 } from '@/features/dashboard/hooks/usePokemonQueries'
 import { BoosterPreviewDialog } from '@/features/dashboard/components/BoosterPreviewDialog'
+import { buildAcceptedOfferNotification } from '../lib/trade-notification-factory'
+import { getTradeFilterBadges, getTradeRequirementBadges } from '../lib/trade-constraint-display'
 
 const AUCTIONS_PER_PAGE = 8
 const getHiResAvatarUrl = (avatarUrl: string | undefined): string | undefined => {
@@ -61,140 +56,7 @@ const getHiResAvatarUrl = (avatarUrl: string | undefined): string | undefined =>
   }
 }
 
-type BadgeItem = {
-  id: string
-  label: string
-  value: string
-  kind: 'set' | 'rarity' | 'type' | 'finish'
-  displayValue: string
-}
-
-const getFilterBadges = (
-  filters: AuctionFilters = {},
-  getSetName: (setId: string) => string,
-): BadgeItem[] => {
-  const { excludedSetIds, excludedRarities, excludedTypes, excludedFinishes } = filters
-  return [
-    ...(excludedSetIds ?? []).map((setId) => ({
-      id: `excluded-set:${setId}`,
-      label: m.trade_filter_set_label(),
-      value: setId,
-      kind: 'set' as const,
-      displayValue: getSetName(setId),
-    })),
-    ...(excludedRarities ?? []).map((rarity) => ({
-      id: `excluded-rarity:${rarity}`,
-      label: m.trade_filter_rarity_label(),
-      value: rarity,
-      kind: 'rarity' as const,
-      displayValue: formatRarity(rarity),
-    })),
-    ...(excludedTypes ?? []).map((type) => ({
-      id: `excluded-type:${type}`,
-      label: m.trade_filter_type_label(),
-      value: type,
-      kind: 'type' as const,
-      displayValue: formatTradeType(type),
-    })),
-    ...(excludedFinishes ?? []).map((finish) => ({
-      id: `excluded-finish:${finish}`,
-      label: m.trade_filter_finish_label(),
-      value: finish,
-      kind: 'finish' as const,
-      displayValue: formatCardFinish(finish),
-    })),
-  ]
-}
-
-const getRequirementBadges = (
-  requirements: AuctionRequirements = {},
-  getSetName: (setId: string) => string,
-): BadgeItem[] => {
-  const { setIds, rarities, types, finishes } = requirements
-
-  return [
-    ...(setIds ?? []).map((setId) => ({
-      id: `requirement-set:${setId}`,
-      label: m.trade_requirement_set_label(),
-      value: setId,
-      kind: 'set' as const,
-      displayValue: getSetName(setId),
-    })),
-    ...(rarities ?? []).map((rarity) => ({
-      id: `requirement-rarity:${rarity}`,
-      label: m.trade_requirement_rarity_label(),
-      value: rarity,
-      kind: 'rarity' as const,
-      displayValue: formatRarity(rarity),
-    })),
-    ...(types ?? []).map((type) => ({
-      id: `requirement-type:${type}`,
-      label: m.trade_requirement_type_label(),
-      value: type,
-      kind: 'type' as const,
-      displayValue: formatTradeType(type),
-    })),
-    ...(finishes ?? []).map((finish) => ({
-      id: `requirement-finish:${finish}`,
-      label: m.trade_requirement_finish_label(),
-      value: finish,
-      kind: 'finish' as const,
-      displayValue: formatCardFinish(finish),
-    })),
-  ]
-}
-
 type TradeOfferForModal = TradeOfferResponse
-
-const buildAcceptedOfferNotification = (
-  auction: TradeAuctionResponse,
-  offer: TradeOfferForModal,
-): TradeNotificationResponse => {
-  const proposerName = offer.proposerDisplayName?.trim() ?? offer.proposerPseudo
-
-  const exchangedCards: TradeNotificationCardPayload[] = offer.cards.map((card) => ({
-    cardId: card.card.id,
-    name: card.card.name,
-    imageSmall: card.card.imageSmall,
-    imageLarge: card.card.imageLarge,
-    finish: card.finish,
-    quantity: card.quantity,
-    setId: card.card.setId,
-    number: card.card.number,
-  }))
-
-  return {
-    id: `accepted-offer-${offer.id}`,
-    type: 'trade_offer_accepted',
-    message: m.trade_notification_offer_accepted_creator_message({ proposer: proposerName }),
-    payload: {
-      offerId: offer.id,
-      auctionId: auction.id,
-      recipientRole: 'auction_creator',
-      creatorId: auction.creatorId,
-      creatorPseudo: auction.creatorPseudo,
-      creatorDisplayName: auction.creatorDisplayName,
-      creatorAvatarUrl: auction.creatorAvatarUrl,
-      proposerId: offer.proposerId,
-      proposerPseudo: offer.proposerPseudo,
-      proposerDisplayName: offer.proposerDisplayName,
-      proposerAvatarUrl: offer.proposerAvatarUrl,
-      offeredCard: {
-        cardId: auction.offeredCard.id,
-        name: auction.offeredCard.name,
-        imageSmall: auction.offeredCard.imageSmall,
-        imageLarge: auction.offeredCard.imageLarge,
-        finish: auction.offeredCardFinish,
-        quantity: 1,
-        setId: auction.offeredCard.setId,
-        number: auction.offeredCard.number,
-      },
-      exchangedCards,
-    },
-    viewed: false,
-    createdAt: new Date().toISOString(),
-  }
-}
 
 export function TradeView() {
   const { locale } = useLocale()
@@ -316,10 +178,10 @@ export function TradeView() {
 
   const setCardsToDisplay = selectedAuctionSetCardsQuery.data ?? []
   const selectedAuctionFilterBadges = selectedAuction
-    ? getFilterBadges(selectedAuction.filters, getAuctionSetName)
+    ? getTradeFilterBadges(selectedAuction.filters, getAuctionSetName)
     : []
   const selectedAuctionRequirementBadges = selectedAuction
-    ? getRequirementBadges(selectedAuction.requirements, getAuctionSetName)
+    ? getTradeRequirementBadges(selectedAuction.requirements, getAuctionSetName)
     : []
 
   const clampedAuctionPage = Math.min(auctionPage, auctionPageCount)
@@ -372,46 +234,14 @@ export function TradeView() {
         />
       </div>
 
-      {isCreateDialogOpen ? (
-        <div
-          className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/78 p-3 backdrop-blur-sm"
-          role="dialog"
-          aria-modal="true"
-          aria-label={m.trade_create_auction()}
-          onClick={() => setIsCreateDialogOpen(false)}
-        >
-          <div
-            className="max-h-[92dvh] w-[min(56rem,calc(100vw-1.5rem))] overflow-y-auto overflow-x-hidden rounded-lg border bg-background p-4 text-foreground shadow-2xl sm:p-6"
-            onClick={(event) => {
-              event.stopPropagation()
-            }}
-          >
-            <div className="mb-4 flex items-center justify-between gap-3">
-              <h2 className="text-sm font-black uppercase tracking-wide text-muted-foreground">
-                {m.trade_create_auction()}
-              </h2>
-              <Button
-                type="button"
-                variant="outline"
-                size="icon"
-                onClick={() => setIsCreateDialogOpen(false)}
-                aria-label={m.trade_cancel()}
-              >
-                <XIcon aria-hidden="true" />
-              </Button>
-            </div>
-            <TradeCreateAuctionPanel
-              key={`trade-create-${locale}`}
-              locale={locale}
-              auth={auth.data ?? { authenticated: false }}
-              activeAuctions={userActiveAuctions}
-              onAuctionCreated={() => {
-                setIsCreateDialogOpen(false)
-              }}
-            />
-          </div>
-        </div>
-      ) : null}
+      <TradeCreateAuctionDialog
+        open={isCreateDialogOpen}
+        locale={locale}
+        auth={auth.data ?? { authenticated: false }}
+        activeAuctions={userActiveAuctions}
+        onClose={() => setIsCreateDialogOpen(false)}
+        onAuctionCreated={() => setIsCreateDialogOpen(false)}
+      />
 
       {isDetailsDialogOpen ? (
         <div
@@ -699,38 +529,7 @@ export function TradeView() {
         />
       ) : null}
 
-      {isOfferSuccessDialogOpen ? (
-        <div
-          className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/78 p-3 backdrop-blur-sm"
-          role="dialog"
-          aria-modal="true"
-          aria-label={m.trade_offer_success_title()}
-          onClick={closeOfferSuccessDialog}
-        >
-          <div
-            className="w-full max-w-sm rounded-lg border bg-background p-4 shadow-2xl"
-            onClick={(event) => {
-              event.stopPropagation()
-            }}
-          >
-            <div className="flex items-start gap-3">
-              <CheckCircle2Icon
-                className="mt-0.5 size-6 shrink-0 text-green-600"
-                aria-hidden="true"
-              />
-              <div className="min-w-0">
-                <p className="text-sm font-black">{m.trade_offer_success_title()}</p>
-                <p className="mt-1 text-sm text-muted-foreground">{m.trade_offer_success_message()}</p>
-              </div>
-            </div>
-            <div className="mt-4 flex justify-end">
-              <Button type="button" onClick={closeOfferSuccessDialog}>
-                {m.trade_offer_success_ok()}
-              </Button>
-            </div>
-          </div>
-        </div>
-      ) : null}
+      <TradeOfferSuccessDialog open={isOfferSuccessDialogOpen} onClose={closeOfferSuccessDialog} />
 
       {isTradeAcceptedNotificationOpen && acceptedOffer && acceptedAuction ? (
         <TradeNotificationModal

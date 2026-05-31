@@ -1,3 +1,4 @@
+import { useSyncExternalStore } from 'react'
 import { useQueryClient } from '@tanstack/react-query'
 import { useCurrentUserQuery } from '@/features/dashboard/hooks/useAuthQueries'
 import { toast } from '@/features/toast/toast-store'
@@ -5,15 +6,62 @@ import { m } from '@/paraglide/messages'
 import { useLocale } from '@/features/i18n/useLocale'
 
 import type {
+  SupportedLocale,
   TradeNotificationListResponse,
   TradeNotificationResponse,
 } from '@tcg-collection/shared'
 import {
+  refreshTradeMarketQueries,
   useTradeNotificationViewedMutation,
   useTradeNotificationsQuery,
 } from '../hooks/useTradeQueries'
 import { tradeQueryKeys } from '../lib/query-keys'
 import { TradeNotificationModal } from './TradeNotificationModal'
+
+const invalidatedNotificationSignatures = new Map<string, string>()
+
+const getStableSnapshot = () => 0
+
+const useTradeNotificationMarketInvalidation = (
+  queryClient: ReturnType<typeof useQueryClient>,
+  locale: SupportedLocale,
+  enabled: boolean,
+) => {
+  useSyncExternalStore(
+    (notify) => {
+      if (!enabled) {
+        return () => undefined
+      }
+
+      return queryClient.getQueryCache().subscribe((event) => {
+        const [domain, resource, notificationLocale] = event.query.queryKey
+
+        if (
+          domain !== 'trade' ||
+          resource !== 'notifications' ||
+          notificationLocale !== locale
+        ) {
+          notify()
+          return
+        }
+
+        const data = queryClient.getQueryData<TradeNotificationListResponse>(
+          tradeQueryKeys.notifications(locale),
+        )
+        const signature = data?.notifications.map((notification) => notification.id).join('|') ?? ''
+
+        if (signature && invalidatedNotificationSignatures.get(locale) !== signature) {
+          invalidatedNotificationSignatures.set(locale, signature)
+          void refreshTradeMarketQueries(queryClient)
+        }
+
+        notify()
+      })
+    },
+    getStableSnapshot,
+    getStableSnapshot,
+  )
+}
 
 export function TradeNotificationManager() {
   const auth = useCurrentUserQuery()
@@ -23,6 +71,7 @@ export function TradeNotificationManager() {
   const queryClient = useQueryClient()
   const notificationsQuery = useTradeNotificationsQuery(locale, isAuthenticated)
   const markViewedMutation = useTradeNotificationViewedMutation()
+  useTradeNotificationMarketInvalidation(queryClient, locale, isAuthenticated)
 
   const notifications = isAuthenticated ? notificationsQuery.data?.notifications ?? [] : []
   const activeNotification = notifications[0]

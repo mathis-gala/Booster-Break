@@ -29,9 +29,7 @@ const refreshTradeQueries = async (
   await queryClient.invalidateQueries({ queryKey: tradeQueryKeys.all })
 }
 
-const invalidatedNotificationSignatures = new Map<SupportedLocale, string>()
-
-const refreshTradeMarketQueries = async (
+export const refreshTradeMarketQueries = async (
   queryClient: ReturnType<typeof useQueryClient>,
 ): Promise<void> => {
   await queryClient.invalidateQueries({
@@ -77,6 +75,9 @@ export function useCreateTradeAuctionMutation(
 
   return useMutation({
     mutationFn: (input: CreateAuctionRequest) => createTradeAuction(input, locale),
+    meta: {
+      suppressToast: Boolean(options?.onError),
+    },
     onSuccess: async (auction) => {
       queryClient.setQueryData<TradeAuctionListResponse>(
         tradeQueryKeys.auctions(locale),
@@ -115,6 +116,9 @@ export function useCreateTradeOfferMutation(options?: {
   return useMutation({
     mutationFn: (input: { auctionId: string; payload: CreateOfferRequest }) =>
       createTradeOffer(input.auctionId, input.payload, targetLocale),
+    meta: {
+      suppressToast: Boolean(options?.onError),
+    },
     onSuccess: async (offer) => {
       await refreshTradeQueries(queryClient)
       options?.onSuccess?.(offer)
@@ -156,6 +160,9 @@ export function useAcceptTradeOfferMutation(options?: {
   return useMutation({
     mutationFn: (payload: { auctionId: string; offerId: string }) =>
       acceptTradeOffer(payload.auctionId, payload.offerId),
+    meta: {
+      suppressToast: Boolean(options?.onError),
+    },
     onSuccess: async () => {
       await refreshTradeQueries(queryClient)
       await queryClient.invalidateQueries({ queryKey: pokemonQueryKeys.collection.all })
@@ -166,24 +173,9 @@ export function useAcceptTradeOfferMutation(options?: {
 }
 
 export function useTradeNotificationsQuery(locale: SupportedLocale = DEFAULT_LOCALE, enabled = true) {
-  const queryClient = useQueryClient()
-
   return useQuery({
     queryKey: tradeQueryKeys.notifications(locale),
-    queryFn: async () => {
-      const notifications = await fetchTradeNotifications(locale)
-      const signature = notifications.notifications.map((notification) => notification.id).join('|')
-
-      if (
-        signature.length > 0 &&
-        invalidatedNotificationSignatures.get(locale) !== signature
-      ) {
-        invalidatedNotificationSignatures.set(locale, signature)
-        await refreshTradeMarketQueries(queryClient)
-      }
-
-      return notifications
-    },
+    queryFn: () => fetchTradeNotifications(locale),
     enabled,
     staleTime: 0,
     refetchOnWindowFocus: true,
