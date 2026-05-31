@@ -87,6 +87,8 @@ SLACK_REDIRECT_URI=https://booster.example.com/api/auth/slack/callback
 
 SLACK_CLIENT_ID=<slack-client-id>
 SLACK_CLIENT_SECRET=<slack-client-secret>
+MAGIC_LINK_ADMIN_SECRET=<shared-admin-secret>
+MAGIC_LINK_TTL_DAYS=30
 
 SECURE_COOKIES=true
 SESSION_COOKIE_NAME=booster_break_session

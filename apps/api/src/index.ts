@@ -20,6 +20,7 @@ const config = getConfig()
 const authStore = new PrismaAuthStore(prisma)
 const authService = new AuthService({
   sessionCookieName: config.sessionCookieName,
+  magicLinkTtlDays: config.magicLinkTtlDays,
   slackClient:
     config.slackClientId && config.slackClientSecret
       ? new SlackOAuthClient({
