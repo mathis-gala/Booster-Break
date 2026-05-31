@@ -24,6 +24,7 @@ export function SandboxView() {
   const [isRevealOpen, setIsRevealOpen] = useState(false)
   const [isPreparingReveal, setIsPreparingReveal] = useState(false)
   const [revealedCardIndex, setRevealedCardIndex] = useState(0)
+  const [maxRevealedCardIndex, setMaxRevealedCardIndex] = useState(0)
   const [previewSetId, setPreviewSetId] = useState<string>()
   const [activeSetIdOverride, setActiveSetIdOverride] = useState<string>()
   const [cooldownUntil, setCooldownUntil] = useState<string>()
@@ -35,6 +36,7 @@ export function SandboxView() {
     onPreparingChange: setIsPreparingReveal,
     onPrepared: () => {
       setRevealedCardIndex(0)
+      setMaxRevealedCardIndex(0)
       setIsRevealOpen(true)
       setCooldownUntil(new Date(Date.now() + SANDBOX_OPEN_COOLDOWN_MS).toISOString())
     },
@@ -108,8 +110,12 @@ export function SandboxView() {
         <PackRevealDialog
           openPackResult={openPack.data}
           revealedCardIndex={revealedCardIndex}
+          maxRevealedCardIndex={maxRevealedCardIndex}
           onClose={() => setIsRevealOpen(false)}
-          onRevealCardIndexChange={setRevealedCardIndex}
+          onRevealCardIndexChange={(index) => {
+            setRevealedCardIndex(index)
+            setMaxRevealedCardIndex((currentIndex) => Math.max(currentIndex, index))
+          }}
           resultLabel={m.sandbox_reveal_label()}
         />
       ) : null}

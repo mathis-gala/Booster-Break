@@ -15,6 +15,7 @@ export function PacksView() {
   const [isRevealOpen, setIsRevealOpen] = useState(false)
   const [isPreparingReveal, setIsPreparingReveal] = useState(false)
   const [revealedCardIndex, setRevealedCardIndex] = useState(0)
+  const [maxRevealedCardIndex, setMaxRevealedCardIndex] = useState(0)
   const [previewSetId, setPreviewSetId] = useState<string>()
   const sets = usePokemonSetsQuery(locale)
   const packStatus = usePackOpenStatusQuery()
@@ -23,6 +24,7 @@ export function PacksView() {
     onPreparingChange: setIsPreparingReveal,
     onPrepared: () => {
       setRevealedCardIndex(0)
+      setMaxRevealedCardIndex(0)
       setIsRevealOpen(true)
     },
   })
@@ -43,7 +45,11 @@ export function PacksView() {
         isRevealOpen={isRevealOpen}
         onCloseReveal={() => setIsRevealOpen(false)}
         revealedCardIndex={revealedCardIndex}
-        onRevealCardIndexChange={setRevealedCardIndex}
+        maxRevealedCardIndex={maxRevealedCardIndex}
+        onRevealCardIndexChange={(index) => {
+          setRevealedCardIndex(index)
+          setMaxRevealedCardIndex((currentIndex) => Math.max(currentIndex, index))
+        }}
         previewSet={previewSet}
         previewCards={previewCards.data ?? []}
         previewIsPending={previewCards.isPending && Boolean(previewSetId)}
