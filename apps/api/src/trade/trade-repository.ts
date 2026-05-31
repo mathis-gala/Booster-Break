@@ -154,10 +154,7 @@ export class PrismaTradeRepository implements TradeRepository {
         return this.normalizeAuctionRow(created)
       })
     } catch (error: unknown) {
-      if (
-        error instanceof Prisma.PrismaClientKnownRequestError &&
-        error.code === 'P2002'
-      ) {
+      if (error instanceof Prisma.PrismaClientKnownRequestError && error.code === 'P2002') {
         throw new TradeRepositoryErrorException('card_in_auction')
       }
 
@@ -367,8 +364,7 @@ export class PrismaTradeRepository implements TradeRepository {
     offerId: string,
     now: Date,
   ): Promise<
-    | { ok: true }
-    | { ok: false; error: TradeRepositoryError | 'trade_unavailable'; reason?: string }
+    { ok: true } | { ok: false; error: TradeRepositoryError | 'trade_unavailable'; reason?: string }
   > {
     try {
       await this.db.$transaction(async (tx) => {
@@ -592,7 +588,9 @@ export class PrismaTradeRepository implements TradeRepository {
     return updated.count === 1
   }
 
-  async createTradeNotification(input: TradeRepositoryNotificationInput): Promise<TradeNotificationRow> {
+  async createTradeNotification(
+    input: TradeRepositoryNotificationInput,
+  ): Promise<TradeNotificationRow> {
     const created = await this.db.tradeNotification.create({
       data: {
         id: crypto.randomUUID(),

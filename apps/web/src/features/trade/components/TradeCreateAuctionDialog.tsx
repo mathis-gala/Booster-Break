@@ -43,7 +43,13 @@ export function TradeCreateAuctionDialog({
           <h2 className="text-sm font-black uppercase tracking-wide text-muted-foreground">
             {m.trade_create_auction()}
           </h2>
-          <Button type="button" variant="outline" size="icon" onClick={onClose} aria-label={m.trade_cancel()}>
+          <Button
+            type="button"
+            variant="outline"
+            size="icon"
+            onClick={onClose}
+            aria-label={m.trade_cancel()}
+          >
             <XIcon aria-hidden="true" />
           </Button>
         </div>

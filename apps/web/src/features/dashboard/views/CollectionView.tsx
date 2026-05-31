@@ -2,10 +2,7 @@ import { useMemo, useState } from 'react'
 import type { CollectionSort } from '@tcg-collection/shared'
 
 import { CollectionPanel } from '../components/CollectionPanel'
-import {
-  usePokemonCollectionAllQuery,
-  usePokemonCollectionQuery,
-} from '../hooks/usePokemonQueries'
+import { usePokemonCollectionAllQuery, usePokemonCollectionQuery } from '../hooks/usePokemonQueries'
 import { useLocale } from '@/features/i18n/useLocale'
 import { matchesCardNameSearch } from '../lib/card-search'
 
@@ -43,11 +40,11 @@ export function CollectionView() {
 
     return searchMatches.slice(start, start + pageSize)
   }, [pageSize, searchMatches, searchPage])
-  const cards = isSearching ? searchCards : collection.data?.cards ?? []
-  const total = isSearching ? searchMatches.length : collection.data?.pagination.total ?? 0
+  const cards = isSearching ? searchCards : (collection.data?.cards ?? [])
+  const total = isSearching ? searchMatches.length : (collection.data?.pagination.total ?? 0)
   const totalCards = isSearching
     ? searchMatches.reduce((count, card) => count + card.quantity, 0)
-    : collection.data?.pagination.totalCards ?? 0
+    : (collection.data?.pagination.totalCards ?? 0)
 
   return (
     <div className="flex w-full justify-center">
@@ -55,8 +52,8 @@ export function CollectionView() {
         cards={cards}
         isPending={isSearching ? searchableCollection.isPending : collection.isPending}
         fitContent
-        page={isSearching ? searchPage : collection.data?.pagination.page ?? page}
-        pageCount={isSearching ? searchPageCount : collection.data?.pagination.pageCount ?? 1}
+        page={isSearching ? searchPage : (collection.data?.pagination.page ?? page)}
+        pageCount={isSearching ? searchPageCount : (collection.data?.pagination.pageCount ?? 1)}
         total={total}
         totalCards={totalCards}
         sort={sort}

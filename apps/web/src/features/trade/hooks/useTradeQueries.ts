@@ -172,7 +172,10 @@ export function useAcceptTradeOfferMutation(options?: {
   })
 }
 
-export function useTradeNotificationsQuery(locale: SupportedLocale = DEFAULT_LOCALE, enabled = true) {
+export function useTradeNotificationsQuery(
+  locale: SupportedLocale = DEFAULT_LOCALE,
+  enabled = true,
+) {
   return useQuery({
     queryKey: tradeQueryKeys.notifications(locale),
     queryFn: () => fetchTradeNotifications(locale),

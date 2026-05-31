@@ -221,8 +221,7 @@ export interface TradeOfferRepository {
     offerId: string,
     now: Date,
   ): Promise<
-    | { ok: true }
-    | { ok: false; error: TradeRepositoryError | 'trade_unavailable'; reason?: string }
+    { ok: true } | { ok: false; error: TradeRepositoryError | 'trade_unavailable'; reason?: string }
   >
 }
 
@@ -241,8 +240,7 @@ export interface TradeNotificationRepository {
   createTradeNotification(input: TradeRepositoryNotificationInput): Promise<TradeNotificationRow>
 }
 
-export type TradeRepository =
-  TradeAuctionRepository &
+export type TradeRepository = TradeAuctionRepository &
   TradeOfferRepository &
   TradeCardRepository &
   TradeNotificationRepository

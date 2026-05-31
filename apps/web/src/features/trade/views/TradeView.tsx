@@ -230,7 +230,9 @@ export function TradeView() {
           onCancelAuction={(auctionId) => cancelAuctionMutation.mutate(auctionId)}
           page={clampedAuctionPage}
           pageCount={auctionPageCount}
-          onPageChange={(nextPage) => setAuctionPage(Math.min(Math.max(1, nextPage), auctionPageCount))}
+          onPageChange={(nextPage) =>
+            setAuctionPage(Math.min(Math.max(1, nextPage), auctionPageCount))
+          }
         />
       </div>
 
@@ -443,7 +445,9 @@ export function TradeView() {
                       return
                     }
 
-                    const offerToAccept = selectedAuction.offers.find((offer) => offer.id === offerId)
+                    const offerToAccept = selectedAuction.offers.find(
+                      (offer) => offer.id === offerId,
+                    )
 
                     if (!offerToAccept) {
                       toast.show(m.trade_accept_offer_error())
@@ -537,7 +541,6 @@ export function TradeView() {
           onClose={closeAcceptTradeNotification}
         />
       ) : null}
-
     </div>
   )
 }

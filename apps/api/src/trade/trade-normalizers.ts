@@ -46,7 +46,10 @@ const normalizeStringList = (value: unknown): string[] | undefined => {
 }
 
 const normalizeCardFinishValue = (value: string): string => {
-  return value.trim().toLowerCase().replace(/[-\s]+/g, '_')
+  return value
+    .trim()
+    .toLowerCase()
+    .replace(/[-\s]+/g, '_')
 }
 
 const isCardFinish = (value: string): value is CardFinish =>

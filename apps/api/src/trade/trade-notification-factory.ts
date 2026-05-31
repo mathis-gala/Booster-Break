@@ -2,12 +2,18 @@ import type {
   TradeOfferAcceptedNotificationPayload,
   TradeOfferReceivedNotificationPayload,
 } from '@tcg-collection/shared'
-import type { TradeAuctionRow, TradeOfferRow, TradeRepositoryNotificationInput } from './trade-types'
+import type {
+  TradeAuctionRow,
+  TradeOfferRow,
+  TradeRepositoryNotificationInput,
+} from './trade-types'
 
 export const buildTradeOfferAcceptedNotificationInput = (
   offer: TradeOfferRow,
 ): TradeRepositoryNotificationInput => {
-  const proposerDisplayName = offer.proposer.displayName?.trim() ? offer.proposer.displayName : undefined
+  const proposerDisplayName = offer.proposer.displayName?.trim()
+    ? offer.proposer.displayName
+    : undefined
   const offeredCard = offer.auction?.offeredCard
 
   if (!offer.auction || !offeredCard) {
@@ -64,7 +70,9 @@ export const buildTradeOfferReceivedNotificationInput = (
   auction: TradeAuctionRow,
   offer: TradeOfferRow,
 ): TradeRepositoryNotificationInput => {
-  const proposerDisplayName = offer.proposer.displayName?.trim() ? offer.proposer.displayName : undefined
+  const proposerDisplayName = offer.proposer.displayName?.trim()
+    ? offer.proposer.displayName
+    : undefined
   const proposerName = proposerDisplayName ?? offer.proposer.pseudo
 
   const payload: TradeOfferReceivedNotificationPayload = {

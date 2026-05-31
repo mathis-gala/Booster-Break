@@ -150,7 +150,10 @@ export const matchesTradeRequirements = (
     return false
   }
 
-  if (requirements.rarities?.length && !hasNormalizedTradeValue(card.rarity, requirements.rarities)) {
+  if (
+    requirements.rarities?.length &&
+    !hasNormalizedTradeValue(card.rarity, requirements.rarities)
+  ) {
     return false
   }
 
@@ -178,7 +181,10 @@ export const isCardExcludedFromTrade = (
     return true
   }
 
-  if (filters.excludedRarities?.length && hasNormalizedTradeValue(card.rarity, filters.excludedRarities)) {
+  if (
+    filters.excludedRarities?.length &&
+    hasNormalizedTradeValue(card.rarity, filters.excludedRarities)
+  ) {
     return true
   }
 
@@ -199,7 +205,10 @@ export const matchesTradeConstraints = (
   requirements: AuctionRequirements = {},
   filters: AuctionFilters = {},
 ): boolean => {
-  return matchesTradeRequirements(card, finish, requirements) && !isCardExcludedFromTrade(card, finish, filters)
+  return (
+    matchesTradeRequirements(card, finish, requirements) &&
+    !isCardExcludedFromTrade(card, finish, filters)
+  )
 }
 
 export interface TradeOfferItem {

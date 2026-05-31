@@ -36,11 +36,7 @@ const useTradeNotificationMarketInvalidation = (
       return queryClient.getQueryCache().subscribe((event) => {
         const [domain, resource, notificationLocale] = event.query.queryKey
 
-        if (
-          domain !== 'trade' ||
-          resource !== 'notifications' ||
-          notificationLocale !== locale
-        ) {
+        if (domain !== 'trade' || resource !== 'notifications' || notificationLocale !== locale) {
           notify()
           return
         }
@@ -73,7 +69,7 @@ export function TradeNotificationManager() {
   const markViewedMutation = useTradeNotificationViewedMutation()
   useTradeNotificationMarketInvalidation(queryClient, locale, isAuthenticated)
 
-  const notifications = isAuthenticated ? notificationsQuery.data?.notifications ?? [] : []
+  const notifications = isAuthenticated ? (notificationsQuery.data?.notifications ?? []) : []
   const activeNotification = notifications[0]
 
   if (!activeNotification) {

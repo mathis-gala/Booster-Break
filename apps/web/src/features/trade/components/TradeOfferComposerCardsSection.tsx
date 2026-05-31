@@ -5,10 +5,7 @@ import { useState } from 'react'
 import { CardImageDialog } from '@/features/dashboard/components/CardImageDialog'
 import { TradeCollectionCardItem } from './TradeCollectionCardItem'
 import { TradeSortPreferenceMenu } from './TradeSortPreferenceMenu'
-import {
-  MAX_PENDING_OFFERS_PER_AUCTION_BY_USER,
-  offerCardKey,
-} from '../lib/trade-utils'
+import { MAX_PENDING_OFFERS_PER_AUCTION_BY_USER, offerCardKey } from '../lib/trade-utils'
 
 interface TradeOfferComposerCardsSectionProps {
   collectionPage: number
@@ -117,9 +114,7 @@ export function TradeOfferComposerCardsSection({
                   setSelectedPreviewCard(card)
                 }}
               >
-                <label
-                  className="mt-2 block text-xs text-muted-foreground"
-                >
+                <label className="mt-2 block text-xs text-muted-foreground">
                   {m.trade_offer_quantity()}
                 </label>
                 <div className="mt-1 flex items-center justify-center gap-2">

@@ -1,7 +1,14 @@
-import type { CreateOfferRequest, SupportedLocale, TradeOfferResponse } from '@tcg-collection/shared'
+import type {
+  CreateOfferRequest,
+  SupportedLocale,
+  TradeOfferResponse,
+} from '@tcg-collection/shared'
 import { DEFAULT_LOCALE } from '@tcg-collection/shared'
 import { normalizeTradeFilters, normalizeTradeRequirements } from './trade-normalizers'
-import { buildTradeOfferAcceptedNotificationInput, buildTradeOfferReceivedNotificationInput } from './trade-notification-factory'
+import {
+  buildTradeOfferAcceptedNotificationInput,
+  buildTradeOfferReceivedNotificationInput,
+} from './trade-notification-factory'
 import { resolveAuthenticatedTradeUser } from './trade-auth'
 import { normalizeOfferCards } from './trade-offer-utils'
 import { isCardFilteredOutByAuction, matchesAuctionRequirements } from './trade-offer-validation'
@@ -230,7 +237,8 @@ export class TradeOfferService {
       }
     }
 
-    const newStatus: TradeOfferStatus = offer.proposerId === userOrError.id ? 'cancelled' : 'rejected'
+    const newStatus: TradeOfferStatus =
+      offer.proposerId === userOrError.id ? 'cancelled' : 'rejected'
     const updated = await this.options.tradeRepository.updateOfferStatus(offerId, newStatus)
 
     if (!updated) {

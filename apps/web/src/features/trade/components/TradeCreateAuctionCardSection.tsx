@@ -155,7 +155,6 @@ export function TradeCreateAuctionCardSection({
           </div>
         </div>
       ) : null}
-
     </div>
   )
 }

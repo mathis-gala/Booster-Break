@@ -4,10 +4,7 @@ import type { AuthMeResponse } from '@tcg-collection/shared'
 import { m } from '@/paraglide/messages'
 import { formatCardFinish } from '@/features/dashboard/lib/card-format'
 import { formatRarity } from '@/features/i18n/rarity-labels'
-import {
-  formatTradeType,
-  MAX_ACTIVE_AUCTIONS_PER_USER,
-} from '../lib/trade-utils'
+import { formatTradeType, MAX_ACTIVE_AUCTIONS_PER_USER } from '../lib/trade-utils'
 import { useTradeCreateAuctionForm } from '../hooks/useTradeCreateAuctionForm'
 import { TradeCreateAuctionCardSection } from './TradeCreateAuctionCardSection'
 import { TradeCreateAuctionFiltersSection } from './TradeCreateAuctionFiltersSection'

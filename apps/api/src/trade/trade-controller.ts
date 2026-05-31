@@ -61,7 +61,11 @@ const createAuthenticatedTradeRoutes = (
     .post(
       '/auctions',
       async ({ body, headers, query, status }) => {
-        const result = await service.createAuction(headers.cookie, body, query.locale ?? DEFAULT_LOCALE)
+        const result = await service.createAuction(
+          headers.cookie,
+          body,
+          query.locale ?? DEFAULT_LOCALE,
+        )
 
         if (isTradeServiceError(result)) {
           return status(toTradeErrorStatus(result.error), result)

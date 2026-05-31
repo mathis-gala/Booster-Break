@@ -36,7 +36,12 @@ interface UseTradeOfferComposerProps {
 export interface UseTradeOfferComposerResult {
   isAuctionOwner: boolean
   canOffer: boolean
-  canOfferReason: 'not_connected' | 'auction_owner' | 'offer_limit_reached' | 'auction_inactive' | null
+  canOfferReason:
+    | 'not_connected'
+    | 'auction_owner'
+    | 'offer_limit_reached'
+    | 'auction_inactive'
+    | null
   offerLimitReached: boolean
   activeOfferCount: number
   remainingOffers: number
@@ -90,13 +95,15 @@ export function useTradeOfferComposer({
 
   const isAuctionOwner = auction.creatorId === userId
   const activeOfferCount = userId
-    ? auction.offers.filter((offer) => offer.proposerId === userId && offer.status === 'pending').length
+    ? auction.offers.filter((offer) => offer.proposerId === userId && offer.status === 'pending')
+        .length
     : 0
 
   const remainingOffers = Math.max(0, MAX_PENDING_OFFERS_PER_AUCTION_BY_USER - activeOfferCount)
   const offerLimitReached = remainingOffers <= 0
 
-  const canOffer = Boolean(userId) && !isAuctionOwner && auction.status === 'active' && !offerLimitReached
+  const canOffer =
+    Boolean(userId) && !isAuctionOwner && auction.status === 'active' && !offerLimitReached
 
   const canOfferReason = (() => {
     if (!userId) {

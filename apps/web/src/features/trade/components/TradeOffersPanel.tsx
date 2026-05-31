@@ -1,7 +1,4 @@
-import type {
-  TradeAuctionResponse,
-  TradeOfferCardResponse,
-} from '@tcg-collection/shared'
+import type { TradeAuctionResponse, TradeOfferCardResponse } from '@tcg-collection/shared'
 import { useState } from 'react'
 import { UserRoundIcon } from 'lucide-react'
 import { m } from '@/paraglide/messages'
@@ -31,11 +28,15 @@ export function TradeOffersPanel({
   const pendingOfferToCancel =
     offerIdToCancel === null
       ? null
-      : auction.offers.find((offer) => offer.id === offerIdToCancel && offer.status === 'pending') ?? null
+      : (auction.offers.find(
+          (offer) => offer.id === offerIdToCancel && offer.status === 'pending',
+        ) ?? null)
   const pendingOfferToAccept =
     offerIdToAccept === null
       ? null
-      : auction.offers.find((offer) => offer.id === offerIdToAccept && offer.status === 'pending') ?? null
+      : (auction.offers.find(
+          (offer) => offer.id === offerIdToAccept && offer.status === 'pending',
+        ) ?? null)
 
   const requestOfferCancel = (offerId: string) => {
     setOfferIdToCancel(offerId)
@@ -107,7 +108,9 @@ export function TradeOffersPanel({
             )}
             <p className="mt-1 max-w-full truncate text-sm font-black">{card.card.name}</p>
             <p className="text-sm font-black text-muted-foreground">x{card.quantity}</p>
-            <p className="text-sm text-muted-foreground">{card.card.supertype ?? m.trade_other_type()}</p>
+            <p className="text-sm text-muted-foreground">
+              {card.card.supertype ?? m.trade_other_type()}
+            </p>
           </button>
         ))}
       </div>

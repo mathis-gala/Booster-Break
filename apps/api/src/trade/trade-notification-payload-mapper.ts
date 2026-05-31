@@ -65,7 +65,8 @@ const readJsonObjectArray = (source: Prisma.JsonObject, key: string): Prisma.Jso
 const toTradeNotificationCardPayload = (
   payload: Prisma.JsonObject,
 ): TradeNotificationCardPayload => {
-  const finish = normalizeCardFinish(readString(payload, 'finish')) ?? throwInvalidNotificationPayload()
+  const finish =
+    normalizeCardFinish(readString(payload, 'finish')) ?? throwInvalidNotificationPayload()
 
   const cardPayload: TradeNotificationCardPayload = {
     cardId: readString(payload, 'cardId'),

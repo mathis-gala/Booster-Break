@@ -1,6 +1,10 @@
 import { useMemo, useState } from 'react'
 import type { FormEvent } from 'react'
-import { pokemonRarityOrder, type CollectionSort, type SupportedLocale } from '@tcg-collection/shared'
+import {
+  pokemonRarityOrder,
+  type CollectionSort,
+  type SupportedLocale,
+} from '@tcg-collection/shared'
 import type { CreateAuctionRequest, UserCollectionCard } from '@tcg-collection/shared'
 import { toast } from '@/features/toast/toast-store'
 import {
@@ -140,8 +144,8 @@ export function useTradeCreateAuctionForm({
 
   const hasSearchQuery = searchQuery.trim().length > 0
   const availableCards = hasSearchQuery
-    ? allCardsCollection.data?.cards ?? []
-    : collection.data?.cards ?? []
+    ? (allCardsCollection.data?.cards ?? [])
+    : (collection.data?.cards ?? [])
 
   const matchingCards = useMemo(() => {
     if (!hasSearchQuery) {
@@ -153,7 +157,7 @@ export function useTradeCreateAuctionForm({
 
   const collectionPageCount = hasSearchQuery
     ? Math.max(1, Math.ceil(matchingCards.length / pageSize))
-    : collection.data?.pagination.pageCount ?? 1
+    : (collection.data?.pagination.pageCount ?? 1)
   const collectionPage = Math.min(Math.max(page, 1), collectionPageCount)
   const filteredCards = useMemo(() => {
     if (!hasSearchQuery) {

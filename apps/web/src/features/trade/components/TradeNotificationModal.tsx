@@ -1,7 +1,10 @@
 import { CheckCircle2Icon, Clock3Icon, UserRoundIcon } from 'lucide-react'
 import type { ReactNode } from 'react'
 
-import type { TradeNotificationCardPayload, TradeNotificationResponse } from '@tcg-collection/shared'
+import type {
+  TradeNotificationCardPayload,
+  TradeNotificationResponse,
+} from '@tcg-collection/shared'
 import { Button } from '@/components/ui/button'
 import { FoilCardImage } from '@/features/dashboard/components/FoilCardImage'
 import { m } from '@/paraglide/messages'
@@ -176,16 +179,9 @@ const renderTradeOfferAcceptedNotification = (
       onClose={onClose}
     >
       {isAuctionCreatorNotification || hasCreatorName ? (
-        <NotificationAvatar
-          name={actorName}
-          avatarUrl={actorAvatarUrl}
-          label={actorLabel}
-        />
+        <NotificationAvatar name={actorName} avatarUrl={actorAvatarUrl} label={actorLabel} />
       ) : null}
-      <NotificationCardList
-        title={m.trade_notification_received_cards()}
-        cards={receivedCards}
-      />
+      <NotificationCardList title={m.trade_notification_received_cards()} cards={receivedCards} />
       <NotificationCardList
         title={
           givenCards.length === 1
