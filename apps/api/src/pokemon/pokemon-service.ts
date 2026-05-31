@@ -1,5 +1,6 @@
 import type {
   CollectionSort,
+  CollectionSource,
   OpenPackResponse,
   PackOpenStatusResponse,
   PokemonCardSummary,
@@ -71,7 +72,13 @@ export class PokemonService {
 
   async listUserCollection(
     cookieHeader: string | undefined,
-    options: { page: number; pageSize: number; sort: CollectionSort; locale: SupportedLocale },
+    options: {
+      page: number
+      pageSize: number
+      sort: CollectionSort
+      source: CollectionSource
+      locale: SupportedLocale
+    },
   ): Promise<UserCollectionResponse | PokemonServiceError> {
     const user = await this.options.authService.getCurrentUser(cookieHeader)
 

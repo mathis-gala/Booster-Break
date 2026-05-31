@@ -103,6 +103,7 @@ export function useTradeCreateAuctionForm({
 
   const allCardsCollection = usePokemonCollectionAllQuery({
     sort: preference,
+    source: 'owned',
     locale,
     enabled: authAuthenticated,
   })
@@ -111,6 +112,7 @@ export function useTradeCreateAuctionForm({
     page,
     pageSize,
     sort: preference,
+    source: 'owned',
     locale,
     keepPreviousData: true,
     enabled: authAuthenticated,

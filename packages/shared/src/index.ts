@@ -60,6 +60,7 @@ export interface UserCollectionCard extends PokemonCardSummary {
 }
 
 export type CollectionSort = 'recent' | 'quantity' | 'name' | 'rarity'
+export type CollectionSource = 'all' | 'owned'
 
 export interface CollectionPagination {
   page: number

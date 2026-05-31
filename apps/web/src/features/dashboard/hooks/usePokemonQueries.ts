@@ -2,6 +2,7 @@ import { useSyncExternalStore } from 'react'
 import { keepPreviousData, useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import type {
   CollectionSort,
+  CollectionSource,
   PackOpenStatusResponse,
   SupportedLocale,
 } from '@tcg-collection/shared'
@@ -21,6 +22,7 @@ interface CollectionQueryParams {
   page: number
   pageSize: number
   sort: CollectionSort
+  source?: CollectionSource
   locale: SupportedLocale
   enabled?: boolean
   keepPreviousData?: boolean
@@ -28,6 +30,7 @@ interface CollectionQueryParams {
 
 interface CollectionAllQueryParams {
   sort: CollectionSort
+  source?: CollectionSource
   locale: SupportedLocale
   enabled?: boolean
 }
@@ -63,10 +66,10 @@ export function usePokemonCollectionQuery(params: CollectionQueryParams) {
 }
 
 export function usePokemonCollectionAllQuery(params: CollectionAllQueryParams) {
-  const { sort, locale, enabled = true } = params
+  const { sort, source, locale, enabled = true } = params
 
   return useQuery({
-    queryKey: pokemonQueryKeys.collection.allCards(locale, sort),
+    queryKey: pokemonQueryKeys.collection.allCards(locale, sort, source),
     enabled,
     placeholderData: keepPreviousData,
     queryFn: async () => {
@@ -74,6 +77,7 @@ export function usePokemonCollectionAllQuery(params: CollectionAllQueryParams) {
         page: 1,
         pageSize: COLLECTION_PAGE_SIZE,
         sort,
+        source,
         locale,
       })
 
@@ -88,6 +92,7 @@ export function usePokemonCollectionAllQuery(params: CollectionAllQueryParams) {
             page: index + 2,
             pageSize: COLLECTION_PAGE_SIZE,
             sort,
+            source,
             locale,
           })
         },

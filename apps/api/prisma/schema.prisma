@@ -17,6 +17,7 @@ model User {
   updatedAt    DateTime      @updatedAt @map("updated_at")
   sessions     Session[]
   cards        UserCard[]
+  giftedCards  GiftedUserCard[]
   packOpenings PackOpening[]
   tradeAuctions TradeAuction[] @relation("TradeAuctionCreator")
   tradeOffers   TradeOffer[] @relation("TradeOfferProposer")
@@ -71,6 +72,7 @@ model PokemonCard {
   syncedAt          String            @map("synced_at")
   set               PokemonSet        @relation(fields: [setId], references: [id], onDelete: Cascade)
   userCards         UserCard[]
+  giftedUserCards   GiftedUserCard[]
   openingCards      PackOpeningCard[]
   tradeAuctions     TradeAuction[]
   tradeOfferCards   TradeOfferCard[]
@@ -171,6 +173,20 @@ model UserCard {
 
   @@id([userId, cardId, finish])
   @@map("user_cards")
+}
+
+model GiftedUserCard {
+  userId           String      @map("user_id")
+  cardId           String      @map("card_id")
+  finish           String      @default("normal")
+  quantity         Int
+  firstCollectedAt DateTime    @map("first_collected_at")
+  updatedAt        DateTime    @map("updated_at")
+  user             User        @relation(fields: [userId], references: [id], onDelete: Cascade)
+  card             PokemonCard  @relation(fields: [cardId], references: [id], onDelete: Cascade)
+
+  @@id([userId, cardId, finish])
+  @@map("gifted_user_cards")
 }
 
 model PackOpening {

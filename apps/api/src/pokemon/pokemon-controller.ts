@@ -96,6 +96,7 @@ export const createPokemonController = ({
           page: query.page ?? 1,
           pageSize: query.pageSize ?? 24,
           sort: query.sort ?? 'recent',
+          source: query.source ?? 'all',
           locale: query.locale ?? DEFAULT_LOCALE,
         })
 

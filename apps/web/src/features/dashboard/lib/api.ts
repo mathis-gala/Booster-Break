@@ -1,6 +1,7 @@
 import type { AuthMeResponse, HealthResponse } from '@tcg-collection/shared'
 import type {
   CollectionSort,
+  CollectionSource,
   OpenPackResponse,
   PackOpenStatusResponse,
   PokemonCardSummary,
@@ -125,6 +126,7 @@ export interface FetchUserCollectionOptions {
   page: number
   pageSize: number
   sort: CollectionSort
+  source?: CollectionSource
   locale: SupportedLocale
 }
 
@@ -142,6 +144,10 @@ export async function fetchUserCollection(
     sort: options.sort,
     locale: options.locale,
   })
+
+  if (options.source) {
+    searchParams.set('source', options.source)
+  }
   const response = await apiFetch(`/pokemon/collection?${searchParams.toString()}`, {
     credentials: 'include',
   })
