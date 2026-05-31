@@ -16,6 +16,8 @@ const config: ApiConfig = {
   sessionCookieSameSite: 'Lax',
   secureCookies: false,
   slackRedirectUri: 'http://127.0.0.1:3100/auth/slack/callback',
+  magicLinkAdminSecret: 'unit-magic-secret',
+  magicLinkTtlDays: 30,
 }
 
 describe('auth routes', () => {
@@ -110,5 +112,193 @@ describe('auth routes', () => {
     expect(body.authenticated).toBe(true)
     expect(body.user.id).toBe(user.id)
     expect(body.user.displayName).toBe('Player One')
+  })
+
+  test('rejects magic link generation when the admin secret is missing', async () => {
+    const app = new Elysia().use(
+      createAuthController({
+        config: {
+          ...config,
+          magicLinkAdminSecret: undefined,
+        },
+        store: new MemoryAuthStore(),
+      }),
+    )
+    const response = await app.handle(
+      new Request('http://localhost/auth/magic/generate', {
+        method: 'POST',
+        headers: {
+          'content-type': 'application/json',
+        },
+        body: JSON.stringify({
+          pseudo: 'mystery',
+        }),
+      }),
+    )
+    const body = await response.json()
+
+    expect(response.status).toBe(503)
+    expect(body.error).toBe('magic_link_admin_secret_missing')
+  })
+
+  test('rejects magic link generation with invalid admin secret', async () => {
+    const app = new Elysia().use(createAuthController({ config, store: new MemoryAuthStore() }))
+    const response = await app.handle(
+      new Request('http://localhost/auth/magic/generate', {
+        method: 'POST',
+        headers: {
+          'content-type': 'application/json',
+          'x-magic-admin-secret': 'wrong-secret',
+        },
+        body: JSON.stringify({
+          pseudo: 'mystery',
+        }),
+      }),
+    )
+    const body = await response.json()
+
+    expect(response.status).toBe(401)
+    expect(body.error).toBe('magic_link_not_authorized')
+  })
+
+  test('generates a magic login token with user profile data and a callback URL', async () => {
+    const app = new Elysia().use(createAuthController({ config, store: new MemoryAuthStore() }))
+    const response = await app.handle(
+      new Request('http://localhost/auth/magic/generate', {
+        method: 'POST',
+        headers: {
+          'content-type': 'application/json',
+          'x-magic-admin-secret': config.magicLinkAdminSecret!,
+        },
+        body: JSON.stringify({
+          pseudo: 'GuestOne',
+          displayName: 'Guest One',
+          avatarUrl: 'https://example.com/guest.png',
+          expiresInDays: 5,
+        }),
+      }),
+    )
+    const body = await response.json()
+
+    expect(response.status).toBe(200)
+    expect(body.token).toBeDefined()
+    expect(body.user.displayName).toBe('Guest One')
+    expect(body.user.avatarUrl).toBe('https://example.com/guest.png')
+    expect(body.link).toBe(`${config.apiOrigin}/auth/magic/callback?token=${encodeURIComponent(body.token)}`)
+    expect(body.expiresAt).toBeDefined()
+  })
+
+  test('logs in with a valid magic token and allows authenticated /auth/me', async () => {
+    const store = new MemoryAuthStore()
+    const app = new Elysia().use(createAuthController({ config, store }))
+    const generate = await app.handle(
+      new Request('http://localhost/auth/magic/generate', {
+        method: 'POST',
+        headers: {
+          'content-type': 'application/json',
+          'x-magic-admin-secret': config.magicLinkAdminSecret!,
+        },
+        body: JSON.stringify({
+          pseudo: 'Miku',
+          displayName: 'Miku Test',
+        }),
+      }),
+    )
+    const generated = await generate.json()
+    const callback = await app.handle(new Request(`http://localhost/auth/magic/callback?token=${generated.token}`))
+    const setCookie = callback.headers.get('set-cookie')
+
+    expect(callback.status).toBe(302)
+    expect(callback.headers.get('location')).toBe(config.webAppUrl)
+    expect(setCookie).toContain(`${config.sessionCookieName}=`)
+
+    const sessionId = setCookie?.split(';')[0].split('=')[1]
+    const me = await app.handle(
+      new Request('http://localhost/auth/me', {
+        headers: {
+          Cookie: `${config.sessionCookieName}=${sessionId}`,
+        },
+      }),
+    )
+    const meBody = await me.json()
+
+    expect(me.status).toBe(200)
+    expect(meBody.authenticated).toBe(true)
+    expect(meBody.user.pseudo).toBe('miku')
+    expect(meBody.user.displayName).toBe('Miku Test')
+  })
+
+  test('rejects reused magic token after successful login', async () => {
+    const store = new MemoryAuthStore()
+    const app = new Elysia().use(createAuthController({ config, store }))
+    const generate = await app.handle(
+      new Request('http://localhost/auth/magic/generate', {
+        method: 'POST',
+        headers: {
+          'content-type': 'application/json',
+          'x-magic-admin-secret': config.magicLinkAdminSecret!,
+        },
+        body: JSON.stringify({
+          pseudo: 'Once',
+        }),
+      }),
+    )
+    const generated = await generate.json()
+
+    await app.handle(new Request(`http://localhost/auth/magic/callback?token=${generated.token}`))
+    const reused = await app.handle(new Request(`http://localhost/auth/magic/callback?token=${generated.token}`))
+
+    expect(reused.status).toBe(302)
+    expect(reused.headers.get('location')).toBe(
+      `${config.webAppUrl}?magic-link-error=invalid`,
+    )
+  })
+
+  test('rejects an expired magic token', async () => {
+    const store = new MemoryAuthStore()
+    const app = new Elysia().use(
+      createAuthController({
+        config: {
+          ...config,
+          magicLinkTtlDays: -1,
+        },
+        store,
+      }),
+    )
+
+    const generate = await app.handle(
+      new Request('http://localhost/auth/magic/generate', {
+        method: 'POST',
+        headers: {
+          'content-type': 'application/json',
+          'x-magic-admin-secret': config.magicLinkAdminSecret!,
+        },
+        body: JSON.stringify({
+          pseudo: 'Expired',
+          displayName: 'Expired User',
+        }),
+      }),
+    )
+    const generated = await generate.json()
+
+    const callback = await app.handle(
+      new Request(`http://localhost/auth/magic/callback?token=${generated.token}`),
+    )
+
+    expect(callback.status).toBe(302)
+    expect(callback.headers.get('location')).toBe(
+      `${config.webAppUrl}?magic-link-error=invalid`,
+    )
+  })
+
+  test('redirects with error for invalid magic token', async () => {
+    const app = new Elysia().use(createAuthController({ config, store: new MemoryAuthStore() }))
+
+    const callback = await app.handle(new Request('http://localhost/auth/magic/callback?token=definitely-not-valid'))
+
+    expect(callback.status).toBe(302)
+    expect(callback.headers.get('location')).toBe(
+      `${config.webAppUrl}?magic-link-error=invalid`,
+    )
   })
 })

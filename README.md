@@ -145,12 +145,35 @@ ghcr.io/mathis-gala/booster-break/api:sha-<commit>
 
 The API uses Slack OAuth for sign-in. Sessions are stored in HTTP-only cookies through Prisma.
 
+It also supports server-admin generated magic links for custom users:
+
+- `POST /auth/magic/generate` (requires `MAGIC_LINK_ADMIN_SECRET`)
+- `GET /auth/magic/callback?token=...`
+
+Magic links are one-time, expire by policy (default: 30 days), and create the same authenticated
+session cookie format as Slack sign-in.
+
 Auth endpoints:
 
 - `GET /auth/me`
 - `GET /auth/slack/start`
 - `GET /auth/slack/callback`
 - `POST /auth/logout`
+- `POST /auth/magic/generate`
+- `GET /auth/magic/callback`
+
+Enable magic links by setting `MAGIC_LINK_ADMIN_SECRET` in the API environment.
+
+Example admin call to create a one-time link for a custom account:
+
+```bash
+curl -X POST "$API_ORIGIN/auth/magic/generate" \
+  -H "x-magic-admin-secret: $MAGIC_LINK_ADMIN_SECRET" \
+  -H "content-type: application/json" \
+  -d '{"pseudo":"guest-01","displayName":"Guest One","avatarUrl":"https://example.com/avatar.png","expiresInDays":30}'
+```
+
+The response includes a `token` and `link` to share with the user.
 
 ## Pokemon TCG Data
 

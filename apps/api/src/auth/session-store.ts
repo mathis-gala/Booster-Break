@@ -4,10 +4,16 @@ const SESSION_TTL_MS = 1000 * 60 * 60 * 24 * 14
 
 export interface AuthStore {
   upsertSlackUser(input: SlackUserInput): AuthUser | Promise<AuthUser>
+  upsertCustomUser(input: CustomUserInput): AuthUser | Promise<AuthUser>
   createSession(userId: string): AuthSession | Promise<AuthSession>
   getSession(sessionId: string): AuthSession | undefined | Promise<AuthSession | undefined>
   getUser(userId: string): AuthUser | undefined | Promise<AuthUser | undefined>
   deleteSession(sessionId: string): void | Promise<void>
+  createMagicLoginToken(input: CreateMagicLoginTokenInput): AuthMagicLoginToken | Promise<AuthMagicLoginToken>
+  findMagicLoginTokenByHash(
+    tokenHash: string,
+  ): AuthMagicLoginToken | undefined | Promise<AuthMagicLoginToken | undefined>
+  markMagicLoginTokenUsed(tokenHash: string): boolean | Promise<boolean>
 }
 
 export interface SlackUserInput {
@@ -18,10 +24,35 @@ export interface SlackUserInput {
   avatarUrl?: string
 }
 
+export interface CustomUserInput {
+  pseudo: string
+  displayName?: string
+  avatarUrl?: string
+}
+
+export interface CreateMagicLoginTokenInput {
+  tokenHash: string
+  userId: string
+  expiresAt: Date
+  createdBy?: string
+}
+
+export interface AuthMagicLoginToken {
+  id: string
+  tokenHash: string
+  userId: string
+  expiresAt: Date
+  usedAt?: Date
+  createdAt: Date
+  createdBy?: string
+}
+
 export class MemoryAuthStore implements AuthStore {
   private readonly sessions = new Map<string, AuthSession>()
   private readonly users = new Map<string, AuthUser>()
   private readonly usersBySlackId = new Map<string, string>()
+  private readonly magicLoginTokens = new Map<string, AuthMagicLoginToken>()
+  private readonly magicLoginTokenIdsByHash = new Map<string, string>()
 
   upsertSlackUser(input: SlackUserInput): AuthUser {
     const existingUserId = this.usersBySlackId.get(input.slackUserId)
@@ -35,6 +66,15 @@ export class MemoryAuthStore implements AuthStore {
     this.users.set(user.id, user)
     this.usersBySlackId.set(input.slackUserId, user.id)
     return user
+  }
+
+  upsertCustomUser(input: CustomUserInput): AuthUser {
+    return this.upsertSlackUser({
+      slackUserId: `custom:${normalizePseudo(input.pseudo)}`,
+      pseudo: input.pseudo,
+      displayName: input.displayName,
+      avatarUrl: input.avatarUrl,
+    })
   }
 
   createSession(userId: string): AuthSession {
@@ -69,6 +109,69 @@ export class MemoryAuthStore implements AuthStore {
     this.sessions.delete(sessionId)
   }
 
+  createMagicLoginToken(input: CreateMagicLoginTokenInput): AuthMagicLoginToken {
+    this.pruneExpired()
+
+    const token: AuthMagicLoginToken = {
+      id: crypto.randomUUID(),
+      tokenHash: input.tokenHash,
+      userId: input.userId,
+      expiresAt: input.expiresAt,
+      createdAt: new Date(),
+      createdBy: input.createdBy,
+    }
+
+    this.magicLoginTokens.set(token.id, token)
+    this.magicLoginTokenIdsByHash.set(token.tokenHash, token.id)
+
+    return token
+  }
+
+  findMagicLoginTokenByHash(tokenHash: string): AuthMagicLoginToken | undefined {
+    const tokenId = this.magicLoginTokenIdsByHash.get(tokenHash)
+
+    if (!tokenId) {
+      return undefined
+    }
+
+    const token = this.magicLoginTokens.get(tokenId)
+
+    if (!token) {
+      this.magicLoginTokenIdsByHash.delete(tokenHash)
+      return undefined
+    }
+
+    if (token.expiresAt.getTime() <= Date.now()) {
+      this.deleteMagicLoginToken(token)
+      return undefined
+    }
+
+    return token
+  }
+
+  markMagicLoginTokenUsed(tokenHash: string): boolean {
+    const tokenId = this.magicLoginTokenIdsByHash.get(tokenHash)
+
+    if (!tokenId) {
+      return false
+    }
+
+    const token = this.magicLoginTokens.get(tokenId)
+
+    if (!token) {
+      this.magicLoginTokenIdsByHash.delete(tokenHash)
+      return false
+    }
+
+    if (token.usedAt || token.expiresAt.getTime() <= Date.now()) {
+      this.deleteMagicLoginToken(token)
+      return false
+    }
+
+    token.usedAt = new Date()
+    return true
+  }
+
   private pruneExpired(): void {
     const now = Date.now()
 
@@ -77,6 +180,17 @@ export class MemoryAuthStore implements AuthStore {
         this.sessions.delete(sessionId)
       }
     }
+
+    for (const [tokenId, token] of this.magicLoginTokens) {
+      if (token.expiresAt.getTime() <= now || token.usedAt?.getTime()) {
+        this.deleteMagicLoginToken(token)
+      }
+    }
+  }
+
+  private deleteMagicLoginToken(token: AuthMagicLoginToken): void {
+    this.magicLoginTokens.delete(token.id)
+    this.magicLoginTokenIdsByHash.delete(token.tokenHash)
   }
 }
 

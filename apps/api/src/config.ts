@@ -7,6 +7,8 @@ export interface ApiConfig {
   sessionCookieName: string
   sessionCookieSameSite: 'Lax' | 'None'
   secureCookies: boolean
+  magicLinkAdminSecret?: string
+  magicLinkTtlDays: number
   slackClientId?: string
   slackClientSecret?: string
   slackRedirectUri: string
@@ -29,6 +31,10 @@ export const getConfig = (): ApiConfig => {
     sessionCookieName: Bun.env.SESSION_COOKIE_NAME ?? 'tcg_session',
     sessionCookieSameSite: secureCookies && webOrigin !== toOrigin(apiOrigin) ? 'None' : 'Lax',
     secureCookies,
+    magicLinkAdminSecret: Bun.env.MAGIC_LINK_ADMIN_SECRET,
+    magicLinkTtlDays: Number.isFinite(Number(Bun.env.MAGIC_LINK_TTL_DAYS))
+      ? Math.max(1, Number(Bun.env.MAGIC_LINK_TTL_DAYS))
+      : 30,
     slackClientId: Bun.env.SLACK_CLIENT_ID,
     slackClientSecret: Bun.env.SLACK_CLIENT_SECRET,
     slackRedirectUri: Bun.env.SLACK_REDIRECT_URI ?? `${apiOrigin}/auth/slack/callback`,

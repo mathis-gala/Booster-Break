@@ -21,8 +21,23 @@ model User {
   tradeAuctions TradeAuction[] @relation("TradeAuctionCreator")
   tradeOffers   TradeOffer[] @relation("TradeOfferProposer")
   tradeNotifications TradeNotification[] @relation("TradeUserNotifications")
+  magicLoginTokens MagicLoginToken[]
 
   @@map("users")
+}
+
+model MagicLoginToken {
+  id        String    @id
+  tokenHash String    @unique @map("token_hash")
+  userId    String    @map("user_id")
+  user      User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  expiresAt DateTime  @map("expires_at")
+  usedAt    DateTime? @map("used_at")
+  createdAt DateTime  @default(now()) @map("created_at")
+  createdBy String?   @map("created_by")
+
+  @@index([userId])
+  @@map("magic_login_tokens")
 }
 
 model Session {
