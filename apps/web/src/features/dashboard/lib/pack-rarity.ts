@@ -10,7 +10,7 @@ export const groupCardsByRarity = (
   const groups = new Map<string, PokemonCardSummary[]>()
 
   for (const card of cards) {
-    const rarity = card.rarity ?? 'Other'
+    const rarity = getNormalizedPreviewRarity(card.rarity)
     groups.set(rarity, [...(groups.get(rarity) ?? []), card])
   }
 
@@ -32,6 +32,10 @@ export const groupCardsByRarity = (
 
     return firstIndex - secondIndex
   })
+}
+
+const getNormalizedPreviewRarity = (rarity: string | undefined): string => {
+  return rarity && rarity !== 'None' ? rarity : 'Other'
 }
 
 export const getRarityChanceLabel = (rarity: string, cards: PokemonCardSummary[]): string => {

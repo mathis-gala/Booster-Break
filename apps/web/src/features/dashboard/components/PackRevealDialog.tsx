@@ -8,19 +8,23 @@ import { FoilCardImage } from './FoilCardImage'
 interface PackRevealDialogProps {
   openPackResult: OpenPackResponse
   revealedCardIndex: number
+  maxRevealedCardIndex: number
   onClose: () => void
   onRevealCardIndexChange: (index: number) => void
+  resultLabel?: string
 }
 
 export function PackRevealDialog({
   openPackResult,
   revealedCardIndex,
+  maxRevealedCardIndex,
   onClose,
   onRevealCardIndexChange,
+  resultLabel,
 }: PackRevealDialogProps) {
   const currentRevealCard = openPackResult.cards[revealedCardIndex]
   const currentRevealImageUrl = currentRevealCard?.imageLarge ?? currentRevealCard?.imageSmall
-  const revealedCards = openPackResult.cards.slice(0, revealedCardIndex + 1)
+  const revealedCards = openPackResult.cards.slice(0, maxRevealedCardIndex + 1)
   const isFirstRevealCard = revealedCardIndex === 0
   const isLastRevealCard = revealedCardIndex === openPackResult.cards.length - 1
 
@@ -38,7 +42,7 @@ export function PackRevealDialog({
               {m.packs_pulls_title({ set: openPackResult.set.name })}
             </h3>
             <p className="text-sm font-semibold text-muted-foreground">
-              {m.packs_added_to_collection()}
+              {resultLabel ?? m.packs_added_to_collection()}
             </p>
           </div>
           <div className="flex items-center gap-2">

@@ -1,13 +1,21 @@
 import type { SupportedLocale } from '@tcg-collection/shared'
+import { DEFAULT_LOCALE } from '@tcg-collection/shared'
 import { Elysia } from 'elysia'
-import { z } from 'zod'
 import { AuthService } from '../auth/auth-service'
+import { createAuthRequiredPlugin } from '../auth/auth-required-plugin'
 import type { AuthStore } from '../auth/session-store'
 import type { ApiConfig } from '../config'
 import { PokemonRepository } from './pokemon-repository'
+import { PokemonSandboxService } from './pokemon-sandbox-service'
 import { isPokemonServiceError, PokemonService } from './pokemon-service'
 import { ScrydexSealedClient } from './scrydex-sealed-client'
 import { TcgDexClient } from './tcgdex-client'
+import {
+  cardsQuerySchema,
+  collectionQuerySchema,
+  localeQuerySchema,
+  openPackBodySchema,
+} from './pokemon-controller-schemas'
 
 interface PokemonControllerOptions {
   authService?: AuthService
@@ -17,6 +25,7 @@ interface PokemonControllerOptions {
   pokemonClient: TcgDexClient
   pokemonRepository: PokemonRepository
   sealedClient: ScrydexSealedClient
+  sandboxService?: PokemonSandboxService
   service?: PokemonService
 }
 
@@ -28,28 +37,40 @@ export const createPokemonController = ({
   pokemonClient,
   pokemonRepository,
   sealedClient,
+  sandboxService,
   service,
 }: PokemonControllerOptions) => {
+  const resolvedAuthService =
+    authService ??
+    (service
+      ? undefined
+      : new AuthService({
+          sessionCookieName: config.sessionCookieName,
+          store: mustProvideAuthStore(authStore),
+        }))
+
   const pokemonService =
     service ??
     new PokemonService({
-      authService:
-        authService ??
-        new AuthService({
-          sessionCookieName: config.sessionCookieName,
-          store: mustProvideAuthStore(authStore),
-        }),
+      authService: resolvedAuthService!,
       localizedPokemonClients,
       pokemonClient,
       pokemonRepository,
       sealedClient,
     })
+  const pokemonSandboxService =
+    sandboxService ??
+    new PokemonSandboxService({
+      localizedPokemonClients,
+      pokemonClient,
+      sealedClient,
+    })
 
-  return new Elysia({ prefix: '/pokemon' })
+  const publicRoutes = new Elysia()
     .get(
       '/sets',
       async ({ query }) => ({
-        sets: await pokemonService.listSets(query.locale ?? 'fr'),
+        sets: await pokemonService.listSets(query.locale ?? DEFAULT_LOCALE),
       }),
       {
         query: localeQuerySchema,
@@ -58,12 +79,59 @@ export const createPokemonController = ({
     .get(
       '/cards',
       async ({ query }) => ({
-        cards: await pokemonService.listCards(query.setId, query.locale ?? 'fr'),
+        cards: await pokemonService.listCards(query.setId, query.locale ?? DEFAULT_LOCALE),
       }),
       {
         query: cardsQuerySchema,
       },
     )
+    .get(
+      '/packs/sandbox/sets',
+      async ({ query }) => ({
+        sets: await pokemonSandboxService.listSets(query.locale ?? DEFAULT_LOCALE),
+      }),
+      {
+        query: localeQuerySchema,
+      },
+    )
+    .get(
+      '/packs/sandbox/cards',
+      async ({ query }) => ({
+        cards: await pokemonSandboxService.listCards(query.setId, query.locale ?? DEFAULT_LOCALE),
+      }),
+      {
+        query: cardsQuerySchema,
+      },
+    )
+    .get('/packs/status', async ({ headers }) => pokemonService.getPackOpenStatus(headers.cookie))
+    .post(
+      '/packs/sandbox/open',
+      async ({ body, status }) => {
+        const result = await pokemonSandboxService.openPack(body)
+
+        if (!isPokemonServiceError(result)) {
+          return result
+        }
+
+        return status(toPokemonErrorStatus(result.error), result)
+      },
+      {
+        body: openPackBodySchema,
+      },
+    )
+
+  const authenticatedRoutes = new Elysia()
+
+  if (resolvedAuthService) {
+    authenticatedRoutes.use(
+      createAuthRequiredPlugin({
+        authService: resolvedAuthService,
+        unauthenticatedMessage: 'Sign in to access Pokémon collection features.',
+      }),
+    )
+  }
+
+  authenticatedRoutes
     .get(
       '/collection',
       async ({ headers, query, status }) => {
@@ -71,7 +139,8 @@ export const createPokemonController = ({
           page: query.page ?? 1,
           pageSize: query.pageSize ?? 24,
           sort: query.sort ?? 'recent',
-          locale: query.locale ?? 'fr',
+          source: query.source ?? 'all',
+          locale: query.locale ?? DEFAULT_LOCALE,
         })
 
         if (!isPokemonServiceError(result)) {
@@ -84,7 +153,6 @@ export const createPokemonController = ({
         query: collectionQuerySchema,
       },
     )
-    .get('/packs/status', async ({ headers }) => pokemonService.getPackOpenStatus(headers.cookie))
     .post(
       '/packs/open',
       async ({ headers, body, status }) => {
@@ -100,31 +168,9 @@ export const createPokemonController = ({
         body: openPackBodySchema,
       },
     )
+
+  return new Elysia({ prefix: '/pokemon' }).use(publicRoutes).use(authenticatedRoutes)
 }
-
-const localeSchema = z.enum(['fr', 'en'])
-const collectionSortSchema = z.enum(['recent', 'quantity', 'name', 'rarity'])
-
-const localeQuerySchema = z.object({
-  locale: localeSchema.optional(),
-})
-
-const cardsQuerySchema = z.object({
-  setId: z.string().optional(),
-  locale: localeSchema.optional(),
-})
-
-const collectionQuerySchema = z.object({
-  page: z.coerce.number().int().min(1).optional(),
-  pageSize: z.coerce.number().int().min(1).max(60).optional(),
-  sort: collectionSortSchema.optional(),
-  locale: localeSchema.optional(),
-})
-
-const openPackBodySchema = z.object({
-  setId: z.string().optional(),
-  locale: localeSchema.optional(),
-})
 
 const toPokemonErrorStatus = (error: string): 401 | 404 | 409 => {
   switch (error) {

@@ -1,11 +1,11 @@
 import type {
   CardFinish,
   CollectionSort,
+  CollectionSource,
   PokemonCardSummary,
   PokemonSetSummary,
   SupportedLocale,
   UserCollectionResponse,
-  UserCollectionCard,
 } from '@tcg-collection/shared'
 import { getFinishRank, getRarityRank } from '@tcg-collection/shared'
 import type { AppPrisma } from '../db/prisma'
@@ -21,6 +21,15 @@ import {
 import { SYNCED_BOOSTER_LIMIT } from './pokemon-config'
 import type { Set as TcgDexSet } from '@tcgdex/sdk'
 import type { TcgDexCard } from './tcgdex-client'
+
+type CollectionInventoryRow = {
+  cardId: string
+  finish: string
+  quantity: number
+  firstCollectedAt: Date
+  updatedAt: Date
+  card: Parameters<typeof toCardSummary>[0]
+}
 
 export class PokemonRepository {
   constructor(private readonly db: AppPrisma) {}
@@ -71,6 +80,9 @@ export class PokemonRepository {
             none: {},
           },
           userCards: {
+            none: {},
+          },
+          giftedUserCards: {
             none: {},
           },
         },
@@ -133,37 +145,28 @@ export class PokemonRepository {
 
   async listUserCollection(
     userId: string,
-    options: { page: number; pageSize: number; sort: CollectionSort; locale: SupportedLocale },
+    options: {
+      page: number
+      pageSize: number
+      sort: CollectionSort
+      source: CollectionSource
+      locale: SupportedLocale
+    },
   ): Promise<UserCollectionResponse> {
-    const where = {
+    const rows = await this.listUserCollectionRows(
       userId,
-    }
-    const [total, aggregate] = await Promise.all([
-      this.db.userCard.count({ where }),
-      this.db.userCard.aggregate({
-        where,
-        _sum: {
-          quantity: true,
-        },
-      }),
-    ])
+      options.locale,
+      options.sort,
+      options.source,
+    )
+    const total = rows.length
+    const totalCards = rows.reduce((count, row) => count + row.quantity, 0)
     const pageCount = Math.max(1, Math.ceil(total / options.pageSize))
     const page = Math.min(Math.max(options.page, 1), pageCount)
-    const rows =
-      options.sort === 'rarity'
-        ? await this.listUserCollectionByRarity(userId, page, options.pageSize, options.locale)
-        : await this.db.userCard.findMany({
-            where,
-            include: {
-              card: true,
-            },
-            orderBy: toCollectionOrderBy(options.sort, options.locale),
-            skip: (page - 1) * options.pageSize,
-            take: options.pageSize,
-          })
+    const pagedRows = rows.slice((page - 1) * options.pageSize, page * options.pageSize)
 
     return {
-      cards: rows.map((row) => ({
+      cards: pagedRows.map((row) => ({
         ...toCardSummary(row.card, row.finish as CardFinish, options.locale),
         quantity: row.quantity,
         firstCollectedAt: row.firstCollectedAt.toISOString(),
@@ -173,7 +176,7 @@ export class PokemonRepository {
         page,
         pageSize: options.pageSize,
         total,
-        totalCards: aggregate._sum.quantity ?? 0,
+        totalCards,
         pageCount,
       },
       sort: options.sort,
@@ -253,107 +256,147 @@ export class PokemonRepository {
     return opening ?? undefined
   }
 
-  private async listUserCollectionByRarity(
+  private async listUserCollectionRows(
     userId: string,
-    page: number,
-    pageSize: number,
     locale: SupportedLocale,
+    sort: CollectionSort,
+    source: CollectionSource,
   ) {
-    const rows = await this.db.userCard.findMany({
-      where: {
-        userId,
+    const rows = await this.listCollectionInventoryRows(userId, source)
+
+    return this.sortCollectionRows(this.mergeCollectionRows(rows), locale, sort)
+  }
+
+  private async listCollectionInventoryRows(
+    userId: string,
+    source: CollectionSource,
+  ): Promise<CollectionInventoryRow[]> {
+    const where = {
+      userId,
+      quantity: {
+        gt: 0,
       },
+    }
+
+    const ownedRows = await this.db.userCard.findMany({
+      where,
       include: {
         card: true,
       },
     })
 
-    return rows
-      .sort((first, second) => {
-        const rarityDelta = getRarityRank(second.card.rarity) - getRarityRank(first.card.rarity)
+    if (source === 'owned') {
+      return ownedRows
+    }
 
-        if (rarityDelta !== 0) {
-          return rarityDelta
-        }
+    const giftedRows = await this.db.giftedUserCard.findMany({
+      where,
+      include: {
+        card: true,
+      },
+    })
 
-        const nameDelta = getLocalizedCardName(first.card, locale).localeCompare(
-          getLocalizedCardName(second.card, locale),
-        )
-
-        if (nameDelta !== 0) {
-          return nameDelta
-        }
-
-        return getFinishRank(first.finish) - getFinishRank(second.finish)
-      })
-      .slice((page - 1) * pageSize, page * pageSize)
+    return [...ownedRows, ...giftedRows]
   }
-}
 
-const toCollectionOrderBy = (sort: CollectionSort, locale: SupportedLocale) => {
-  const localizedNameOrderBy = getLocalizedNameOrderBy(locale)
-
-  switch (sort) {
-    case 'quantity':
-      return [
-        {
-          quantity: 'desc' as const,
-        },
-        ...localizedNameOrderBy,
-        {
-          updatedAt: 'desc' as const,
-        },
-      ]
-    case 'name':
-      return [...localizedNameOrderBy]
-    case 'rarity':
-      return [
-        {
-          card: {
-            rarity: 'asc' as const,
-          },
-        },
-        ...localizedNameOrderBy,
-        {
-          updatedAt: 'desc' as const,
-        },
-      ]
-    case 'recent':
-      return [
-        {
-          updatedAt: 'desc' as const,
-        },
-        ...localizedNameOrderBy,
-      ]
-  }
-}
-
-const getLocalizedNameOrderBy = (locale: SupportedLocale) => {
-  if (locale === 'fr') {
-    return [
+  private mergeCollectionRows(rows: CollectionInventoryRow[]): CollectionInventoryRow[] {
+    const mergedRows = new Map<
+      string,
       {
-        card: {
-          nameFr: 'asc' as const,
-        },
-      },
-      {
-        card: {
-          name: 'asc' as const,
-        },
-      },
-    ]
+        card: CollectionInventoryRow['card']
+        cardId: string
+        finish: string
+        quantity: number
+        firstCollectedAt: Date
+        updatedAt: Date
+      }
+    >()
+
+    for (const row of rows) {
+      const key = `${row.cardId}:${row.finish}`
+      const existing = mergedRows.get(key)
+
+      if (!existing) {
+        mergedRows.set(key, {
+          card: row.card,
+          cardId: row.cardId,
+          finish: row.finish,
+          quantity: row.quantity,
+          firstCollectedAt: row.firstCollectedAt,
+          updatedAt: row.updatedAt,
+        })
+        continue
+      }
+
+      existing.quantity += row.quantity
+      existing.firstCollectedAt = new Date(
+        Math.min(existing.firstCollectedAt.getTime(), row.firstCollectedAt.getTime()),
+      )
+      existing.updatedAt = new Date(Math.max(existing.updatedAt.getTime(), row.updatedAt.getTime()))
+    }
+
+    return [...mergedRows.values()]
   }
 
-  return [
-    {
-      card: {
-        nameEn: 'asc' as const,
-      },
-    },
-    {
-      card: {
-        name: 'asc' as const,
-      },
-    },
-  ]
+  private sortCollectionRows(
+    rows: CollectionInventoryRow[],
+    locale: SupportedLocale,
+    sort: CollectionSort,
+  ): CollectionInventoryRow[] {
+    return rows.sort((first, second) => {
+      switch (sort) {
+        case 'recent': {
+          const updatedAtDelta = second.updatedAt.getTime() - first.updatedAt.getTime()
+
+          if (updatedAtDelta !== 0) {
+            return updatedAtDelta
+          }
+
+          return getLocalizedCardName(first.card, locale).localeCompare(
+            getLocalizedCardName(second.card, locale),
+          )
+        }
+        case 'quantity': {
+          const quantityDelta = second.quantity - first.quantity
+
+          if (quantityDelta !== 0) {
+            return quantityDelta
+          }
+
+          const nameDelta = getLocalizedCardName(first.card, locale).localeCompare(
+            getLocalizedCardName(second.card, locale),
+          )
+
+          if (nameDelta !== 0) {
+            return nameDelta
+          }
+
+          return second.updatedAt.getTime() - first.updatedAt.getTime()
+        }
+        case 'name':
+          return getLocalizedCardName(first.card, locale).localeCompare(
+            getLocalizedCardName(second.card, locale),
+          )
+        case 'rarity': {
+          const rarityDelta = getRarityRank(second.card.rarity) - getRarityRank(first.card.rarity)
+
+          if (rarityDelta !== 0) {
+            return rarityDelta
+          }
+
+          const nameDelta = getLocalizedCardName(first.card, locale).localeCompare(
+            getLocalizedCardName(second.card, locale),
+          )
+
+          if (nameDelta !== 0) {
+            return nameDelta
+          }
+
+          return getFinishRank(first.finish) - getFinishRank(second.finish)
+        }
+        default:
+          return 0
+      }
+    })
+  }
 }

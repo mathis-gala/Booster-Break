@@ -1,5 +1,6 @@
 import type {
   CollectionSort,
+  CollectionSource,
   OpenPackResponse,
   PackOpenStatusResponse,
   PokemonCardSummary,
@@ -7,6 +8,7 @@ import type {
   SupportedLocale,
   UserCollectionResponse,
 } from '@tcg-collection/shared'
+import { DEFAULT_LOCALE } from '@tcg-collection/shared'
 import { AuthService } from '../auth/auth-service'
 import { PokemonRepository } from './pokemon-repository'
 import {
@@ -70,7 +72,13 @@ export class PokemonService {
 
   async listUserCollection(
     cookieHeader: string | undefined,
-    options: { page: number; pageSize: number; sort: CollectionSort; locale: SupportedLocale },
+    options: {
+      page: number
+      pageSize: number
+      sort: CollectionSort
+      source: CollectionSource
+      locale: SupportedLocale
+    },
   ): Promise<UserCollectionResponse | PokemonServiceError> {
     const user = await this.options.authService.getCurrentUser(cookieHeader)
 
@@ -194,7 +202,7 @@ export class PokemonService {
       }
     }
 
-    const locale = input.locale ?? 'fr'
+    const locale = input.locale ?? DEFAULT_LOCALE
     const setId = input.setId ?? (await this.options.pokemonRepository.listSets(locale))[0]?.id
 
     if (!setId) {

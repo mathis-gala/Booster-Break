@@ -22,6 +22,7 @@ interface PackStageProps {
   isRevealOpen: boolean
   onCloseReveal: () => void
   revealedCardIndex: number
+  maxRevealedCardIndex: number
   onRevealCardIndexChange: (index: number) => void
   previewSet?: PokemonSetSummary
   previewCards: PokemonCardSummary[]
@@ -42,6 +43,7 @@ export function PackStage({
   isRevealOpen,
   onCloseReveal,
   revealedCardIndex,
+  maxRevealedCardIndex,
   onRevealCardIndexChange,
   previewSet,
   previewCards,
@@ -93,6 +95,7 @@ export function PackStage({
         <PackRevealDialog
           openPackResult={openPackResult}
           revealedCardIndex={revealedCardIndex}
+          maxRevealedCardIndex={maxRevealedCardIndex}
           onClose={onCloseReveal}
           onRevealCardIndexChange={onRevealCardIndexChange}
         />

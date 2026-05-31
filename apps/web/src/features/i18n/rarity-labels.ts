@@ -24,6 +24,9 @@ export const formatRarity = (rarity: string | undefined): string => {
     case 'Hyper rare':
     case 'Hyper Rare':
       return m.rarity_hyper_rare()
+    case 'None':
+    case 'Other':
+      return m.rarity_other()
     default:
       return rarity ?? m.rarity_other()
   }

@@ -37,8 +37,8 @@ bun run build
 The web app runs on `http://localhost:5173` and proxies `/api/*` to the Elysia API on
 `http://localhost:3100`.
 
-The public GitHub Pages build is still available, but the recommended WiFi/server
-deployment serves the web app and API from the same Raspberry Pi origin:
+The recommended WiFi/server deployment serves the web app and API from the same
+Raspberry Pi origin:
 
 ```text
 https://booster.example.com
@@ -111,8 +111,7 @@ bun run lint
 bun run typecheck
 ```
 
-On pushes to `main`, the workflow builds the web app with the GitHub Pages base path and deploys
-`apps/web/dist` to GitHub Pages. It also builds and pushes same-origin Docker images for the
+On pushes to `main`, the workflow builds and pushes same-origin Docker images for the
 Raspberry Pi/server deployment:
 
 ```text
@@ -122,10 +121,6 @@ ghcr.io/mathis-gala/booster-break/api:latest
 
 For the server deployment, leave `VITE_API_ORIGIN` empty in the web image. The frontend calls
 same-origin `/api/*`, and Caddy proxies those requests to the API container.
-
-If you still use the GitHub Pages frontend, set repository variable `VITE_API_ORIGIN` to a public
-HTTPS API origin. Do not point GitHub Pages at a private WiFi/LAN IP: modern browsers can show a
-permission prompt because a public origin is trying to access local-network devices.
 
 Leave `VITE_API_ORIGIN` empty only for local development, where the Vite dev server proxies `/api`
 to `http://127.0.0.1:3100`.
@@ -139,14 +134,6 @@ WEB_APP_URL=https://booster.example.com
 SLACK_REDIRECT_URI=https://booster.example.com/api/auth/slack/callback
 ```
 
-The GitHub Pages fallback can use:
-
-```text
-VITE_API_ORIGIN=https://api.example.com
-WEB_ORIGIN=https://mathis-gala.github.io
-WEB_APP_URL=https://mathis-gala.github.io/Booster-Break/
-```
-
 GitHub Container Registry also publishes commit-pinned images:
 
 ```text
@@ -158,12 +145,35 @@ ghcr.io/mathis-gala/booster-break/api:sha-<commit>
 
 The API uses Slack OAuth for sign-in. Sessions are stored in HTTP-only cookies through Prisma.
 
+It also supports server-admin generated magic links for custom users:
+
+- `POST /auth/magic/generate` (requires `MAGIC_LINK_ADMIN_SECRET`)
+- `GET /auth/magic/callback?token=...`
+
+Magic links are one-time, expire by policy (default: 30 days), and create the same authenticated
+session cookie format as Slack sign-in.
+
 Auth endpoints:
 
 - `GET /auth/me`
 - `GET /auth/slack/start`
 - `GET /auth/slack/callback`
 - `POST /auth/logout`
+- `POST /auth/magic/generate`
+- `GET /auth/magic/callback`
+
+Enable magic links by setting `MAGIC_LINK_ADMIN_SECRET` in the API environment.
+
+Example admin call to create a one-time link for a custom account:
+
+```bash
+curl -X POST "$API_ORIGIN/auth/magic/generate" \
+  -H "x-magic-admin-secret: $MAGIC_LINK_ADMIN_SECRET" \
+  -H "content-type: application/json" \
+  -d '{"pseudo":"guest-01","displayName":"Guest One","avatarUrl":"https://example.com/avatar.png","expiresInDays":30}'
+```
+
+The response includes a `token` and `link` to share with the user.
 
 ## Pokemon TCG Data
 
@@ -190,6 +200,16 @@ Pokemon endpoints:
 
 The pipeline builds and pushes Docker images only. It must not bake database URLs, Slack secrets,
 or Postgres passwords into the image.
+
+The API image runs `prisma migrate deploy` on startup. Production updates should back up Postgres
+before pulling a new image:
+
+```bash
+docker compose exec postgres pg_dump -U "$POSTGRES_USER" "$POSTGRES_DB" > "backup-$(date +%Y%m%d-%H%M%S).sql"
+docker compose pull
+docker compose up -d
+docker compose logs -f api
+```
 
 Downloaded users run the image with their own runtime env file:
 

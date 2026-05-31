@@ -12,12 +12,15 @@ interface AuthControllerOptions {
   store?: AuthStore
 }
 
+const magicTokenQueryError = 'magic-link-error'
+
 export const createAuthController = ({ config, service, store }: AuthControllerOptions) => {
   const authService =
     service ??
     new AuthService({
       sessionCookieName: config.sessionCookieName,
       slackClient: createSlackClient(config),
+      magicLinkTtlDays: config.magicLinkTtlDays,
       store: mustProvideStore(store),
     })
   const slackStateCookieName = `${config.sessionCookieName}_slack_state`
@@ -74,6 +77,56 @@ export const createAuthController = ({ config, service, store }: AuthControllerO
       },
       {
         query: slackCallbackQuerySchema,
+      },
+    )
+    .post(
+      '/magic/generate',
+      async ({ body, headers, status }) => {
+        if (!config.magicLinkAdminSecret) {
+          return status(503, {
+            error: 'magic_link_admin_secret_missing',
+            message: 'Set MAGIC_LINK_ADMIN_SECRET to enable magic link generation.',
+          })
+        }
+
+        if (!isMagicAdminRequestAuthorized(headers, config.magicLinkAdminSecret)) {
+          return status(401, {
+            error: 'magic_link_not_authorized',
+            message: 'Invalid magic-link admin secret.',
+          })
+        }
+
+        const result = await authService.createMagicUserAndToken(body)
+
+        if (isAuthServiceError(result)) {
+          return status(400, result)
+        }
+
+        return {
+          ...result,
+          link: createMagicLinkCallbackUrl(config, result.token),
+          expiresAt: result.expiresAt.toISOString(),
+        }
+      },
+      {
+        body: magicLinkGenerateBodySchema,
+      },
+    )
+    .get(
+      '/magic/callback',
+      async ({ query }) => {
+        const result = await authService.loginWithMagicToken(query.token)
+
+        if (isAuthServiceError(result)) {
+          return createMagicLinkRedirectResponse(config.webAppUrl, config)
+        }
+
+        return createAuthResponse(result, 302, config, {
+          location: config.webAppUrl,
+        })
+      },
+      {
+        query: magicLinkCallbackQuerySchema,
       },
     )
     .post('/logout', async ({ headers }) => {
@@ -148,6 +201,29 @@ const createOAuthRedirectResponse = (
   })
 }
 
+const createMagicLinkRedirectResponse = (location: string, config: ApiConfig): Response => {
+  const separator = location.includes('?') ? '&' : '?'
+  const redirectUrl = `${location}${separator}${magicTokenQueryError}=invalid`
+
+  return new Response(null, {
+    status: 302,
+    headers: {
+      Location: redirectUrl,
+      'Set-Cookie': serializeCookie(config.sessionCookieName, '', {
+        maxAge: 0,
+        secure: config.secureCookies,
+      }),
+    },
+  })
+}
+
+const createMagicLinkCallbackUrl = (config: ApiConfig, token: string): string => {
+  const callbackUrl = new URL(`${config.apiOrigin.replace(/\/$/, '')}/auth/magic/callback`)
+  callbackUrl.searchParams.set('token', token)
+
+  return callbackUrl.toString()
+}
+
 const createSlackClient = (config: ApiConfig): SlackOAuthClient | undefined => {
   if (!config.slackClientId || !config.slackClientSecret) {
     return undefined
@@ -165,6 +241,38 @@ const slackCallbackQuerySchema = z.object({
   state: z.string().optional(),
   error: z.string().optional(),
 })
+
+const magicLinkGenerateBodySchema = z.object({
+  pseudo: z.string().trim().min(1),
+  displayName: z.string().trim().optional(),
+  avatarUrl: z.string().trim().url().optional(),
+  expiresInDays: z.number().positive().int().optional(),
+})
+
+const magicLinkCallbackQuerySchema = z.object({
+  token: z.string().optional(),
+})
+
+const isMagicAdminRequestAuthorized = (
+  headers: Record<string, string | undefined>,
+  secret: string,
+): boolean => {
+  const bearerSecret = parseBearerSecret(headers.authorization)
+
+  return (
+    headers['x-magic-admin-secret'] === secret ||
+    headers['x-admin-secret'] === secret ||
+    bearerSecret === secret
+  )
+}
+
+const parseBearerSecret = (authorizationHeader: string | undefined): string | undefined => {
+  if (!authorizationHeader?.startsWith('Bearer ')) {
+    return undefined
+  }
+
+  return authorizationHeader.slice(7)
+}
 
 const mustProvideStore = (store: AuthStore | undefined): AuthStore => {
   if (!store) {

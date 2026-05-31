@@ -1,6 +1,7 @@
 import type { AuthMeResponse, HealthResponse } from '@tcg-collection/shared'
 import type {
   CollectionSort,
+  CollectionSource,
   OpenPackResponse,
   PackOpenStatusResponse,
   PokemonCardSummary,
@@ -8,6 +9,7 @@ import type {
   SupportedLocale,
   UserCollectionResponse,
 } from '@tcg-collection/shared'
+import { DEFAULT_LOCALE } from '@tcg-collection/shared'
 import { toast } from '@/features/toast/toast-store'
 import { m } from '@/paraglide/messages'
 
@@ -49,7 +51,7 @@ export async function logout(): Promise<void> {
 }
 
 export async function fetchPokemonSets(
-  locale: SupportedLocale = 'fr',
+  locale: SupportedLocale = DEFAULT_LOCALE,
 ): Promise<PokemonSetSummary[]> {
   const response = await apiFetch(`/pokemon/sets?locale=${encodeURIComponent(locale)}`)
 
@@ -62,9 +64,44 @@ export async function fetchPokemonSets(
   return payload.sets
 }
 
+export async function fetchSandboxPokemonSets(
+  locale: SupportedLocale = DEFAULT_LOCALE,
+): Promise<PokemonSetSummary[]> {
+  const response = await apiFetch(
+    `/pokemon/packs/sandbox/sets?locale=${encodeURIComponent(locale)}`,
+  )
+
+  if (!response.ok) {
+    throw new Error(m.api_unable_load_sandbox_sets())
+  }
+
+  const payload = (await response.json()) as { sets: PokemonSetSummary[] }
+
+  return payload.sets
+}
+
+export async function fetchSandboxPokemonCards(
+  setId: string,
+  locale: SupportedLocale = DEFAULT_LOCALE,
+): Promise<PokemonCardSummary[]> {
+  const searchParams = new URLSearchParams({
+    setId,
+    locale,
+  })
+  const response = await apiFetch(`/pokemon/packs/sandbox/cards?${searchParams.toString()}`)
+
+  if (!response.ok) {
+    throw new Error(m.api_unable_load_cards())
+  }
+
+  const payload = (await response.json()) as { cards: PokemonCardSummary[] }
+
+  return payload.cards
+}
+
 export async function fetchPokemonCards(
   setId: string,
-  locale: SupportedLocale = 'fr',
+  locale: SupportedLocale = DEFAULT_LOCALE,
 ): Promise<PokemonCardSummary[]> {
   const searchParams = new URLSearchParams({
     setId,
@@ -120,10 +157,37 @@ export async function openPokemonPack(
   return response.json()
 }
 
+export async function openPokemonPackSandbox(
+  setId?: string,
+  locale: SupportedLocale = DEFAULT_LOCALE,
+): Promise<OpenPackResponse> {
+  const response = await apiFetch('/pokemon/packs/sandbox/open', {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify({
+      setId,
+      locale,
+    }),
+  })
+
+  if (!response.ok) {
+    const payload = (await response.json().catch(() => undefined)) as
+      | { message?: string; error?: string }
+      | undefined
+
+    throw new Error(toApiErrorMessage(payload, m.api_unable_open_sandbox_pack()))
+  }
+
+  return response.json()
+}
+
 export interface FetchUserCollectionOptions {
   page: number
   pageSize: number
   sort: CollectionSort
+  source?: CollectionSource
   locale: SupportedLocale
 }
 
@@ -132,7 +196,7 @@ export async function fetchUserCollection(
     page: 1,
     pageSize: 24,
     sort: 'recent',
-    locale: 'fr',
+    locale: DEFAULT_LOCALE,
   },
 ): Promise<UserCollectionResponse> {
   const searchParams = new URLSearchParams({
@@ -141,6 +205,10 @@ export async function fetchUserCollection(
     sort: options.sort,
     locale: options.locale,
   })
+
+  if (options.source) {
+    searchParams.set('source', options.source)
+  }
   const response = await apiFetch(`/pokemon/collection?${searchParams.toString()}`, {
     credentials: 'include',
   })
@@ -167,9 +235,7 @@ export async function fetchUserCollection(
 }
 
 const configuredApiOrigin = (import.meta.env.VITE_API_ORIGIN ?? '').replace(/\/$/, '')
-const localApiOrigin = (
-  import.meta.env.VITE_LOCAL_API_ORIGIN ?? (import.meta.env.DEV ? 'http://127.0.0.1:3100' : '')
-).replace(/\/$/, '')
+const localApiOrigin = (import.meta.env.VITE_LOCAL_API_ORIGIN ?? '').replace(/\/$/, '')
 let activeApiOrigin = configuredApiOrigin
 let hasShownLocalFallbackToast = false
 
@@ -177,7 +243,7 @@ export const getApiUrl = (path: `/${string}`): string => {
   return activeApiOrigin ? `${activeApiOrigin}${path}` : `/api${path}`
 }
 
-const apiFetch = async (path: `/${string}`, init?: RequestInit): Promise<Response> => {
+export const apiFetch = async (path: `/${string}`, init?: RequestInit): Promise<Response> => {
   try {
     return await fetch(getApiUrl(path), init)
   } catch (error) {
@@ -189,7 +255,7 @@ const apiFetch = async (path: `/${string}`, init?: RequestInit): Promise<Respons
     activeApiOrigin = localApiOrigin
 
     if (!hasShownLocalFallbackToast) {
-      toast.show(`Configured API is unreachable. Using local API at ${localApiOrigin}.`, 'success')
+      toast.show(m.api_using_local_fallback({ origin: localApiOrigin }), 'success')
       hasShownLocalFallbackToast = true
     }
 

@@ -40,14 +40,6 @@ http://127.0.0.1:5173
 For a local WiFi/server deployment, use the Docker/Caddy stack below instead of the Vite dev
 server.
 
-The GitHub Pages build is useful as a public static preview, but it should not call a private WiFi
-API. That browser flow can trigger a permission prompt because a public origin is accessing local
-network devices.
-
-```text
-https://mathis-gala.github.io/Booster-Break/
-```
-
 ## Server Deployment
 
 The fastest production setup is the bundled Caddy deployment. Caddy serves the frontend at `/`,
@@ -87,6 +79,8 @@ SLACK_REDIRECT_URI=https://booster.example.com/api/auth/slack/callback
 
 SLACK_CLIENT_ID=<slack-client-id>
 SLACK_CLIENT_SECRET=<slack-client-secret>
+MAGIC_LINK_ADMIN_SECRET=<shared-admin-secret>
+MAGIC_LINK_TTL_DAYS=30
 
 SECURE_COOKIES=true
 SESSION_COOKIE_NAME=booster_break_session
@@ -112,6 +106,9 @@ docker compose pull
 docker compose up -d
 ```
 
+The API container runs `prisma migrate deploy` before starting the server. Migrations are applied
+to the existing Postgres volume and do not reset the database.
+
 Caddy will serve `API_DOMAIN` over HTTPS with those mounted certificate files. Make sure DNS points
 `API_DOMAIN` to the server and ports `80` and `443` are open on that machine/network path.
 
@@ -122,34 +119,27 @@ To update later:
 
 ```bash
 cd /opt/booster-break
+docker compose exec postgres pg_dump -U "$POSTGRES_USER" "$POSTGRES_DB" > "backup-$(date +%Y%m%d-%H%M%S).sql"
 docker compose pull
 docker compose up -d
+docker compose logs -f api
 ```
 
-## GitHub Pages Frontend
+The API log should show Prisma migrations finishing before `API listening ...`.
 
-The GitHub Pages frontend is optional. For a Raspberry Pi on WiFi, prefer the same-origin server
-deployment above.
+Postgres is not exposed by the default server compose file. To inspect production with Beekeeper
+Studio, start the temporary loopback-only override and use an SSH tunnel instead of exposing the
+database publicly:
 
-If you use GitHub Pages anyway, set repository variable `VITE_API_ORIGIN` to a public HTTPS API
-origin without a trailing slash:
-
-```text
-https://api.example.com
+```bash
+docker compose -f docker-compose.server.yml -f docker-compose.db-access.yml up -d postgres
 ```
 
-This is a repository variable, not a secret. The frontend bundle is public, so database credentials,
-Slack secrets, and private API keys must never be stored in `VITE_*` values.
-
-In production, leave `VITE_LOCAL_API_ORIGIN` empty. It is only a development fallback. Setting it in
-the hosted frontend can trigger browser prompts asking for access to local-network devices.
-
-If you use the hosted GitHub Pages frontend with a locally running API, your API env still needs:
-
-```env
-WEB_ORIGIN=https://mathis-gala.github.io
-WEB_APP_URL=https://mathis-gala.github.io/Booster-Break/
+```bash
+ssh -L 5432:127.0.0.1:5432 user@booster.example.com
 ```
+
+Then connect Beekeeper to `127.0.0.1:5432` with the credentials from `booster-break.env`.
 
 ## Slack OAuth
 
@@ -170,6 +160,5 @@ https://booster.example.com
 https://booster.example.com/api
 ```
 
-If the frontend stays on `https://mathis-gala.github.io/Booster-Break/` and the API is on your own
-domain, authentication cookies are cross-site and browser cookie rules can be stricter. If that API
-resolves to a private WiFi address, browsers can also ask for local-network access.
+Keep the frontend and API on the same domain when possible. Splitting them across different domains
+requires stricter CORS and cookie settings.

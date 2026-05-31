@@ -12,11 +12,15 @@ import { PokemonRepository } from './pokemon/pokemon-repository'
 import { PokemonService } from './pokemon/pokemon-service'
 import { ScrydexSealedClient } from './pokemon/scrydex-sealed-client'
 import { TcgDexClient } from './pokemon/tcgdex-client'
+import { createTradeController } from './trade/trade-controller'
+import { PrismaTradeRepository } from './trade/trade-repository'
+import { TradeService } from './trade/trade-service'
 
 const config = getConfig()
 const authStore = new PrismaAuthStore(prisma)
 const authService = new AuthService({
   sessionCookieName: config.sessionCookieName,
+  magicLinkTtlDays: config.magicLinkTtlDays,
   slackClient:
     config.slackClientId && config.slackClientSecret
       ? new SlackOAuthClient({
@@ -45,6 +49,12 @@ const pokemonService = new PokemonService({
   sealedClient,
 })
 
+const tradeRepository = new PrismaTradeRepository(prisma)
+const tradeService = new TradeService({
+  authService,
+  tradeRepository,
+})
+
 export const app = new Elysia()
   .use(
     cors({
@@ -61,6 +71,12 @@ export const app = new Elysia()
       pokemonRepository,
       sealedClient,
       service: pokemonService,
+    }),
+  )
+  .use(
+    createTradeController({
+      service: tradeService,
+      authService,
     }),
   )
   .get('/health', (): HealthResponse => {

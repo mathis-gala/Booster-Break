@@ -24,14 +24,16 @@ ENV NODE_ENV=production
 ENV PORT=3100
 ENV HOST=0.0.0.0
 ENV API_ORIGIN=http://127.0.0.1:3100
-ENV WEB_ORIGIN=https://mathis-gala.github.io/Booster-Break/
+ENV WEB_ORIGIN=http://127.0.0.1:5173
 
 COPY --from=build /app/node_modules node_modules
 COPY --from=build /app/apps/api/dist apps/api/dist
+COPY --from=build /app/apps/api/src apps/api/src
 COPY --from=build /app/apps/api/prisma apps/api/prisma
 COPY --from=build /app/apps/api/prisma.config.ts apps/api/prisma.config.ts
 COPY --from=build /app/apps/api/package.json apps/api/package.json
+COPY --from=build /app/packages/shared packages/shared
 
 EXPOSE 3100
 
-CMD ["sh", "-c", "export NODE_PATH=/app/node_modules/.bun/node_modules && cd apps/api && bun /app/node_modules/.bun/node_modules/prisma/build/index.js db push --schema prisma/schema.prisma && bun dist/index.js"]
+CMD ["sh", "-c", "export NODE_PATH=/app/node_modules/.bun/node_modules && cd apps/api && bun /app/node_modules/.bun/node_modules/prisma/build/index.js migrate deploy --schema prisma/schema.prisma && bun dist/index.js"]

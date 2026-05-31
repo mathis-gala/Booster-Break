@@ -4,6 +4,7 @@ import {
   BookOpenIcon,
   GalleryHorizontalEndIcon,
   MenuIcon,
+  SparklesIcon,
   PackageOpenIcon,
   TrophyIcon,
   XIcon,
@@ -141,9 +142,10 @@ const appIconUrl = `${import.meta.env.BASE_URL}cards.png`
 
 const navItems: NavItem[] = [
   { id: 'packs', icon: PackageOpenIcon },
+  { id: 'sandbox', icon: SparklesIcon },
   { id: 'collection', icon: BookOpenIcon },
   { id: 'boards', icon: GalleryHorizontalEndIcon, disabled: true },
-  { id: 'trade', icon: ArrowRightLeftIcon, disabled: true },
+  { id: 'trade', icon: ArrowRightLeftIcon },
   { id: 'leaders', icon: TrophyIcon, disabled: true },
 ]
 
@@ -151,6 +153,8 @@ const getNavLabel = (tab: DashboardTab): string => {
   switch (tab) {
     case 'packs':
       return m.nav_packs()
+    case 'sandbox':
+      return m.nav_sandbox()
     case 'collection':
       return m.nav_collection()
     case 'boards':

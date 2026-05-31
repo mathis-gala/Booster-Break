@@ -6,8 +6,12 @@
     "dev": "prisma generate --schema prisma/schema.prisma && bun --watch src/index.ts",
     "build": "prisma generate --schema prisma/schema.prisma && bun build src/index.ts --outdir dist --target bun",
     "lint": "prisma generate --schema prisma/schema.prisma && tsc --noEmit",
+    "find-cards": "bun src/scripts/find-cards.ts",
+    "gift-card": "bun src/scripts/gift-card.ts",
+    "sync-all-cards": "bun src/scripts/sync-all-cards.ts",
     "prisma:generate": "prisma generate --schema prisma/schema.prisma",
     "prisma:push": "prisma db push --schema prisma/schema.prisma",
+    "prisma:migrate:deploy": "prisma migrate deploy --schema prisma/schema.prisma",
     "test": "bun test",
     "typecheck": "prisma generate --schema prisma/schema.prisma && tsc --noEmit"
   },
