@@ -332,9 +332,7 @@ export class PokemonRepository {
       existing.firstCollectedAt = new Date(
         Math.min(existing.firstCollectedAt.getTime(), row.firstCollectedAt.getTime()),
       )
-      existing.updatedAt = new Date(
-        Math.max(existing.updatedAt.getTime(), row.updatedAt.getTime()),
-      )
+      existing.updatedAt = new Date(Math.max(existing.updatedAt.getTime(), row.updatedAt.getTime()))
     }
 
     return [...mergedRows.values()]
