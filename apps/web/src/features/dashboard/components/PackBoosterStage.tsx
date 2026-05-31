@@ -3,7 +3,12 @@ import type { PackOpenStatusResponse, PokemonSetSummary } from '@tcg-collection/
 
 import { Button } from '@/components/ui/button'
 import { m } from '@/paraglide/messages'
-import { formatRemaining } from '../time'
+import {
+  getOpenButtonLabel,
+  getPackStatusText,
+  resolvePackBoosterStageLabels,
+  type PackBoosterStageLabelOverrides,
+} from './pack-booster-stage-labels'
 
 interface PackBoosterStageProps {
   activeSet?: PokemonSetSummary & { boosterImageUrl: string }
@@ -12,6 +17,7 @@ interface PackBoosterStageProps {
   packOpenStatus?: PackOpenStatusResponse
   packOpenStatusIsPending: boolean
   onOpenPack: (setId?: string) => void
+  labels?: PackBoosterStageLabelOverrides
 }
 
 export function PackBoosterStage({
@@ -21,7 +27,10 @@ export function PackBoosterStage({
   packOpenStatus,
   packOpenStatusIsPending,
   onOpenPack,
+  labels,
 }: PackBoosterStageProps) {
+  const resolvedLabels = resolvePackBoosterStageLabels(labels)
+
   const isCooldownActive =
     packOpenStatus?.authenticated === true &&
     !packOpenStatus.canOpen &&
@@ -38,6 +47,7 @@ export function PackBoosterStage({
     isOpening,
     packOpenStatus,
     packOpenStatusIsPending,
+    labels: resolvedLabels,
   })
 
   return (
@@ -61,13 +71,16 @@ export function PackBoosterStage({
             isUnauthenticated,
             packOpenStatus,
             packOpenStatusIsPending,
+            labels: resolvedLabels,
           })}
         </div>
         <Button
           className="h-12 min-w-44"
           disabled={isDisabled}
           onClick={() => onOpenPack(activeSet?.id)}
-          aria-label={m.packs_open_aria({ name: activeSet?.name ?? m.packs_pokemon_fallback() })}
+          aria-label={resolvedLabels.openAriaLabel({
+            name: activeSet?.name ?? m.packs_pokemon_fallback(),
+          })}
         >
           <PackageOpenIcon data-icon="inline-start" aria-hidden="true" />
           {buttonLabel}
@@ -75,62 +88,4 @@ export function PackBoosterStage({
       </div>
     </div>
   )
-}
-
-const getOpenButtonLabel = ({
-  isCooldownActive,
-  isOpening,
-  packOpenStatus,
-  packOpenStatusIsPending,
-}: {
-  isCooldownActive: boolean
-  isOpening: boolean
-  packOpenStatus?: PackOpenStatusResponse
-  packOpenStatusIsPending: boolean
-}) => {
-  if (isOpening) {
-    return m.packs_opening()
-  }
-
-  if (packOpenStatusIsPending) {
-    return m.packs_checking_timer()
-  }
-
-  if (isCooldownActive && packOpenStatus?.authenticated) {
-    return m.packs_wait_seconds({
-      time: formatRemaining(packOpenStatus.cooldownSeconds * 1000),
-    })
-  }
-
-  return m.packs_open()
-}
-
-const getPackStatusText = ({
-  activeSet,
-  isCooldownActive,
-  isUnauthenticated,
-  packOpenStatus,
-  packOpenStatusIsPending,
-}: {
-  activeSet?: PokemonSetSummary
-  isCooldownActive: boolean
-  isUnauthenticated: boolean
-  packOpenStatus?: PackOpenStatusResponse
-  packOpenStatusIsPending: boolean
-}) => {
-  if (packOpenStatusIsPending) {
-    return m.packs_checking_timer()
-  }
-
-  if (isUnauthenticated) {
-    return m.packs_sign_in_timer()
-  }
-
-  if (isCooldownActive && packOpenStatus?.authenticated) {
-    return m.packs_next_in_seconds({
-      time: formatRemaining(packOpenStatus.cooldownSeconds * 1000),
-    })
-  }
-
-  return m.packs_selected_ready({ name: activeSet?.name ?? m.packs_pokemon_fallback() })
 }

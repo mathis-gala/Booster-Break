@@ -1,4 +1,4 @@
-import { CheckIcon, EyeIcon, PackageOpenIcon } from 'lucide-react'
+import { CheckIcon, EyeIcon, LoaderCircleIcon, PackageOpenIcon } from 'lucide-react'
 import type { PokemonSetSummary } from '@tcg-collection/shared'
 
 import { buttonVariants } from '@/components/ui/button'
@@ -11,6 +11,11 @@ interface BoosterPickerPanelProps {
   setsIsPending: boolean
   onPreviewSet: (setId: string) => void
   onSelectSet: (setId: string) => void
+  title?: string
+  description?: string
+  loadingLabel?: string
+  emptyLabel?: string
+  showCollectionCount?: boolean
 }
 
 export function BoosterPickerPanel({
@@ -20,30 +25,41 @@ export function BoosterPickerPanel({
   setsIsPending,
   onPreviewSet,
   onSelectSet,
+  title,
+  description,
+  loadingLabel,
+  emptyLabel,
+  showCollectionCount = true,
 }: BoosterPickerPanelProps) {
   return (
-    <div className="flex flex-col justify-between gap-5 rounded-lg bg-background p-4">
+    <div className="flex flex-col justify-between gap-5 rounded-lg bg-background p-5">
       <div className="flex items-start justify-between gap-4">
         <div>
           <p className="text-sm font-black uppercase tracking-normal text-muted-foreground">
-            {m.packs_title()}
+            {title ?? m.packs_title()}
           </p>
           <p className="mt-2 max-w-sm text-sm leading-6 text-muted-foreground">
-            {m.packs_description()}
+            {description ?? m.packs_description()}
           </p>
-          <p className="mt-3 text-3xl font-black tabular-nums">{collectionCount}</p>
-          <p className="text-sm font-semibold text-muted-foreground">
-            {m.packs_cards_in_collection()}
-          </p>
+          {showCollectionCount ? (
+            <>
+              <p className="mt-3 text-3xl font-black tabular-nums">{collectionCount}</p>
+              <p className="text-sm font-semibold text-muted-foreground">
+                {m.packs_cards_in_collection()}
+              </p>
+            </>
+          ) : null}
         </div>
         <PackageOpenIcon className="shrink-0 text-muted-foreground" aria-hidden="true" />
       </div>
 
-      <div className="flex flex-col gap-4">
+      <div className="max-h-[36rem] overflow-y-auto pr-3">
         <BoosterChoiceGrid
           activeSetId={activeSetId}
           sets={sets}
           setsIsPending={setsIsPending}
+          loadingLabel={loadingLabel}
+          emptyLabel={emptyLabel}
           onPreviewSet={onPreviewSet}
           onSelectSet={onSelectSet}
         />
@@ -56,6 +72,8 @@ interface BoosterChoiceGridProps {
   activeSetId?: string
   sets: Array<PokemonSetSummary & { boosterImageUrl: string }>
   setsIsPending: boolean
+  loadingLabel?: string
+  emptyLabel?: string
   onPreviewSet: (setId: string) => void
   onSelectSet: (setId: string) => void
 }
@@ -64,6 +82,8 @@ function BoosterChoiceGrid({
   activeSetId,
   sets,
   setsIsPending,
+  loadingLabel,
+  emptyLabel,
   onPreviewSet,
   onSelectSet,
 }: BoosterChoiceGridProps) {
@@ -73,7 +93,7 @@ function BoosterChoiceGrid({
         {m.packs_choose_booster()}
       </legend>
       {sets.length > 0 ? (
-        <div className="grid grid-cols-2 gap-2">
+        <div className="grid grid-cols-2 gap-2 p-1">
           {sets.map((set) => (
             <BoosterChoiceCard
               key={set.id}
@@ -85,18 +105,13 @@ function BoosterChoiceGrid({
           ))}
         </div>
       ) : setsIsPending ? (
-        <div className="grid grid-cols-2 gap-2">
-          {Array.from({ length: 6 }, (_, index) => (
-            <div key={index} className="min-h-32 rounded-lg border bg-card p-3">
-              <div className="h-16 rounded-md bg-muted" />
-              <div className="mt-3 h-4 w-3/4 rounded-full bg-muted" />
-              <div className="mt-2 h-4 w-1/2 rounded-full bg-muted" />
-            </div>
-          ))}
+        <div className="flex min-h-32 items-center justify-center rounded-lg border bg-card p-4 text-sm font-black text-muted-foreground">
+          <LoaderCircleIcon className="mr-2 size-5 animate-spin" aria-hidden="true" />
+          {loadingLabel ?? m.packs_loading()}
         </div>
       ) : (
         <p className="rounded-lg border bg-card p-3 text-sm font-semibold text-muted-foreground">
-          {m.packs_empty()}
+          {emptyLabel ?? m.packs_empty()}
         </p>
       )}
     </fieldset>
@@ -112,6 +127,7 @@ interface BoosterChoiceCardProps {
 
 function BoosterChoiceCard({ isActive, set, onPreviewSet, onSelectSet }: BoosterChoiceCardProps) {
   const selectSet = () => onSelectSet(set.id)
+  const previewImageUrl = set.logoUrl ?? set.symbolUrl ?? set.boosterImageUrl
 
   return (
     <div
@@ -130,8 +146,8 @@ function BoosterChoiceCard({ isActive, set, onPreviewSet, onSelectSet }: Booster
     >
       <span className="sr-only">{m.packs_select_aria({ name: set.name })}</span>
       <div className="pointer-events-none relative z-10 flex h-16 items-center justify-center overflow-hidden rounded-md bg-background">
-        {set.logoUrl ? (
-          <img src={set.logoUrl} alt="" className="max-h-11 max-w-[86%] object-contain" />
+        {previewImageUrl ? (
+          <img src={previewImageUrl} alt="" className="max-h-11 max-w-[86%] object-contain" />
         ) : (
           <span className="text-xs font-black text-muted-foreground">
             {m.packs_pokemon_fallback()}
@@ -147,7 +163,7 @@ function BoosterChoiceCard({ isActive, set, onPreviewSet, onSelectSet }: Booster
             className={buttonVariants({
               variant: 'outline',
               size: 'icon-sm',
-              className: 'peer rounded-full bg-background/95 shadow-sm',
+              className: 'peer relative z-20 rounded-full bg-background/95 shadow-sm',
             })}
             type="button"
             aria-label={m.packs_view_cards_aria({ name: set.name })}

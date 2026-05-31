@@ -1,4 +1,4 @@
-import { useSyncExternalStore } from 'react'
+import { useMemo, useSyncExternalStore } from 'react'
 import { keepPreviousData, useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import type {
   CollectionSort,
@@ -8,10 +8,13 @@ import type {
 
 import {
   fetchPackOpenStatus,
+  fetchSandboxPokemonCards,
+  fetchSandboxPokemonSets,
   fetchPokemonCards,
   fetchPokemonSets,
   fetchUserCollection,
   openPokemonPack,
+  openPokemonPackSandbox,
 } from '../lib/api'
 import { preloadPackImages } from '../lib/preload-pack-images'
 import { packOpenClock } from '../lib/pack-open-clock'
@@ -44,6 +47,13 @@ export function usePokemonSetsQuery(locale: SupportedLocale) {
   return useQuery({
     queryKey: pokemonQueryKeys.sets(locale),
     queryFn: () => fetchPokemonSets(locale),
+  })
+}
+
+export function useSandboxPokemonSetsQuery(locale: SupportedLocale) {
+  return useQuery({
+    queryKey: pokemonQueryKeys.sandboxSets(locale),
+    queryFn: () => fetchSandboxPokemonSets(locale),
   })
 }
 
@@ -118,6 +128,17 @@ export function usePokemonPreviewCardsQuery(setId: string | undefined, locale: S
   })
 }
 
+export function useSandboxPokemonPreviewCardsQuery(
+  setId: string | undefined,
+  locale: SupportedLocale,
+) {
+  return useQuery({
+    queryKey: pokemonQueryKeys.sandboxCards(setId, locale),
+    queryFn: () => fetchSandboxPokemonCards(setId ?? '', locale),
+    enabled: Boolean(setId),
+  })
+}
+
 export function usePackOpenStatusQuery() {
   const query = useQuery({
     queryKey: pokemonQueryKeys.packStatus(),
@@ -152,6 +173,48 @@ export function useOpenPokemonPackMutation({
       onPreparingChange(false)
     },
   })
+}
+
+export function useOpenPokemonPackSandboxMutation({
+  locale,
+  onPreparingChange,
+  onPrepared,
+}: OpenPackMutationOptions) {
+  return useMutation({
+    mutationFn: (setId?: string) => openPokemonPackSandbox(setId, locale),
+    onSuccess: async (pack) => {
+      onPreparingChange(true)
+      await preloadPackImages(pack)
+      onPrepared()
+      onPreparingChange(false)
+    },
+    onError: () => {
+      onPreparingChange(false)
+    },
+  })
+}
+
+export function useSandboxPackOpenStatus(nextOpenAt: string | undefined) {
+  const initialStatus = useMemo(
+    () =>
+      nextOpenAt
+        ? ({
+            authenticated: true,
+            canOpen: false,
+            cooldownSeconds: SANDBOX_PACK_OPEN_COOLDOWN_SECONDS,
+            cooldownDurationSeconds: SANDBOX_PACK_OPEN_COOLDOWN_SECONDS,
+            nextOpenAt,
+          } satisfies PackOpenStatusResponse)
+        : ({
+            authenticated: true,
+            canOpen: true,
+            cooldownSeconds: 0,
+            cooldownDurationSeconds: SANDBOX_PACK_OPEN_COOLDOWN_SECONDS,
+          } satisfies PackOpenStatusResponse),
+    [nextOpenAt],
+  )
+
+  return usePackOpenStatusClock(initialStatus)
 }
 
 const usePackOpenStatusClock = (
@@ -196,3 +259,6 @@ const noOpSubscribe = () => () => {}
 const getRemainingCooldownSeconds = (nextOpenAt: string, now = Date.now()): number => {
   return Math.max(0, Math.ceil((new Date(nextOpenAt).getTime() - now) / 1000))
 }
+
+// Keep sandbox cooldown state local-only: no persistence across browser tabs, sessions, or devices.
+const SANDBOX_PACK_OPEN_COOLDOWN_SECONDS = 5

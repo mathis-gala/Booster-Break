@@ -63,6 +63,41 @@ export async function fetchPokemonSets(
   return payload.sets
 }
 
+export async function fetchSandboxPokemonSets(
+  locale: SupportedLocale = DEFAULT_LOCALE,
+): Promise<PokemonSetSummary[]> {
+  const response = await apiFetch(
+    `/pokemon/packs/sandbox/sets?locale=${encodeURIComponent(locale)}`,
+  )
+
+  if (!response.ok) {
+    throw new Error(m.api_unable_load_sandbox_sets())
+  }
+
+  const payload = (await response.json()) as { sets: PokemonSetSummary[] }
+
+  return payload.sets
+}
+
+export async function fetchSandboxPokemonCards(
+  setId: string,
+  locale: SupportedLocale = DEFAULT_LOCALE,
+): Promise<PokemonCardSummary[]> {
+  const searchParams = new URLSearchParams({
+    setId,
+    locale,
+  })
+  const response = await apiFetch(`/pokemon/packs/sandbox/cards?${searchParams.toString()}`)
+
+  if (!response.ok) {
+    throw new Error(m.api_unable_load_cards())
+  }
+
+  const payload = (await response.json()) as { cards: PokemonCardSummary[] }
+
+  return payload.cards
+}
+
 export async function fetchPokemonCards(
   setId: string,
   locale: SupportedLocale = DEFAULT_LOCALE,
@@ -116,6 +151,32 @@ export async function openPokemonPack(
       | undefined
 
     throw new Error(toApiErrorMessage(payload, m.api_unable_open_pack()))
+  }
+
+  return response.json()
+}
+
+export async function openPokemonPackSandbox(
+  setId?: string,
+  locale: SupportedLocale = DEFAULT_LOCALE,
+): Promise<OpenPackResponse> {
+  const response = await apiFetch('/pokemon/packs/sandbox/open', {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify({
+      setId,
+      locale,
+    }),
+  })
+
+  if (!response.ok) {
+    const payload = (await response.json().catch(() => undefined)) as
+      | { message?: string; error?: string }
+      | undefined
+
+    throw new Error(toApiErrorMessage(payload, m.api_unable_open_sandbox_pack()))
   }
 
   return response.json()

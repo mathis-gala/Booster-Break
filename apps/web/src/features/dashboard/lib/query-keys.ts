@@ -15,6 +15,9 @@ export const authQueryKeys = {
 export const pokemonQueryKeys = {
   all: ['pokemon'] as const,
   sets: (locale: SupportedLocale) => ['pokemon', 'sets', locale] as const,
+  sandboxSets: (locale: SupportedLocale) => ['pokemon', 'sandbox', 'sets', locale] as const,
+  sandboxCards: (setId: string | undefined, locale: SupportedLocale) =>
+    ['pokemon', 'sandbox', 'cards', setId, locale] as const,
   cards: (setId: string | undefined, locale: SupportedLocale) =>
     ['pokemon', 'cards', setId, locale] as const,
   packStatus: () => ['pokemon', 'packs', 'status'] as const,

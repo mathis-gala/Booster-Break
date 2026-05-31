@@ -73,14 +73,27 @@ export class ScrydexSealedClient {
 const knownBoosterImageExpansionIds = new Set(['me1', 'me2', 'me3', 'sv8', 'sv8pt5', 'sv9', 'sv10'])
 
 const getKnownBoosterImageUrl = (expansionId: string): string | undefined => {
-  if (!knownBoosterImageExpansionIds.has(expansionId)) {
+  if (
+    !knownBoosterImageExpansionIds.has(expansionId) &&
+    !isHistoricalBoosterExpansionId(expansionId)
+  ) {
     return undefined
   }
 
   return `https://images.scrydex.com/pokemon/${expansionId}-s1/large`
 }
 
+const isHistoricalBoosterExpansionId = (expansionId: string): boolean => {
+  return /^(ecard|ex|dp|pl|hgss|bw|xy|sm|swsh)\d+$/.test(expansionId)
+}
+
 const toScrydexExpansionId = (tcgdexSetId: string): string | undefined => {
+  const historicalMatch = /^(ecard|ex|dp|pl|hgss|bw|xy|sm|swsh)(\d+)$/.exec(tcgdexSetId)
+
+  if (historicalMatch) {
+    return tcgdexSetId
+  }
+
   const megaMatch = /^me0?(\d+)$/.exec(tcgdexSetId)
 
   if (megaMatch) {

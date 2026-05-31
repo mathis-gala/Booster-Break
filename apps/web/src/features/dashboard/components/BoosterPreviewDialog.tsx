@@ -13,6 +13,7 @@ interface BoosterPreviewDialogProps {
   isPending: boolean
   onClose: () => void
   set: PokemonSetSummary
+  showRarityChanceLabels?: boolean
 }
 
 export function BoosterPreviewDialog({
@@ -20,6 +21,7 @@ export function BoosterPreviewDialog({
   isPending,
   onClose,
   set,
+  showRarityChanceLabels = true,
 }: BoosterPreviewDialogProps) {
   const [selectedPreviewCard, setSelectedPreviewCard] = useState<PokemonCardSummary>()
   const previewCardsByRarity = useMemo(() => groupCardsByRarity(cards), [cards])
@@ -74,9 +76,11 @@ export function BoosterPreviewDialog({
                 <section key={rarity} className="grid gap-2">
                   <h4 className="text-sm font-black">
                     {formatRarity(rarity)}
-                    <span className="ml-2 text-xs font-black text-muted-foreground">
-                      {getRarityChanceLabel(rarity, cards)}
-                    </span>
+                    {showRarityChanceLabels ? (
+                      <span className="ml-2 text-xs font-black text-muted-foreground">
+                        {getRarityChanceLabel(rarity, cards)}
+                      </span>
+                    ) : null}
                   </h4>
                   <div className="flex flex-wrap gap-2">
                     {rarityCards.map((card) => (

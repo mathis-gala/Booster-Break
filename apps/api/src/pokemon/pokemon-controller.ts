@@ -6,6 +6,7 @@ import { createAuthRequiredPlugin } from '../auth/auth-required-plugin'
 import type { AuthStore } from '../auth/session-store'
 import type { ApiConfig } from '../config'
 import { PokemonRepository } from './pokemon-repository'
+import { PokemonSandboxService } from './pokemon-sandbox-service'
 import { isPokemonServiceError, PokemonService } from './pokemon-service'
 import { ScrydexSealedClient } from './scrydex-sealed-client'
 import { TcgDexClient } from './tcgdex-client'
@@ -24,6 +25,7 @@ interface PokemonControllerOptions {
   pokemonClient: TcgDexClient
   pokemonRepository: PokemonRepository
   sealedClient: ScrydexSealedClient
+  sandboxService?: PokemonSandboxService
   service?: PokemonService
 }
 
@@ -35,6 +37,7 @@ export const createPokemonController = ({
   pokemonClient,
   pokemonRepository,
   sealedClient,
+  sandboxService,
   service,
 }: PokemonControllerOptions) => {
   const resolvedAuthService =
@@ -53,6 +56,13 @@ export const createPokemonController = ({
       localizedPokemonClients,
       pokemonClient,
       pokemonRepository,
+      sealedClient,
+    })
+  const pokemonSandboxService =
+    sandboxService ??
+    new PokemonSandboxService({
+      localizedPokemonClients,
+      pokemonClient,
       sealedClient,
     })
 
@@ -75,7 +85,40 @@ export const createPokemonController = ({
         query: cardsQuerySchema,
       },
     )
+    .get(
+      '/packs/sandbox/sets',
+      async ({ query }) => ({
+        sets: await pokemonSandboxService.listSets(query.locale ?? DEFAULT_LOCALE),
+      }),
+      {
+        query: localeQuerySchema,
+      },
+    )
+    .get(
+      '/packs/sandbox/cards',
+      async ({ query }) => ({
+        cards: await pokemonSandboxService.listCards(query.setId, query.locale ?? DEFAULT_LOCALE),
+      }),
+      {
+        query: cardsQuerySchema,
+      },
+    )
     .get('/packs/status', async ({ headers }) => pokemonService.getPackOpenStatus(headers.cookie))
+    .post(
+      '/packs/sandbox/open',
+      async ({ body, status }) => {
+        const result = await pokemonSandboxService.openPack(body)
+
+        if (!isPokemonServiceError(result)) {
+          return result
+        }
+
+        return status(toPokemonErrorStatus(result.error), result)
+      },
+      {
+        body: openPackBodySchema,
+      },
+    )
 
   const authenticatedRoutes = new Elysia()
 
