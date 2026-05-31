@@ -1,5 +1,3 @@
-import { useState } from 'react'
-import { CardImageDialog } from '@/features/dashboard/components/CardImageDialog'
 import { m } from '@/paraglide/messages'
 import { FoilCardImage } from '@/features/dashboard/components/FoilCardImage'
 import { TradeCollectionCardItem } from './TradeCollectionCardItem'
@@ -44,8 +42,6 @@ export function TradeCreateAuctionCardSection({
   selectedSummary,
   onSelectCard,
 }: TradeCreateAuctionCardSectionProps) {
-  const [selectedPreviewCard, setSelectedPreviewCard] = useState<UserCollectionCard | null>(null)
-
   return (
     <div>
       <div className="flex flex-wrap items-center justify-between gap-2">
@@ -102,7 +98,6 @@ export function TradeCreateAuctionCardSection({
                 card={card}
                 onSelect={() => {
                   onSelectCard(card)
-                  setSelectedPreviewCard(card)
                 }}
                 selected={isSelected}
                 className="transition enabled:hover:border-sidebar enabled:hover:bg-sidebar/5"
@@ -161,17 +156,6 @@ export function TradeCreateAuctionCardSection({
         </div>
       ) : null}
 
-      {selectedPreviewCard ? (
-        <CardImageDialog
-          card={{
-            ...selectedPreviewCard,
-            finish: selectedPreviewCard.finish ?? 'normal',
-          }}
-          onClose={() => {
-            setSelectedPreviewCard(null)
-          }}
-        />
-      ) : null}
     </div>
   )
 }

@@ -500,6 +500,16 @@ export class TradeService {
     const result = await this.options.tradeRepository.acceptOffer(auctionId, offerId, now())
 
     if (!result.ok) {
+      if (result.error === 'trade_unavailable' && result.reason) {
+        const safeReason = result.reason.trim().split('\n')[0]
+        const fallback = toTradeServiceError('trade_unavailable')
+
+        return {
+          ...fallback,
+          message: `${fallback.message} (${safeReason})`,
+        }
+      }
+
       return toTradeServiceError(result.error)
     }
 

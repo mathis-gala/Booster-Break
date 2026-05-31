@@ -4,6 +4,10 @@ import { CheckCircle2Icon, Clock3Icon, EyeIcon, UserRoundIcon, XIcon } from 'luc
 import type {
   AuctionFilters,
   AuctionRequirements,
+  TradeNotificationCardPayload,
+  TradeNotificationResponse,
+  TradeAuctionResponse,
+  TradeOfferResponse,
 } from '@tcg-collection/shared'
 import { Button } from '@/components/ui/button'
 import { useLocale } from '@/features/i18n/useLocale'
@@ -29,6 +33,7 @@ import { TradeCreateAuctionPanel } from '../components/TradeCreateAuctionPanel'
 import { TradeOfferComposer } from '../components/TradeOfferComposer'
 import { TradeOffersPanel } from '../components/TradeOffersPanel'
 import { TradeBadge } from '../components/TradeBadge'
+import { TradeNotificationModal } from '../components/TradeNotificationModal'
 import { toast } from '@/features/toast/toast-store'
 import { FoilCardImage } from '@/features/dashboard/components/FoilCardImage'
 import { CardImageDialog } from '@/features/dashboard/components/CardImageDialog'
@@ -139,6 +144,53 @@ const getRequirementBadges = (
   ]
 }
 
+type TradeOfferForModal = TradeOfferResponse
+
+const buildAcceptedOfferNotification = (
+  auction: TradeAuctionResponse,
+  offer: TradeOfferForModal,
+): TradeNotificationResponse => {
+  const proposerName = offer.proposerDisplayName?.trim() ?? offer.proposerPseudo
+
+  const exchangedCards: TradeNotificationCardPayload[] = offer.cards.map((card) => ({
+    cardId: card.card.id,
+    name: card.card.name,
+    imageSmall: card.card.imageSmall,
+    imageLarge: card.card.imageLarge,
+    finish: card.finish,
+    quantity: card.quantity,
+    setId: card.card.setId,
+    number: card.card.number,
+  }))
+
+  return {
+    id: `accepted-offer-${offer.id}`,
+    type: 'trade_offer_accepted',
+    message: m.trade_notification_offer_accepted_message({ proposer: proposerName }),
+    payload: {
+      offerId: offer.id,
+      auctionId: auction.id,
+      proposerId: offer.proposerId,
+      proposerPseudo: offer.proposerPseudo,
+      proposerDisplayName: offer.proposerDisplayName,
+      proposerAvatarUrl: offer.proposerAvatarUrl,
+      offeredCard: {
+        cardId: auction.offeredCard.id,
+        name: auction.offeredCard.name,
+        imageSmall: auction.offeredCard.imageSmall,
+        imageLarge: auction.offeredCard.imageLarge,
+        finish: auction.offeredCardFinish,
+        quantity: 1,
+        setId: auction.offeredCard.setId,
+        number: auction.offeredCard.number,
+      },
+      exchangedCards,
+    },
+    viewed: false,
+    createdAt: new Date().toISOString(),
+  }
+}
+
 export function TradeView() {
   const { locale } = useLocale()
   const now = useSyncExternalStore(
@@ -154,6 +206,8 @@ export function TradeView() {
   const [isAuctionSetPreviewOpen, setIsAuctionSetPreviewOpen] = useState(false)
   const [auctionPage, setAuctionPage] = useState(1)
   const [isOfferSuccessDialogOpen, setIsOfferSuccessDialogOpen] = useState(false)
+  const [acceptedOffer, setAcceptedOffer] = useState<TradeOfferForModal | null>(null)
+  const [isTradeAcceptedNotificationOpen, setIsTradeAcceptedNotificationOpen] = useState(false)
 
   const auth = useCurrentUserQuery()
   const auctions = useTradeAuctionsQuery(locale)
@@ -207,6 +261,10 @@ export function TradeView() {
   }
   const closeOfferSuccessDialog = () => {
     setIsOfferSuccessDialogOpen(false)
+  }
+  const closeAcceptTradeNotification = () => {
+    setIsTradeAcceptedNotificationOpen(false)
+    setAcceptedOffer(null)
   }
 
   const isAnyActionRunning =
@@ -542,11 +600,35 @@ export function TradeView() {
                   auction={selectedAuction}
                   userId={currentUserId}
                   onCancelOffer={(offerId) => cancelOfferMutation.mutate(offerId)}
-                  onAcceptOffer={(offer) => {
-                    acceptOfferMutation.mutate({
-                      auctionId: offer.auctionId,
-                      offerId: offer.id,
-                    })
+                  onAcceptOffer={(offerId) => {
+                    if (!selectedAuctionId) {
+                      toast.show(m.trade_accept_offer_error())
+                      return
+                    }
+
+                    const offerToAccept = selectedAuction.offers.find((offer) => offer.id === offerId)
+
+                    if (!offerToAccept) {
+                      toast.show(m.trade_accept_offer_error())
+                      return
+                    }
+
+                    acceptOfferMutation.mutate(
+                      {
+                        auctionId: selectedAuctionId,
+                        offerId,
+                      },
+                      {
+                        onSuccess: () => {
+                          setAcceptedOffer(offerToAccept)
+                          setIsTradeAcceptedNotificationOpen(true)
+                          void auctionQuery.refetch()
+                        },
+                        onError: () => {
+                          setAcceptedOffer(null)
+                        },
+                      },
+                    )
                   }}
                   isBusy={isAnyActionRunning}
                 />
@@ -638,6 +720,13 @@ export function TradeView() {
             </div>
           </div>
         </div>
+      ) : null}
+
+      {isTradeAcceptedNotificationOpen && acceptedOffer && selectedAuction ? (
+        <TradeNotificationModal
+          notification={buildAcceptedOfferNotification(selectedAuction, acceptedOffer)}
+          onClose={closeAcceptTradeNotification}
+        />
       ) : null}
 
     </div>

@@ -347,7 +347,10 @@ export class PrismaTradeRepository implements TradeRepository {
     auctionId: string,
     offerId: string,
     now: Date,
-  ): Promise<{ ok: true } | { ok: false; error: TradeRepositoryError | 'trade_unavailable' }> {
+  ): Promise<
+    | { ok: true }
+    | { ok: false; error: TradeRepositoryError | 'trade_unavailable'; reason?: string }
+  > {
     try {
       await this.db.$transaction(async (tx) => {
         const offer = await tx.tradeOffer.findFirst({
@@ -487,9 +490,13 @@ export class PrismaTradeRepository implements TradeRepository {
       console.error('Unexpected error while accepting trade offer', {
         auctionId,
         offerId,
-        error,
+        error: error instanceof Error ? error.message : error,
       })
-      return { ok: false, error: 'trade_unavailable' }
+      return {
+        ok: false,
+        error: 'trade_unavailable',
+        reason: error instanceof Error ? error.message : 'Unexpected repository error',
+      }
     }
   }
 
@@ -638,11 +645,9 @@ export class PrismaTradeRepository implements TradeRepository {
   ): Promise<boolean> {
     const result = await tx.userCard.updateMany({
       where: {
-        userId_cardId_finish: {
-          userId: input.userId,
-          cardId: input.cardId,
-          finish: input.finish,
-        },
+        userId: input.userId,
+        cardId: input.cardId,
+        finish: input.finish,
         quantity: {
           gte: input.quantity,
         },

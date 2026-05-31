@@ -1,7 +1,6 @@
 import type {
   TradeAuctionResponse,
   TradeOfferCardResponse,
-  TradeOfferResponse,
 } from '@tcg-collection/shared'
 import { useState } from 'react'
 import { UserRoundIcon } from 'lucide-react'
@@ -14,7 +13,7 @@ interface TradeOffersPanelProps {
   auction: TradeAuctionResponse
   userId?: string
   onCancelOffer: (offerId: string) => void
-  onAcceptOffer: (offer: TradeOfferResponse) => void
+  onAcceptOffer: (offerId: string) => void
   isBusy: boolean
 }
 
@@ -27,14 +26,23 @@ export function TradeOffersPanel({
 }: TradeOffersPanelProps) {
   const [selectedOfferCard, setSelectedOfferCard] = useState<TradeOfferCardResponse | null>(null)
   const [offerIdToCancel, setOfferIdToCancel] = useState<string | null>(null)
+  const [offerIdToAccept, setOfferIdToAccept] = useState<string | null>(null)
 
   const pendingOfferToCancel =
     offerIdToCancel === null
       ? null
       : auction.offers.find((offer) => offer.id === offerIdToCancel && offer.status === 'pending') ?? null
+  const pendingOfferToAccept =
+    offerIdToAccept === null
+      ? null
+      : auction.offers.find((offer) => offer.id === offerIdToAccept && offer.status === 'pending') ?? null
 
   const requestOfferCancel = (offerId: string) => {
     setOfferIdToCancel(offerId)
+  }
+
+  const requestOfferAccept = (offerId: string) => {
+    setOfferIdToAccept(offerId)
   }
 
   const closeOfferCancelDialog = () => {
@@ -48,6 +56,19 @@ export function TradeOffersPanel({
 
     onCancelOffer(pendingOfferToCancel.id)
     setOfferIdToCancel(null)
+  }
+
+  const closeOfferAcceptDialog = () => {
+    setOfferIdToAccept(null)
+  }
+
+  const confirmOfferAccept = () => {
+    if (!pendingOfferToAccept) {
+      return
+    }
+
+    onAcceptOffer(pendingOfferToAccept.id)
+    setOfferIdToAccept(null)
   }
 
   const renderOfferCards = (offer: TradeAuctionResponse['offers'][number], isPending: boolean) => {
@@ -148,7 +169,7 @@ export function TradeOffersPanel({
                         type="button"
                         className="cursor-pointer rounded-md border border-green-700 bg-green-700/10 px-2 py-1 text-xs font-black text-green-700 disabled:cursor-not-allowed disabled:opacity-50"
                         disabled={isBusy}
-                        onClick={() => onAcceptOffer(offer)}
+                        onClick={() => requestOfferAccept(offer.id)}
                       >
                         {m.trade_accept_offer()}
                       </button>
@@ -190,6 +211,20 @@ export function TradeOffersPanel({
           cancelLabel={m.trade_cancel()}
           onConfirm={confirmOfferCancel}
           onCancel={closeOfferCancelDialog}
+          isBusy={isBusy}
+        />
+      ) : null}
+
+      {pendingOfferToAccept ? (
+        <ConfirmationDialog
+          open
+          className="z-50"
+          title={m.trade_accept_offer()}
+          description={m.trade_accept_offer() + '?'}
+          confirmLabel={m.trade_accept_offer()}
+          cancelLabel={m.trade_cancel()}
+          onConfirm={confirmOfferAccept}
+          onCancel={closeOfferAcceptDialog}
           isBusy={isBusy}
         />
       ) : null}

@@ -209,7 +209,10 @@ export interface TradeRepository {
     auctionId: string,
     offerId: string,
     now: Date,
-  ): Promise<{ ok: true } | { ok: false; error: TradeRepositoryError | 'trade_unavailable' }>
+  ): Promise<
+    | { ok: true }
+    | { ok: false; error: TradeRepositoryError | 'trade_unavailable'; reason?: string }
+  >
   findCards(cardIds: string[]): Promise<TradeAuctionCardSummary[]>
   getUserCardQuantity(
     userId: string,
