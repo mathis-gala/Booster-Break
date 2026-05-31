@@ -191,6 +191,16 @@ Pokemon endpoints:
 The pipeline builds and pushes Docker images only. It must not bake database URLs, Slack secrets,
 or Postgres passwords into the image.
 
+The API image runs `prisma migrate deploy` on startup. Production updates should back up Postgres
+before pulling a new image:
+
+```bash
+docker compose exec postgres pg_dump -U "$POSTGRES_USER" "$POSTGRES_DB" > "backup-$(date +%Y%m%d-%H%M%S).sql"
+docker compose pull
+docker compose up -d
+docker compose logs -f api
+```
+
 Downloaded users run the image with their own runtime env file:
 
 ```yaml

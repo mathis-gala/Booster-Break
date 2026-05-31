@@ -34,4 +34,4 @@ COPY --from=build /app/apps/api/package.json apps/api/package.json
 
 EXPOSE 3100
 
-CMD ["sh", "-c", "export NODE_PATH=/app/node_modules/.bun/node_modules && cd apps/api && bun /app/node_modules/.bun/node_modules/prisma/build/index.js db push --schema prisma/schema.prisma && bun dist/index.js"]
+CMD ["sh", "-c", "export NODE_PATH=/app/node_modules/.bun/node_modules && cd apps/api && bun /app/node_modules/.bun/node_modules/prisma/build/index.js migrate deploy --schema prisma/schema.prisma && bun dist/index.js"]

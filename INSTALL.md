@@ -112,6 +112,9 @@ docker compose pull
 docker compose up -d
 ```
 
+The API container runs `prisma migrate deploy` before starting the server. Migrations are applied
+to the existing Postgres volume and do not reset the database.
+
 Caddy will serve `API_DOMAIN` over HTTPS with those mounted certificate files. Make sure DNS points
 `API_DOMAIN` to the server and ports `80` and `443` are open on that machine/network path.
 
@@ -122,9 +125,22 @@ To update later:
 
 ```bash
 cd /opt/booster-break
+docker compose exec postgres pg_dump -U "$POSTGRES_USER" "$POSTGRES_DB" > "backup-$(date +%Y%m%d-%H%M%S).sql"
 docker compose pull
 docker compose up -d
+docker compose logs -f api
 ```
+
+The API log should show Prisma migrations finishing before `API listening ...`.
+
+Postgres is bound to `127.0.0.1:5432` on the server. To inspect production with Beekeeper Studio,
+use an SSH tunnel instead of exposing the database publicly:
+
+```bash
+ssh -L 5432:127.0.0.1:5432 user@booster.example.com
+```
+
+Then connect Beekeeper to `127.0.0.1:5432` with the credentials from `booster-break.env`.
 
 ## GitHub Pages Frontend
 
