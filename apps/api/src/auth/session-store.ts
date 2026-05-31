@@ -9,7 +9,9 @@ export interface AuthStore {
   getSession(sessionId: string): AuthSession | undefined | Promise<AuthSession | undefined>
   getUser(userId: string): AuthUser | undefined | Promise<AuthUser | undefined>
   deleteSession(sessionId: string): void | Promise<void>
-  createMagicLoginToken(input: CreateMagicLoginTokenInput): AuthMagicLoginToken | Promise<AuthMagicLoginToken>
+  createMagicLoginToken(
+    input: CreateMagicLoginTokenInput,
+  ): AuthMagicLoginToken | Promise<AuthMagicLoginToken>
   findMagicLoginTokenByHash(
     tokenHash: string,
   ): AuthMagicLoginToken | undefined | Promise<AuthMagicLoginToken | undefined>

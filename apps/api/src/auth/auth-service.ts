@@ -1,9 +1,5 @@
 import { parseCookies } from './cookies'
-import {
-  normalizePseudo,
-  type AuthStore,
-  type CustomUserInput,
-} from './session-store'
+import { normalizePseudo, type AuthStore, type CustomUserInput } from './session-store'
 import type { SlackProfile } from './slack-oauth-client'
 import type { AuthUser } from './types'
 

@@ -184,7 +184,9 @@ describe('auth routes', () => {
     expect(body.token).toBeDefined()
     expect(body.user.displayName).toBe('Guest One')
     expect(body.user.avatarUrl).toBe('https://example.com/guest.png')
-    expect(body.link).toBe(`${config.apiOrigin}/auth/magic/callback?token=${encodeURIComponent(body.token)}`)
+    expect(body.link).toBe(
+      `${config.apiOrigin}/auth/magic/callback?token=${encodeURIComponent(body.token)}`,
+    )
     expect(body.expiresAt).toBeDefined()
   })
 
@@ -205,7 +207,9 @@ describe('auth routes', () => {
       }),
     )
     const generated = await generate.json()
-    const callback = await app.handle(new Request(`http://localhost/auth/magic/callback?token=${generated.token}`))
+    const callback = await app.handle(
+      new Request(`http://localhost/auth/magic/callback?token=${generated.token}`),
+    )
     const setCookie = callback.headers.get('set-cookie')
 
     expect(callback.status).toBe(302)
@@ -246,12 +250,12 @@ describe('auth routes', () => {
     const generated = await generate.json()
 
     await app.handle(new Request(`http://localhost/auth/magic/callback?token=${generated.token}`))
-    const reused = await app.handle(new Request(`http://localhost/auth/magic/callback?token=${generated.token}`))
+    const reused = await app.handle(
+      new Request(`http://localhost/auth/magic/callback?token=${generated.token}`),
+    )
 
     expect(reused.status).toBe(302)
-    expect(reused.headers.get('location')).toBe(
-      `${config.webAppUrl}?magic-link-error=invalid`,
-    )
+    expect(reused.headers.get('location')).toBe(`${config.webAppUrl}?magic-link-error=invalid`)
   })
 
   test('rejects an expired magic token', async () => {
@@ -286,19 +290,17 @@ describe('auth routes', () => {
     )
 
     expect(callback.status).toBe(302)
-    expect(callback.headers.get('location')).toBe(
-      `${config.webAppUrl}?magic-link-error=invalid`,
-    )
+    expect(callback.headers.get('location')).toBe(`${config.webAppUrl}?magic-link-error=invalid`)
   })
 
   test('redirects with error for invalid magic token', async () => {
     const app = new Elysia().use(createAuthController({ config, store: new MemoryAuthStore() }))
 
-    const callback = await app.handle(new Request('http://localhost/auth/magic/callback?token=definitely-not-valid'))
+    const callback = await app.handle(
+      new Request('http://localhost/auth/magic/callback?token=definitely-not-valid'),
+    )
 
     expect(callback.status).toBe(302)
-    expect(callback.headers.get('location')).toBe(
-      `${config.webAppUrl}?magic-link-error=invalid`,
-    )
+    expect(callback.headers.get('location')).toBe(`${config.webAppUrl}?magic-link-error=invalid`)
   })
 })
