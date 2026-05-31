@@ -29,6 +29,7 @@ export function TradeCreateAuctionPanel({
     availableCards,
     canCreateAuction,
     collectionIsPending,
+    collectionPage,
     collectionPageCount,
     filters,
     filteredCards,
@@ -139,7 +140,7 @@ export function TradeCreateAuctionPanel({
             filteredCards={filteredCards}
             isLoading={collectionIsPending}
             collectionHasCards={availableCards.length > 0}
-            collectionPage={page}
+            collectionPage={collectionPage}
             collectionPageCount={collectionPageCount}
             onPrevPage={goPrevPage}
             onNextPage={goNextPage}

@@ -11,6 +11,8 @@ import type {
 } from '@tcg-collection/shared'
 import type { AuthService } from '../auth/auth-service'
 
+export type { TradeOfferStatus } from '@tcg-collection/shared'
+
 export interface TradeControllerOptions<TService = unknown> {
   service: TService
   authService: AuthService
@@ -118,6 +120,12 @@ export interface TradeOfferRow {
     offeredCardId: string
     offeredCardFinish: CardFinish
     expiresAt: Date
+    creator?: {
+      id: string
+      pseudo: string
+      displayName: string | null
+      avatarUrl: string | null
+    }
     offeredCard?: TradeAuctionCardSummary
   } | null
   cards: TradeOfferCardRow[]

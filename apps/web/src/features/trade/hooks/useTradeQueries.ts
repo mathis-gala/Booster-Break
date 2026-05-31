@@ -10,6 +10,7 @@ import type {
 import { DEFAULT_LOCALE } from '@tcg-collection/shared'
 
 import { tradeQueryKeys } from '../lib/query-keys'
+import { pokemonQueryKeys } from '@/features/dashboard/lib/query-keys'
 import {
   fetchTradeNotifications,
   acceptTradeOffer,
@@ -26,6 +27,20 @@ const refreshTradeQueries = async (
   queryClient: ReturnType<typeof useQueryClient>,
 ): Promise<void> => {
   await queryClient.invalidateQueries({ queryKey: tradeQueryKeys.all })
+}
+
+const invalidatedNotificationSignatures = new Map<SupportedLocale, string>()
+
+const refreshTradeMarketQueries = async (
+  queryClient: ReturnType<typeof useQueryClient>,
+): Promise<void> => {
+  await queryClient.invalidateQueries({
+    predicate: (query) => {
+      const [domain, resource] = query.queryKey
+
+      return domain === 'trade' && resource !== 'notifications' && resource !== 'notification'
+    },
+  })
 }
 
 export function useTradeAuctionsQuery(locale: SupportedLocale = DEFAULT_LOCALE) {
@@ -143,16 +158,32 @@ export function useAcceptTradeOfferMutation(options?: {
       acceptTradeOffer(payload.auctionId, payload.offerId),
     onSuccess: async () => {
       await refreshTradeQueries(queryClient)
+      await queryClient.invalidateQueries({ queryKey: pokemonQueryKeys.collection.all })
       options?.onSuccess?.()
     },
     onError: options?.onError,
   })
 }
 
-export function useTradeNotificationsQuery(enabled = true) {
+export function useTradeNotificationsQuery(locale: SupportedLocale = DEFAULT_LOCALE, enabled = true) {
+  const queryClient = useQueryClient()
+
   return useQuery({
-    queryKey: tradeQueryKeys.notifications,
-    queryFn: fetchTradeNotifications,
+    queryKey: tradeQueryKeys.notifications(locale),
+    queryFn: async () => {
+      const notifications = await fetchTradeNotifications(locale)
+      const signature = notifications.notifications.map((notification) => notification.id).join('|')
+
+      if (
+        signature.length > 0 &&
+        invalidatedNotificationSignatures.get(locale) !== signature
+      ) {
+        invalidatedNotificationSignatures.set(locale, signature)
+        await refreshTradeMarketQueries(queryClient)
+      }
+
+      return notifications
+    },
     enabled,
     staleTime: 0,
     refetchOnWindowFocus: true,
@@ -167,7 +198,7 @@ export function useTradeNotificationViewedMutation() {
   return useMutation({
     mutationFn: (notificationId: string) => markTradeNotificationViewed(notificationId),
     onSuccess: () => {
-      void queryClient.invalidateQueries({ queryKey: tradeQueryKeys.notifications })
+      void queryClient.invalidateQueries({ queryKey: tradeQueryKeys.notificationsAll })
     },
   })
 }

@@ -189,9 +189,16 @@ export interface TradeNotificationCardPayload {
   number?: string
 }
 
+export type TradeOfferAcceptedNotificationRecipientRole = 'auction_creator' | 'offer_proposer'
+
 export interface TradeOfferAcceptedNotificationPayload {
   offerId: string
   auctionId: string
+  recipientRole?: TradeOfferAcceptedNotificationRecipientRole
+  creatorId?: string
+  creatorPseudo?: string
+  creatorDisplayName?: string
+  creatorAvatarUrl?: string
   proposerId: string
   proposerPseudo: string
   proposerDisplayName?: string
@@ -216,14 +223,26 @@ export type TradeNotificationPayload =
   | TradeOfferAcceptedNotificationPayload
   | TradeOfferReceivedNotificationPayload
 
-export interface TradeNotificationResponse {
+export interface TradeNotificationBaseResponse {
   id: string
-  type: TradeNotificationType
   message: string
-  payload: TradeNotificationPayload
   viewed: boolean
   createdAt: string
 }
+
+export interface TradeOfferAcceptedNotificationResponse extends TradeNotificationBaseResponse {
+  type: 'trade_offer_accepted'
+  payload: TradeOfferAcceptedNotificationPayload
+}
+
+export interface TradeOfferReceivedNotificationResponse extends TradeNotificationBaseResponse {
+  type: 'trade_offer_received'
+  payload: TradeOfferReceivedNotificationPayload
+}
+
+export type TradeNotificationResponse =
+  | TradeOfferAcceptedNotificationResponse
+  | TradeOfferReceivedNotificationResponse
 
 export interface TradeNotificationListResponse {
   notifications: TradeNotificationResponse[]
@@ -241,6 +260,7 @@ export type TradeErrorCode =
   | 'auction_limit_reached'
   | 'card_in_auction'
   | 'max_offers_reached'
+  | 'duplicate_offer'
   | 'offer_not_found'
   | 'offer_not_owned'
   | 'offer_invalid'

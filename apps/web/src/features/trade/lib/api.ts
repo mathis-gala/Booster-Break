@@ -123,8 +123,12 @@ export async function cancelTradeOffer(offerId: string): Promise<void> {
   }
 }
 
-export async function fetchTradeNotifications(): Promise<TradeNotificationListResponse> {
-  const response = await apiFetch('/trade/notifications', {
+export async function fetchTradeNotifications(
+  locale: SupportedLocale = DEFAULT_LOCALE,
+): Promise<TradeNotificationListResponse> {
+  const searchParams = new URLSearchParams({ locale })
+
+  const response = await apiFetch(`/trade/notifications?${searchParams.toString()}`, {
     credentials: 'include',
   })
 
@@ -171,6 +175,10 @@ const readTradeError = async (response: Response, fallbackMessage: string): Prom
     payload = raw ? (JSON.parse(raw) as TradeApiPayload) : undefined
   } catch {
     // Keep raw response text for non-json API failures.
+  }
+
+  if (payload?.error === 'duplicate_offer') {
+    return m.trade_duplicate_offer_error()
   }
 
   if (payload?.message || payload?.error) {

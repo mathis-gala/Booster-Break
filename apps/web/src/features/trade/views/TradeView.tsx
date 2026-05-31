@@ -166,10 +166,15 @@ const buildAcceptedOfferNotification = (
   return {
     id: `accepted-offer-${offer.id}`,
     type: 'trade_offer_accepted',
-    message: m.trade_notification_offer_accepted_message({ proposer: proposerName }),
+    message: m.trade_notification_offer_accepted_creator_message({ proposer: proposerName }),
     payload: {
       offerId: offer.id,
       auctionId: auction.id,
+      recipientRole: 'auction_creator',
+      creatorId: auction.creatorId,
+      creatorPseudo: auction.creatorPseudo,
+      creatorDisplayName: auction.creatorDisplayName,
+      creatorAvatarUrl: auction.creatorAvatarUrl,
       proposerId: offer.proposerId,
       proposerPseudo: offer.proposerPseudo,
       proposerDisplayName: offer.proposerDisplayName,
@@ -207,6 +212,7 @@ export function TradeView() {
   const [auctionPage, setAuctionPage] = useState(1)
   const [isOfferSuccessDialogOpen, setIsOfferSuccessDialogOpen] = useState(false)
   const [acceptedOffer, setAcceptedOffer] = useState<TradeOfferForModal | null>(null)
+  const [acceptedAuction, setAcceptedAuction] = useState<TradeAuctionResponse | null>(null)
   const [isTradeAcceptedNotificationOpen, setIsTradeAcceptedNotificationOpen] = useState(false)
 
   const auth = useCurrentUserQuery()
@@ -265,6 +271,7 @@ export function TradeView() {
   const closeAcceptTradeNotification = () => {
     setIsTradeAcceptedNotificationOpen(false)
     setAcceptedOffer(null)
+    setAcceptedAuction(null)
   }
 
   const isAnyActionRunning =
@@ -621,11 +628,14 @@ export function TradeView() {
                       {
                         onSuccess: () => {
                           setAcceptedOffer(offerToAccept)
+                          setAcceptedAuction(selectedAuction)
                           setIsTradeAcceptedNotificationOpen(true)
+                          closeAuctionDetails()
                           void auctionQuery.refetch()
                         },
                         onError: () => {
                           setAcceptedOffer(null)
+                          setAcceptedAuction(null)
                         },
                       },
                     )
@@ -722,9 +732,9 @@ export function TradeView() {
         </div>
       ) : null}
 
-      {isTradeAcceptedNotificationOpen && acceptedOffer && selectedAuction ? (
+      {isTradeAcceptedNotificationOpen && acceptedOffer && acceptedAuction ? (
         <TradeNotificationModal
-          notification={buildAcceptedOfferNotification(selectedAuction, acceptedOffer)}
+          notification={buildAcceptedOfferNotification(acceptedAuction, acceptedOffer)}
           onClose={closeAcceptTradeNotification}
         />
       ) : null}

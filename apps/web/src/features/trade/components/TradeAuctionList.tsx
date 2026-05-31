@@ -74,7 +74,7 @@ export function TradeAuctionList({
               onClick={() => onSelectAuction(auction.id)}
               role="button"
               tabIndex={0}
-              aria-label={`Open ${auction.offeredCard.name}`}
+              aria-label={m.trade_open_auction_aria({ cardName: auction.offeredCard.name })}
             >
               <div className="relative w-full rounded-md bg-card/40 p-2">
                 <button

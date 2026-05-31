@@ -1,19 +1,27 @@
+import { useQueryClient } from '@tanstack/react-query'
 import { useCurrentUserQuery } from '@/features/dashboard/hooks/useAuthQueries'
 import { toast } from '@/features/toast/toast-store'
 import { m } from '@/paraglide/messages'
+import { useLocale } from '@/features/i18n/useLocale'
 
-import type { TradeNotificationResponse } from '@tcg-collection/shared'
+import type {
+  TradeNotificationListResponse,
+  TradeNotificationResponse,
+} from '@tcg-collection/shared'
 import {
   useTradeNotificationViewedMutation,
   useTradeNotificationsQuery,
 } from '../hooks/useTradeQueries'
+import { tradeQueryKeys } from '../lib/query-keys'
 import { TradeNotificationModal } from './TradeNotificationModal'
 
 export function TradeNotificationManager() {
   const auth = useCurrentUserQuery()
+  const { locale } = useLocale()
   const isAuthenticated = auth.data?.authenticated ?? false
 
-  const notificationsQuery = useTradeNotificationsQuery(isAuthenticated)
+  const queryClient = useQueryClient()
+  const notificationsQuery = useTradeNotificationsQuery(locale, isAuthenticated)
   const markViewedMutation = useTradeNotificationViewedMutation()
 
   const notifications = isAuthenticated ? notificationsQuery.data?.notifications ?? [] : []
@@ -24,15 +32,15 @@ export function TradeNotificationManager() {
   }
 
   const removeFromNotificationCache = (notificationId: string) => {
-    notificationsQuery.setQueryData((previous) => {
-      if (!previous) {
-        return previous
-      }
-
-      return {
-        notifications: previous.notifications.filter((entry) => entry.id !== notificationId),
-      }
-    })
+    queryClient.setQueryData<TradeNotificationListResponse>(
+      tradeQueryKeys.notifications(locale),
+      (previous) =>
+        previous
+          ? {
+              notifications: previous.notifications.filter((entry) => entry.id !== notificationId),
+            }
+          : previous,
+    )
   }
 
   const closeNotification = (notification: TradeNotificationResponse) => {

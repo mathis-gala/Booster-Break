@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react'
+import { useState } from 'react'
 import type { CollectionSort, UserCollectionCard } from '@tcg-collection/shared'
 
 import { Button } from '@/components/ui/button'
@@ -15,7 +15,9 @@ interface CollectionPanelProps {
   total: number
   totalCards: number
   sort: CollectionSort
+  searchQuery: string
   onSortChange: (sort: CollectionSort) => void
+  onSearchChange: (query: string) => void
   onPageChange: (page: number) => void
 }
 
@@ -47,21 +49,13 @@ export function CollectionPanel({
   total,
   totalCards,
   sort,
+  searchQuery,
   onSortChange,
+  onSearchChange,
   onPageChange,
 }: CollectionPanelProps) {
   const [selectedCard, setSelectedCard] = useState<UserCollectionCard>()
   const sortActions = getSortActions()
-  const [searchQuery, setSearchQuery] = useState('')
-
-  const query = searchQuery.trim().toLowerCase()
-  const visibleCards = useMemo(() => {
-    if (query.length === 0) {
-      return cards
-    }
-
-    return cards.filter((card) => card.name.toLowerCase().includes(query))
-  }, [cards, query])
 
   return (
     <>
@@ -87,7 +81,7 @@ export function CollectionPanel({
                 </span>
                 <input
                   value={searchQuery}
-                  onChange={(event) => setSearchQuery(event.target.value)}
+                  onChange={(event) => onSearchChange(event.target.value)}
                   className="w-full rounded-md border bg-background px-2 py-2 text-sm placeholder:text-xs sm:w-auto"
                   placeholder={m.trade_search_by_pokemon_placeholder()}
                   aria-label={m.trade_search_by_pokemon_aria()}
@@ -115,9 +109,9 @@ export function CollectionPanel({
               <div key={index} className="h-44 rounded-lg bg-muted" />
             ))}
           </div>
-        ) : visibleCards.length > 0 ? (
+        ) : cards.length > 0 ? (
           <div className="mt-4 flex min-h-[39rem] min-w-0 max-w-full flex-wrap content-start justify-center gap-3">
-            {visibleCards.map((card) => (
+            {cards.map((card) => (
               <CollectionCardItem
                 key={`${card.id}-${card.finish ?? 'normal'}`}
                 card={card}

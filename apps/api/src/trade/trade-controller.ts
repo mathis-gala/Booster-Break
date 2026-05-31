@@ -137,14 +137,20 @@ const createAuthenticatedTradeRoutes = (
     )
     .get(
       '/notifications',
-      async ({ headers, status }) => {
-        const result = await service.listTradeNotifications(headers.cookie)
+      async ({ headers, query, status }) => {
+        const result = await service.listTradeNotifications(
+          headers.cookie,
+          query.locale ?? DEFAULT_LOCALE,
+        )
 
         if (isTradeServiceError(result)) {
           return status(toTradeErrorStatus(result.error), result)
         }
 
         return result
+      },
+      {
+        query: tradeLocaleQuerySchema,
       },
     )
     .post(

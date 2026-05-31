@@ -71,8 +71,8 @@ const NotificationAvatar = ({
       </span>
     )}
     <div className="min-w-0">
-      <p className="text-sm font-black">{name}</p>
-      <p className="text-xs text-muted-foreground">{label}</p>
+      <p className="break-words text-sm font-black">{name}</p>
+      <p className="break-words text-xs text-muted-foreground">{label}</p>
     </div>
   </div>
 )
@@ -103,17 +103,17 @@ const ModalShell = ({ title, message, details, children, onClose }: ModalShellPr
         <div className="flex items-start gap-3">
           <CheckCircle2Icon className="mt-0.5 size-6 text-green-600" aria-hidden="true" />
           <div className="min-w-0">
-            <p className="text-sm font-black">{title}</p>
-            <p className="mt-1 text-sm text-muted-foreground">{message}</p>
+            <p className="break-words text-sm font-black">{title}</p>
+            <p className="mt-1 break-words text-sm text-muted-foreground">{message}</p>
           </div>
         </div>
 
         {children}
 
         {details ? (
-          <div className="rounded-md border border-border/60 bg-card/30 px-3 py-2 text-xs text-muted-foreground">
-            <p className="inline-flex items-center gap-1">
-              <Clock3Icon className="size-3" aria-hidden="true" />
+          <div className="min-w-0 rounded-md border border-border/60 bg-card/30 px-3 py-2 text-xs text-muted-foreground">
+            <p className="flex min-w-0 items-start gap-1 break-words">
+              <Clock3Icon className="mt-0.5 size-3 shrink-0" aria-hidden="true" />
               {details}
             </p>
           </div>
@@ -137,28 +137,60 @@ const renderTradeOfferAcceptedNotification = (
   notification: Extract<TradeNotificationResponse, { type: 'trade_offer_accepted' }>,
   onClose: () => void,
 ) => {
+  const isAuctionCreatorNotification = notification.payload.recipientRole === 'auction_creator'
   const proposerName =
     notification.payload.proposerDisplayName?.trim() ?? notification.payload.proposerPseudo
+  const hasCreatorName = Boolean(
+    notification.payload.creatorDisplayName?.trim() || notification.payload.creatorPseudo,
+  )
+  const creatorName =
+    notification.payload.creatorDisplayName?.trim() ??
+    notification.payload.creatorPseudo ??
+    m.trade_notification_trade_partner()
+  const actorName = isAuctionCreatorNotification ? proposerName : creatorName
+  const actorAvatarUrl = isAuctionCreatorNotification
+    ? notification.payload.proposerAvatarUrl
+    : notification.payload.creatorAvatarUrl
+  const actorLabel = isAuctionCreatorNotification
+    ? m.trade_notification_offer_accepted_sender()
+    : m.trade_notification_offer_accepted_by()
+  const receivedCards = isAuctionCreatorNotification
+    ? notification.payload.exchangedCards
+    : [notification.payload.offeredCard]
+  const givenCards = isAuctionCreatorNotification
+    ? [notification.payload.offeredCard]
+    : notification.payload.exchangedCards
 
   return (
     <ModalShell
       title={m.trade_notification_offer_accepted_title()}
-      message={m.trade_notification_offer_accepted_message({ proposer: proposerName })}
-      details={notification.message}
+      message={
+        isAuctionCreatorNotification
+          ? m.trade_notification_offer_accepted_creator_message({ proposer: proposerName })
+          : hasCreatorName
+            ? m.trade_notification_offer_accepted_proposer_message({ creator: creatorName })
+            : m.trade_notification_offer_accepted_fallback_message()
+      }
       onClose={onClose}
     >
-      <NotificationAvatar
-        name={proposerName}
-        avatarUrl={notification.payload.proposerAvatarUrl}
-        label={m.trade_notification_offer_accepted_sender()}
-      />
+      {isAuctionCreatorNotification || hasCreatorName ? (
+        <NotificationAvatar
+          name={actorName}
+          avatarUrl={actorAvatarUrl}
+          label={actorLabel}
+        />
+      ) : null}
       <NotificationCardList
         title={m.trade_notification_received_cards()}
-        cards={notification.payload.exchangedCards}
+        cards={receivedCards}
       />
       <NotificationCardList
-        title={m.trade_notification_given_card()}
-        cards={[notification.payload.offeredCard]}
+        title={
+          givenCards.length === 1
+            ? m.trade_notification_given_card()
+            : m.trade_notification_given_cards()
+        }
+        cards={givenCards}
       />
     </ModalShell>
   )
@@ -175,7 +207,6 @@ const renderTradeOfferReceivedNotification = (
     <ModalShell
       title={m.trade_notification_offer_received_title()}
       message={m.trade_notification_offer_received_message({ proposer: proposerName })}
-      details={notification.message}
       onClose={onClose}
     >
       <NotificationAvatar

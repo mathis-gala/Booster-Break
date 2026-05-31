@@ -18,6 +18,8 @@ import {
 } from '../lib/trade-utils'
 import { useCreateTradeAuctionMutation } from './useTradeQueries'
 import type { TradeFilterOption } from '../components/TradeFilterDropdown'
+import { matchesCardNameSearch } from '@/features/dashboard/lib/card-search'
+import { formatCardFinish } from '@/features/dashboard/lib/card-format'
 
 const defaultFilterForm: TradeTextListFields = {
   setIds: [],
@@ -73,6 +75,7 @@ export interface UseTradeCreateAuctionFormResult {
   searchQuery: string
   availableCards: UserCollectionCard[]
   filteredCards: UserCollectionCard[]
+  collectionPage: number
   collectionPageCount: number
   collectionIsPending: boolean
   setIdOptions: TradeFilterOption[]
@@ -98,7 +101,7 @@ export function useTradeCreateAuctionForm({
   const pageSize = 18
 
   const allCardsCollection = usePokemonCollectionAllQuery({
-    sort: 'name',
+    sort: preference,
     locale,
     enabled: authAuthenticated,
   })
@@ -134,18 +137,32 @@ export function useTradeCreateAuctionForm({
     },
   })
 
-  const collectionPageCount = collection.data?.pagination.pageCount ?? 1
-  const availableCards = collection.data?.cards ?? []
+  const hasSearchQuery = searchQuery.trim().length > 0
+  const availableCards = hasSearchQuery
+    ? allCardsCollection.data?.cards ?? []
+    : collection.data?.cards ?? []
 
-  const filteredCards = useMemo(() => {
-    const query = searchQuery.trim().toLowerCase()
-
-    if (query.length === 0) {
+  const matchingCards = useMemo(() => {
+    if (!hasSearchQuery) {
       return availableCards
     }
 
-    return availableCards.filter((card) => card.name.toLowerCase().includes(query))
-  }, [availableCards, searchQuery])
+    return availableCards.filter((card) => matchesCardNameSearch(card, searchQuery))
+  }, [availableCards, hasSearchQuery, searchQuery])
+
+  const collectionPageCount = hasSearchQuery
+    ? Math.max(1, Math.ceil(matchingCards.length / pageSize))
+    : collection.data?.pagination.pageCount ?? 1
+  const collectionPage = Math.min(Math.max(page, 1), collectionPageCount)
+  const filteredCards = useMemo(() => {
+    if (!hasSearchQuery) {
+      return matchingCards
+    }
+
+    const start = (collectionPage - 1) * pageSize
+
+    return matchingCards.slice(start, start + pageSize)
+  }, [collectionPage, hasSearchQuery, matchingCards, pageSize])
 
   const setIdOptions = useMemo<TradeFilterOption[]>(() => {
     return (setsQuery.data ?? [])
@@ -259,7 +276,7 @@ export function useTradeCreateAuctionForm({
       return null
     }
 
-    return `${selectedCard.name} · ${selectedCard.finish ?? 'normal'}`
+    return `${selectedCard.name} · ${formatCardFinish(selectedCard.finish ?? 'normal')}`
   }, [selectedCard])
 
   const remainingAuctions = Math.max(0, MAX_ACTIVE_AUCTIONS_PER_USER - activeAuctions)
@@ -280,8 +297,9 @@ export function useTradeCreateAuctionForm({
     searchQuery,
     availableCards,
     filteredCards,
+    collectionPage,
     collectionPageCount,
-    collectionIsPending: collection.isPending,
+    collectionIsPending: hasSearchQuery ? allCardsCollection.isPending : collection.isPending,
     setIdOptions,
     rarityOptions,
     typeOptions,

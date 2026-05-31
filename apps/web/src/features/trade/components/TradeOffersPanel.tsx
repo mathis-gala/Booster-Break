@@ -219,9 +219,9 @@ export function TradeOffersPanel({
         <ConfirmationDialog
           open
           className="z-50"
-          title={m.trade_accept_offer()}
-          description={m.trade_accept_offer() + '?'}
-          confirmLabel={m.trade_accept_offer()}
+          title={m.trade_accept_offer_title()}
+          description={m.trade_accept_offer_message()}
+          confirmLabel={m.trade_accept_offer_confirm()}
           cancelLabel={m.trade_cancel()}
           onConfirm={confirmOfferAccept}
           onCancel={closeOfferAcceptDialog}

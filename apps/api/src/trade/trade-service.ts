@@ -5,6 +5,7 @@ import type {
   TradeAuctionListResponse,
   TradeAuctionResponse,
   TradeNotificationListResponse,
+  TradeNotificationPayload,
   TradeOfferResponse,
 } from '@tcg-collection/shared'
 import { DEFAULT_LOCALE } from '@tcg-collection/shared'
@@ -39,6 +40,24 @@ import {
 } from './trade-types'
 
 const now = () => new Date()
+
+const getNotificationCardIds = (payload: TradeNotificationPayload): string[] => {
+  const offeredCardIds = [payload.offeredCard.cardId]
+  const exchangedCardIds =
+    'exchangedCards' in payload
+      ? payload.exchangedCards.map((card) => card.cardId)
+      : payload.offeredCards.map((card) => card.cardId)
+
+  return [...offeredCardIds, ...exchangedCardIds]
+}
+
+const getOfferSignature = (
+  cards: Array<{ cardId: string; finish: string; quantity: number }>,
+): string =>
+  cards
+    .map((card) => `${card.cardId}:${card.finish}:${card.quantity}`)
+    .sort((first, second) => first.localeCompare(second))
+    .join('|')
 
 export class TradeService {
   constructor(private readonly options: TradeServiceOptions) {}
@@ -83,6 +102,7 @@ export class TradeService {
 
   async listTradeNotifications(
     cookieHeader: string | undefined,
+    locale: SupportedLocale = DEFAULT_LOCALE,
   ): Promise<TradeServiceResult<TradeNotificationListResponse>> {
     const userOrError = await resolveAuthenticatedTradeUser(
       this.options.authService,
@@ -97,9 +117,16 @@ export class TradeService {
     const user = userOrError
 
     const notifications = await this.options.tradeRepository.listTradeNotifications(user.id)
+    const notificationCardIds = [
+      ...new Set(notifications.flatMap((notification) => getNotificationCardIds(notification.payload))),
+    ]
+    const notificationCards = await this.options.tradeRepository.findCards(notificationCardIds)
+    const notificationCardById = new Map(notificationCards.map((card) => [card.id, card]))
 
     return {
-      notifications: notifications.map((notification) => toTradeNotificationResponse(notification)),
+      notifications: notifications.map((notification) =>
+        toTradeNotificationResponse(notification, notificationCardById, locale),
+      ),
     }
   }
 
@@ -214,7 +241,7 @@ export class TradeService {
 
     const user = userOrError
 
-    const auction = await this.options.tradeRepository.getAuctionById(auctionId)
+    const auction = await this.options.tradeRepository.getAuctionById(auctionId, true)
 
     if (!auction) {
       return {
@@ -251,6 +278,20 @@ export class TradeService {
         error: 'offer_invalid',
         message: 'Add at least one card to your offer.',
       }
+    }
+
+    const offerSignature = getOfferSignature(offerCards)
+    const existingOffers = 'offers' in auction ? auction.offers : []
+    const hasSamePendingOffer = existingOffers.some((offer) => {
+      return (
+        offer.proposerId === user.id &&
+        offer.status === 'pending' &&
+        getOfferSignature(offer.cards) === offerSignature
+      )
+    })
+
+    if (hasSamePendingOffer) {
+      return toTradeServiceError('duplicate_offer')
     }
 
     const cardIds = offerCards.map((offerCard) => offerCard.cardId)

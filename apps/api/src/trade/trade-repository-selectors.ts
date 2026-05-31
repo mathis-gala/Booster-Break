@@ -29,6 +29,9 @@ export const tradeOfferAuctionSelect = {
   status: true,
   offeredCardId: true,
   offeredCardFinish: true,
+  creator: {
+    select: tradeAuctionCreatorSelect,
+  },
   offeredCard: {
     select: buildTradePokemonCardSelect(),
   },

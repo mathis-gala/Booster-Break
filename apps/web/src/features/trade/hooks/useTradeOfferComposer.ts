@@ -17,6 +17,7 @@ import {
 } from '../lib/trade-utils'
 import { useCreateTradeOfferMutation } from './useTradeQueries'
 import { m } from '@/paraglide/messages'
+import { matchesCardNameSearch } from '@/features/dashboard/lib/card-search'
 
 interface SelectedOfferCard {
   card: UserCollectionCard
@@ -130,7 +131,7 @@ export function useTradeOfferComposer({
       return eligibleCards
     }
 
-    return eligibleCards.filter((card) => card.name.toLowerCase().includes(query))
+    return eligibleCards.filter((card) => matchesCardNameSearch(card, query))
   }, [eligibleCards, searchQuery])
 
   const collectionPageCount = Math.max(1, Math.ceil(filteredCards.length / PAGE_SIZE))

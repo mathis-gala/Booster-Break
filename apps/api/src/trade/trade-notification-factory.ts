@@ -14,13 +14,22 @@ export const buildTradeOfferAcceptedNotificationInput = (
     throw new Error('Accepted offer has no auction card context')
   }
 
+  const creatorDisplayName = offer.auction.creator?.displayName?.trim()
+    ? offer.auction.creator.displayName
+    : undefined
+
   const payload: TradeOfferAcceptedNotificationPayload = {
     offerId: offer.id,
     auctionId: offer.auctionId,
+    recipientRole: 'offer_proposer',
+    creatorId: offer.auction.creatorId,
+    creatorPseudo: offer.auction.creator?.pseudo ?? 'Unknown player',
+    creatorDisplayName,
+    creatorAvatarUrl: offer.auction.creator?.avatarUrl ?? undefined,
     proposerId: offer.proposerId,
     proposerPseudo: offer.proposer.pseudo,
     proposerDisplayName,
-    proposerAvatarUrl: offer.proposer.avatarUrl,
+    proposerAvatarUrl: offer.proposer.avatarUrl ?? undefined,
     offeredCard: {
       cardId: offer.auction.offeredCardId,
       name: offeredCard.name,
@@ -64,7 +73,7 @@ export const buildTradeOfferReceivedNotificationInput = (
     proposerId: offer.proposerId,
     proposerPseudo: offer.proposer.pseudo,
     proposerDisplayName,
-    proposerAvatarUrl: offer.proposer.avatarUrl,
+    proposerAvatarUrl: offer.proposer.avatarUrl ?? undefined,
     offeredCard: {
       cardId: auction.offeredCardId,
       name: auction.offeredCard.name,

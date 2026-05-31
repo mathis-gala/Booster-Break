@@ -1,8 +1,9 @@
 import type {
   SupportedLocale,
   TradeAuctionResponse,
-  TradeOfferResponse,
+  TradeNotificationCardPayload,
   TradeNotificationPayload,
+  TradeOfferResponse,
   TradeNotificationResponse,
 } from '@tcg-collection/shared'
 import { DEFAULT_LOCALE } from '@tcg-collection/shared'
@@ -116,6 +117,11 @@ export const mapTradeOfferWithAuction = (offer: TradeOfferWithAuctionPayload): T
         offeredCardId: offer.auction.offeredCardId,
         offeredCardFinish: normalizeCardFinish(offer.auction.offeredCardFinish) ?? 'normal',
         expiresAt: offer.auction.expiresAt,
+        creator: offer.auction.creator
+          ? {
+              ...resolveUserSummary(offer.auction.creator),
+            }
+          : undefined,
         offeredCard: offer.auction.offeredCard
           ? cloneCardSummary(resolveCardSummary(offer.auction.offeredCard))
           : undefined,
@@ -124,16 +130,90 @@ export const mapTradeOfferWithAuction = (offer: TradeOfferWithAuctionPayload): T
   cards: cloneOfferCards((offer.cards as TradeOfferCardPayload[] | undefined) ?? []),
 })
 
+const toLocalizedNotificationCardPayload = (
+  payload: TradeNotificationCardPayload,
+  cardById: Map<string, TradeAuctionCardSummary>,
+  locale: SupportedLocale,
+): TradeNotificationCardPayload => {
+  const card = cardById.get(payload.cardId)
+
+  if (!card) {
+    return payload
+  }
+
+  const localizedCard = toCardSummary(card, payload.finish, locale)
+
+  return {
+    ...payload,
+    name: localizedCard.name,
+    imageSmall: localizedCard.imageSmall,
+    imageLarge: localizedCard.imageLarge,
+    setId: localizedCard.setId,
+    number: localizedCard.number,
+  }
+}
+
+const toLocalizedNotificationPayload = (
+  payload: TradeNotificationPayload,
+  cardById: Map<string, TradeAuctionCardSummary>,
+  locale: SupportedLocale,
+): TradeNotificationPayload => {
+  const offeredCard = toLocalizedNotificationCardPayload(payload.offeredCard, cardById, locale)
+
+  if ('exchangedCards' in payload) {
+    return {
+      ...payload,
+      offeredCard,
+      exchangedCards: payload.exchangedCards.map((card) =>
+        toLocalizedNotificationCardPayload(card, cardById, locale),
+      ),
+    }
+  }
+
+  return {
+    ...payload,
+    offeredCard,
+    offeredCards: payload.offeredCards.map((card) =>
+      toLocalizedNotificationCardPayload(card, cardById, locale),
+    ),
+  }
+}
+
 export const toTradeNotificationResponse = (
   notification: TradeNotificationRow,
-): TradeNotificationResponse => ({
-  id: notification.id,
-  type: notification.type,
-  message: notification.message,
-  viewed: notification.viewed,
-  createdAt: notification.createdAt.toISOString(),
-  payload: notification.payload as TradeNotificationPayload,
-})
+  cardById: Map<string, TradeAuctionCardSummary> = new Map(),
+  locale: SupportedLocale = DEFAULT_LOCALE,
+): TradeNotificationResponse => {
+  const base = {
+    id: notification.id,
+    message: notification.message,
+    viewed: notification.viewed,
+    createdAt: notification.createdAt.toISOString(),
+  }
+  const payload = toLocalizedNotificationPayload(notification.payload, cardById, locale)
+
+  if (notification.type === 'trade_offer_accepted') {
+    if (!('exchangedCards' in payload)) {
+      throw new Error('Trade accepted notification payload is invalid')
+    }
+
+    return {
+      ...base,
+      type: notification.type,
+      payload,
+    }
+  }
+
+  if (!('offeredCards' in payload)) {
+    throw new Error('Trade received notification payload is invalid')
+  }
+
+  return {
+    ...base,
+    type: notification.type,
+    payload,
+  }
+}
 
 const mapTradeOfferCardsToResponseSafe = (
   cards: TradeOfferCardRow[],

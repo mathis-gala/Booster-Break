@@ -43,6 +43,10 @@ import {
   normalizeTradeRequirements,
   normalizeCardFinish,
 } from './trade-normalizers'
+import {
+  toPrismaNotificationPayload,
+  toTradeNotificationPayload,
+} from './trade-notification-payload-mapper'
 
 export class PrismaTradeRepository implements TradeRepository {
   constructor(private readonly db: AppPrisma) {}
@@ -547,12 +551,16 @@ export class PrismaTradeRepository implements TradeRepository {
         },
       })
 
-      return notifications.map((notification) => ({
-        ...notification,
-        type: notification.type as TradeNotificationType,
-        viewed: notification.viewed ?? false,
-        payload: notification.payload as TradeNotificationRow['payload'],
-      }))
+      return notifications.map((notification) => {
+        const type = notification.type as TradeNotificationType
+
+        return {
+          ...notification,
+          type,
+          viewed: notification.viewed ?? false,
+          payload: toTradeNotificationPayload(type, notification.payload),
+        }
+      })
     } catch (error: unknown) {
       if (this.isNotificationTableMissing(error)) {
         return []
@@ -593,15 +601,17 @@ export class PrismaTradeRepository implements TradeRepository {
         userId: input.userId,
         type: input.type,
         message: input.message,
-        payload: input.payload,
+        payload: toPrismaNotificationPayload(input.payload),
       },
       select: tradeNotificationSelect,
     })
 
+    const type = created.type as TradeNotificationType
+
     return {
       ...created,
-      type: created.type as TradeNotificationType,
-      payload: created.payload as TradeNotificationRow['payload'],
+      type,
+      payload: toTradeNotificationPayload(type, created.payload),
     }
   }
 
@@ -659,6 +669,17 @@ export class PrismaTradeRepository implements TradeRepository {
         updatedAt: new Date(),
       },
     })
+
+    if (result.count === 1) {
+      await tx.userCard.deleteMany({
+        where: {
+          userId: input.userId,
+          cardId: input.cardId,
+          finish: input.finish,
+          quantity: 0,
+        },
+      })
+    }
 
     return result.count === 1
   }

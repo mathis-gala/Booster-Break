@@ -17,6 +17,11 @@ export const toTradeServiceError = (error: string): TradeServiceError => {
         error: 'max_offers_reached',
         message: 'You reached the maximum number of offers for this auction.',
       }
+    case 'duplicate_offer':
+      return {
+        error: 'duplicate_offer',
+        message: 'You already sent this exact offer.',
+      }
     case 'auction_not_found':
       return {
         error: 'auction_not_found',

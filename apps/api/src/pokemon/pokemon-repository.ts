@@ -137,6 +137,9 @@ export class PokemonRepository {
   ): Promise<UserCollectionResponse> {
     const where = {
       userId,
+      quantity: {
+        gt: 0,
+      },
     }
     const [total, aggregate] = await Promise.all([
       this.db.userCard.count({ where }),
