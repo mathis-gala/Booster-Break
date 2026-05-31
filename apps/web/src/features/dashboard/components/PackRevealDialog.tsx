@@ -10,6 +10,7 @@ interface PackRevealDialogProps {
   revealedCardIndex: number
   onClose: () => void
   onRevealCardIndexChange: (index: number) => void
+  resultLabel?: string
 }
 
 export function PackRevealDialog({
@@ -17,6 +18,7 @@ export function PackRevealDialog({
   revealedCardIndex,
   onClose,
   onRevealCardIndexChange,
+  resultLabel,
 }: PackRevealDialogProps) {
   const currentRevealCard = openPackResult.cards[revealedCardIndex]
   const currentRevealImageUrl = currentRevealCard?.imageLarge ?? currentRevealCard?.imageSmall
@@ -38,7 +40,7 @@ export function PackRevealDialog({
               {m.packs_pulls_title({ set: openPackResult.set.name })}
             </h3>
             <p className="text-sm font-semibold text-muted-foreground">
-              {m.packs_added_to_collection()}
+              {resultLabel ?? m.packs_added_to_collection()}
             </p>
           </div>
           <div className="flex items-center gap-2">
