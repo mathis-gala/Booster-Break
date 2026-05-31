@@ -1,9 +1,10 @@
-import type { CollectionSort, SupportedLocale } from '@tcg-collection/shared'
+import type { CollectionSort, CollectionSource, SupportedLocale } from '@tcg-collection/shared'
 
 interface CollectionPageKeyParams {
   page: number
   pageSize: number
   sort: CollectionSort
+  source?: CollectionSource
   locale: SupportedLocale
 }
 
@@ -24,8 +25,8 @@ export const pokemonQueryKeys = {
   collection: {
     all: ['pokemon', 'collection'] as const,
     page: (params: CollectionPageKeyParams) => ['pokemon', 'collection', params] as const,
-    allCards: (locale: SupportedLocale, sort: CollectionSort) =>
-      ['pokemon', 'collection', 'all', locale, sort] as const,
+    allCards: (locale: SupportedLocale, sort: CollectionSort, source?: CollectionSource) =>
+      ['pokemon', 'collection', 'all', locale, sort, source ?? 'all'] as const,
     packCount: (locale: SupportedLocale) =>
       ['pokemon', 'collection', 'pack-count', locale] as const,
   },

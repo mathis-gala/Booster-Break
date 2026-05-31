@@ -78,6 +78,7 @@ export function useTradeOfferComposer({
 
   const collection = usePokemonCollectionAllQuery({
     sort: preference,
+    source: 'owned',
     locale,
     enabled: Boolean(userId),
   })

@@ -25,6 +25,15 @@ export class TcgDexClient {
       .sort((first, second) => second.releaseDate.localeCompare(first.releaseDate))
   }
 
+  async getAllSets(): Promise<Set[]> {
+    const setResumes = (await this.client.fetch('sets')) ?? []
+    const sets = await Promise.all(setResumes.map(async (set) => this.client.fetch('sets', set.id)))
+
+    return sets
+      .filter((set): set is Set => Boolean(set?.releaseDate))
+      .sort((first, second) => first.releaseDate.localeCompare(second.releaseDate))
+  }
+
   async getCardsBySet(set: Set): Promise<TcgDexCard[]> {
     const cards = await Promise.all(
       set.cards.map(
