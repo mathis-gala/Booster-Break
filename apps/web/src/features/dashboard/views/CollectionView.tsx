@@ -43,11 +43,7 @@ export function CollectionView() {
       },
     ),
   )
-  const sets =
-    (isSearching ? searchableCollection.data?.sets : collection.data?.sets) ??
-    collection.data?.sets ??
-    searchableCollection.data?.sets ??
-    []
+  const sets = collection.data?.sets ?? searchableCollection.data?.sets ?? []
   const searchMatches = useMemo(
     () =>
       (searchableCollection.data?.cards ?? []).filter((card) =>
