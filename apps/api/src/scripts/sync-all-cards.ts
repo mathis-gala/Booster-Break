@@ -1,7 +1,8 @@
 import type { SupportedLocale } from '@tcg-collection/shared'
 import { prisma } from '../db/prisma'
+import { PokemonCatalogSyncService } from '../pokemon/pokemon-catalog-sync-service'
 import { PokemonRepository } from '../pokemon/pokemon-repository'
-import { getSetSeriesName, TcgDexClient } from '../pokemon/tcgdex-client'
+import { TcgDexClient } from '../pokemon/tcgdex-client'
 import { parseArgs, parseYear, toPositiveInt } from './script-utils'
 
 const args = parseArgs()
@@ -11,44 +12,25 @@ const localizedClients: Record<SupportedLocale, TcgDexClient> = {
   en: pokemonClient,
   fr: new TcgDexClient('fr'),
 }
+const catalogSyncService = new PokemonCatalogSyncService({
+  pokemonClient,
+  localizedPokemonClients: localizedClients,
+  pokemonRepository: repository,
+})
 const syncedAt = new Date().toISOString()
 const sets = await listSetsToSync()
 let syncedSets = 0
 let syncedCards = 0
 
 for (const set of sets) {
-  const localizedSet = await localizedClients.fr.getSetById(set.id)
-
-  await repository.upsertSet(set, syncedAt, undefined, {
-    en: {
-      name: set.name,
-      series: getSetSeriesName(set),
-    },
-    fr: localizedSet
-      ? {
-          name: localizedSet.name,
-          series: getSetSeriesName(localizedSet),
-        }
-      : undefined,
-  })
-
-  const cards = await pokemonClient.getCardsBySet(set)
-  const localizedCards = await localizedClients.fr.getCardsByIds(cards.map((card) => card.id))
-  const localizedCardNames = new Map(
-    localizedCards.map((card) => [
-      card.id,
-      {
-        fr: card.name,
-      },
-    ]),
-  )
-
-  await repository.replaceSetCards(set.id, cards, syncedAt, localizedCardNames)
+  const result = await catalogSyncService.syncSet(set, { syncedAt })
 
   syncedSets += 1
-  syncedCards += cards.length
+  syncedCards += result.cards
 
-  console.log(`${syncedSets}/${sets.length} synced ${set.id} (${set.name}) - ${cards.length} cards`)
+  console.log(
+    `${syncedSets}/${sets.length} synced ${set.id} (${set.name}) - ${result.cards} cards`,
+  )
 }
 
 console.log(
