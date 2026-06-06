@@ -223,6 +223,45 @@ body,
   }
 }
 
+@keyframes new-card-badge {
+  0% {
+    opacity: 0;
+    transform: translateY(10px) scale(0.5) rotate(-8deg);
+  }
+  55% {
+    opacity: 1;
+    transform: translateY(0) scale(1.18) rotate(3deg);
+  }
+  75% {
+    transform: scale(0.94) rotate(-1deg);
+  }
+  100% {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+@keyframes new-card-badge-glow {
+  0% {
+    box-shadow: 0 0 0 0 rgb(251 191 36 / 0.6);
+  }
+  70%,
+  100% {
+    box-shadow: 0 0 0 10px rgb(251 191 36 / 0);
+  }
+}
+
+.new-card-badge-pulse::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  z-index: -1;
+  border-radius: 9999px;
+  box-shadow: 0 0 0 0 rgb(251 191 36 / 0);
+  animation: new-card-badge-glow 2.4s ease-out 820ms infinite;
+  pointer-events: none;
+}
+
 @keyframes holo-foil {
   0% {
     opacity: 0.42;

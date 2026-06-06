@@ -91,6 +91,8 @@
   "packs_view_cards_aria": "View {name} cards",
   "packs_pulls_title": "{set} pulls",
   "packs_added_to_collection": "Added to collection",
+  "packs_card_new": "NEW",
+  "packs_new_cards_count": "{count} new",
   "sandbox_reveal_label": "Decorative pull only — not added to collection",
   "packs_previous": "Previous",
   "packs_next": "Next",

@@ -96,10 +96,14 @@ export type PackOpenStatusResponse =
       cooldownDurationSeconds: number
     }
 
+export interface OpenedPackCard extends PokemonCardSummary {
+  isNew: boolean
+}
+
 export interface OpenPackResponse {
   openingId: string
   set: PokemonSetSummary
-  cards: PokemonCardSummary[]
+  cards: OpenedPackCard[]
 }
 
 export type TradeAuctionStatus = 'active' | 'accepted' | 'cancelled' | 'expired'
