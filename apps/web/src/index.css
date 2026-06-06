@@ -216,49 +216,121 @@ body,
   }
 }
 
-.reverse-holo-sequins {
-  background-image:
-    radial-gradient(circle, rgb(255 255 255 / 0.95) 0 1px, transparent 1.9px),
-    radial-gradient(circle, rgb(125 211 252 / 0.58) 0 1px, transparent 2px),
-    radial-gradient(circle, rgb(244 114 182 / 0.52) 0 1px, transparent 2.1px),
-    radial-gradient(circle, rgb(253 224 71 / 0.58) 0 1px, transparent 2px);
-  background-position:
+.reverse-holo-foil,
+.reverse-holo-sweep {
+  --reverse-art-left: 8.5%;
+  --reverse-art-right: 91.5%;
+  --reverse-art-top: 18.5%;
+  --reverse-art-bottom: 56.5%;
+  clip-path: polygon(
     0 0,
-    11px 14px,
-    22px 7px,
-    32px 26px;
+    100% 0,
+    100% var(--reverse-art-top),
+    0 var(--reverse-art-top),
+    0 var(--reverse-art-bottom),
+    var(--reverse-art-left) var(--reverse-art-bottom),
+    var(--reverse-art-left) var(--reverse-art-top),
+    var(--reverse-art-right) var(--reverse-art-top),
+    var(--reverse-art-right) var(--reverse-art-bottom),
+    100% var(--reverse-art-bottom),
+    100% 100%,
+    0 100%
+  );
+}
+
+.reverse-holo-foil {
+  background-image:
+    radial-gradient(circle at 50% 50%, transparent 0 17%, rgb(255 255 255 / 0.36) 18% 21%, transparent 22%),
+    radial-gradient(circle at 50% 50%, rgb(255 255 255 / 0.34) 0 5%, transparent 6%),
+    linear-gradient(118deg, transparent 0 15%, rgb(255 255 255 / 0.72) 22%, transparent 31% 100%),
+    linear-gradient(64deg, rgb(56 189 248 / 0.38), rgb(236 72 153 / 0.36), rgb(250 204 21 / 0.34), rgb(74 222 128 / 0.28), rgb(56 189 248 / 0.38)),
+    repeating-linear-gradient(112deg, transparent 0 9px, rgb(255 255 255 / 0.2) 10px 11px, transparent 12px 20px);
+  background-position:
+    8px 10px,
+    8px 10px,
+    -140% 0,
+    0 0,
+    0 0;
   background-size:
-    26px 26px,
-    32px 32px,
-    38px 38px,
-    46px 46px;
-  filter: brightness(1.24) contrast(1.18) saturate(1.22);
+    44px 44px,
+    44px 44px,
+    240% 100%,
+    240% 240%,
+    36px 36px;
+  filter: brightness(1.18) contrast(1.1) saturate(1.5);
+  mix-blend-mode: color-dodge;
+  opacity: 0.5;
+}
+
+.reverse-holo-sweep {
+  background:
+    linear-gradient(105deg, transparent 16%, rgb(255 255 255 / 0.64) 39%, transparent 58%),
+    repeating-linear-gradient(28deg, transparent 0 14px, rgb(255 255 255 / 0.12) 15px 16px, transparent 17px 31px),
+    linear-gradient(24deg, rgb(56 189 248 / 0.22), rgb(236 72 153 / 0.2), rgb(250 204 21 / 0.22));
+  background-size:
+    230% 100%,
+    54px 54px,
+    180% 180%;
   mix-blend-mode: screen;
-  opacity: 0.74;
+  opacity: 0.38;
 }
 
 @media (prefers-reduced-motion: no-preference) {
-  .reverse-holo-sequins {
-    animation: reverse-holo-sequins 3.8s linear infinite;
+  .reverse-holo-foil {
+    animation: reverse-holo-foil 4.2s ease-in-out infinite;
+  }
+
+  .reverse-holo-sweep {
+    animation: reverse-holo-sweep 2.7s ease-in-out infinite;
   }
 }
 
-@keyframes reverse-holo-sequins {
+@keyframes reverse-holo-foil {
   0% {
-    opacity: 0.68;
+    opacity: 0.4;
     background-position:
+      8px 10px,
+      8px 10px,
+      -140% 0,
       0 0,
-      11px 14px,
-      22px 7px,
-      32px 26px;
+      0 0;
+  }
+
+  50% {
+    opacity: 0.54;
+    background-position:
+      27px 29px,
+      27px 29px,
+      30% 0,
+      100% 42%,
+      21px 21px;
   }
 
   100% {
-    opacity: 0.8;
+    opacity: 0.4;
     background-position:
-      26px 26px,
-      43px 46px,
-      60px 45px,
-      78px 72px;
+      46px 48px,
+      46px 48px,
+      140% 0,
+      0 0,
+      42px 42px;
+  }
+}
+
+@keyframes reverse-holo-sweep {
+  0%,
+  18% {
+    background-position:
+      -135% 0,
+      0 0,
+      0 0;
+  }
+
+  70%,
+  100% {
+    background-position:
+      135% 0,
+      27px 27px,
+      100% 40%;
   }
 }
