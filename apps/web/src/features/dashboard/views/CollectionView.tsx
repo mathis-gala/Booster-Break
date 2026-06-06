@@ -15,6 +15,7 @@ export function CollectionView() {
   const [page, setPage] = useState(1)
   const [sort, setSort] = useState<CollectionSort>('recent')
   const [searchQuery, setSearchQuery] = useState('')
+  const [selectedSetId, setSelectedSetId] = useState<string>()
   const pageSize = 24
   const isSearching = searchQuery.trim().length > 0
   const collection = useQuery(
@@ -23,6 +24,7 @@ export function CollectionView() {
         page,
         pageSize,
         sort,
+        setId: selectedSetId,
       },
       {
         keepPreviousData: true,
@@ -34,12 +36,18 @@ export function CollectionView() {
     usePokemonCollectionAllQueryOption(
       {
         sort,
+        setId: selectedSetId,
       },
       {
         enabled: isSearching,
       },
     ),
   )
+  const sets =
+    (isSearching ? searchableCollection.data?.sets : collection.data?.sets) ??
+    collection.data?.sets ??
+    searchableCollection.data?.sets ??
+    []
   const searchMatches = useMemo(
     () =>
       (searchableCollection.data?.cards ?? []).filter((card) =>
@@ -72,12 +80,18 @@ export function CollectionView() {
         totalCards={totalCards}
         sort={sort}
         searchQuery={searchQuery}
+        sets={sets}
+        selectedSetId={selectedSetId}
         onSortChange={(nextSort) => {
           setSort(nextSort)
           setPage(1)
         }}
         onSearchChange={(nextSearchQuery) => {
           setSearchQuery(nextSearchQuery)
+          setPage(1)
+        }}
+        onSetChange={(nextSetId) => {
+          setSelectedSetId(nextSetId)
           setPage(1)
         }}
         onPageChange={setPage}

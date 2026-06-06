@@ -9,6 +9,7 @@ import { FoilCardImage } from './FoilCardImage'
 
 interface CollectionCardItemProps {
   card: UserCollectionCard
+  setName?: string
   selected?: boolean
   onSelect?: () => void
   onImageClick?: () => void
@@ -19,6 +20,7 @@ interface CollectionCardItemProps {
 
 export const CollectionCardItem = memo(function CollectionCardItem({
   card,
+  setName,
   selected = false,
   onSelect,
   onImageClick,
@@ -76,6 +78,11 @@ export const CollectionCardItem = memo(function CollectionCardItem({
           <p className="truncate text-[0.62rem] font-semibold text-muted-foreground">
             {meta.length > 0 ? meta.join(' · ') : null}
           </p>
+          {setName ? (
+            <p className="truncate text-[0.58rem] font-semibold text-muted-foreground">
+              {setName}
+            </p>
+          ) : null}
         </div>
         <span className="rounded-md bg-sidebar px-1.5 py-0.5 text-[0.62rem] font-black text-sidebar-foreground">
           {card.quantity}x

@@ -1,5 +1,9 @@
-import { useState } from 'react'
-import type { CollectionSort, UserCollectionCard } from '@tcg-collection/shared'
+import { useMemo, useState } from 'react'
+import type {
+  CollectionSetOption,
+  CollectionSort,
+  UserCollectionCard,
+} from '@tcg-collection/shared'
 
 import { Button } from '@/components/ui/button'
 import { m } from '@/paraglide/messages'
@@ -16,8 +20,11 @@ interface CollectionPanelProps {
   totalCards: number
   sort: CollectionSort
   searchQuery: string
+  sets: CollectionSetOption[]
+  selectedSetId?: string
   onSortChange: (sort: CollectionSort) => void
   onSearchChange: (query: string) => void
+  onSetChange: (setId: string | undefined) => void
   onPageChange: (page: number) => void
 }
 
@@ -50,12 +57,19 @@ export function CollectionPanel({
   totalCards,
   sort,
   searchQuery,
+  sets,
+  selectedSetId,
   onSortChange,
   onSearchChange,
+  onSetChange,
   onPageChange,
 }: CollectionPanelProps) {
   const [selectedCard, setSelectedCard] = useState<UserCollectionCard>()
   const sortActions = getSortActions()
+  const setNameById = useMemo(
+    () => new Map(sets.map((set) => [set.id, set.name])),
+    [sets],
+  )
 
   return (
     <>
@@ -67,25 +81,43 @@ export function CollectionPanel({
         }
       >
         <div className="space-y-4">
-          <div className="flex flex-wrap items-start justify-between gap-3">
+          <div className="flex flex-wrap items-start gap-3">
             <div>
               <h2 className="text-lg font-black">{m.collection_title()}</h2>
               <p className="text-sm text-muted-foreground">
                 {m.collection_summary({ totalCards, total })}
               </p>
             </div>
-            <div className="flex w-full min-w-[14rem] flex-wrap items-center justify-end gap-2 sm:w-auto">
-              <label className="mt-0 flex flex-1 min-w-[10rem] items-center gap-2 sm:w-auto">
-                <span className="shrink-0 text-xs font-black uppercase tracking-wide text-muted-foreground">
+            <div className="flex w-full flex-col gap-2 sm:w-auto sm:flex-row sm:flex-wrap sm:items-center sm:justify-start">
+              <label className="flex w-full items-center gap-2 sm:w-auto">
+                <span className="w-20 shrink-0 text-xs font-black uppercase tracking-wide text-muted-foreground sm:w-auto">
                   {m.collection_search_label()}
                 </span>
                 <input
                   value={searchQuery}
                   onChange={(event) => onSearchChange(event.target.value)}
-                  className="w-full rounded-md border bg-background px-2 py-2 text-sm placeholder:text-xs sm:w-auto"
+                  className="min-w-0 flex-1 rounded-md border bg-background px-2 py-2 text-sm placeholder:text-xs sm:w-40 sm:flex-none"
                   placeholder={m.trade_search_by_pokemon_placeholder()}
                   aria-label={m.trade_search_by_pokemon_aria()}
                 />
+              </label>
+              <label className="flex w-full items-center gap-2 sm:w-auto">
+                <span className="w-20 shrink-0 text-xs font-black uppercase tracking-wide text-muted-foreground sm:w-auto">
+                  {m.collection_filter_set_label()}
+                </span>
+                <select
+                  value={selectedSetId ?? ''}
+                  onChange={(event) => onSetChange(event.target.value || undefined)}
+                  className="min-w-0 flex-1 rounded-md border bg-background px-2 py-2 text-sm sm:max-w-[12rem] sm:flex-none"
+                  aria-label={m.collection_filter_set_label()}
+                >
+                  <option value="">{m.collection_filter_all_sets()}</option>
+                  {sets.map((set) => (
+                    <option key={set.id} value={set.id}>
+                      {set.name} ({set.count})
+                    </option>
+                  ))}
+                </select>
               </label>
               <div className="flex flex-wrap gap-2">
                 {sortActions.map((action) => (
@@ -115,6 +147,7 @@ export function CollectionPanel({
               <CollectionCardItem
                 key={`${card.id}-${card.finish ?? 'normal'}`}
                 card={card}
+                setName={setNameById.get(card.setId)}
                 onSelect={() => setSelectedCard(card)}
                 className="focus-visible:ring-2 focus-visible:ring-ring"
               />

@@ -16,6 +16,7 @@ export interface CollectionQueryParams {
   pageSize: number
   sort: CollectionSort
   source?: CollectionSource
+  setId?: string
   enabled?: boolean
   keepPreviousData?: boolean
 }
@@ -23,6 +24,7 @@ export interface CollectionQueryParams {
 export interface CollectionAllQueryParams {
   sort: CollectionSort
   source?: CollectionSource
+  setId?: string
   enabled?: boolean
 }
 
@@ -64,6 +66,7 @@ export const usePokemonCollectionQueryOption = (
         pageSize: params.pageSize,
         sort: params.sort,
         source: params.source,
+        setId: params.setId,
       },
     },
     queryKey: pokemonQueryKeys.collection.page({ ...params, locale }),
@@ -89,9 +92,15 @@ export const usePokemonCollectionAllQueryOption = (
         pageSize: COLLECTION_PAGE_SIZE,
         sort: params.sort,
         source: params.source,
+        setId: params.setId,
       },
     },
-    queryKey: pokemonQueryKeys.collection.allCards(locale, params.sort, params.source),
+    queryKey: pokemonQueryKeys.collection.allCards(
+      locale,
+      params.sort,
+      params.source,
+      params.setId,
+    ),
     enabled: options.enabled ?? true,
     placeholderData: keepPreviousData,
     mapErrorData: (error) =>
@@ -193,6 +202,7 @@ const loadUserCollectionPage = async (
       pageSize: params.pageSize,
       sort: params.sort,
       source: params.source,
+      setId: params.setId,
     },
   })
 
@@ -217,4 +227,5 @@ const emptyCollection = (params: CollectionQueryParams): UserCollectionResponse 
     pageCount: 1,
   },
   sort: params.sort,
+  sets: [],
 })

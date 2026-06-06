@@ -1,5 +1,6 @@
 import type {
   CardFinish,
+  CollectionSetOption,
   CollectionSort,
   CollectionSource,
   PokemonCardSummary,
@@ -12,6 +13,7 @@ import type { Prisma } from '@prisma/client'
 import type { AppPrisma } from '../db/prisma'
 import {
   getLocalizedCardName,
+  getLocalizedSetName,
   type LocalizedCardNames,
   type LocalizedSetText,
   toCardSummary,
@@ -29,7 +31,13 @@ type CollectionInventoryRow = {
   quantity: number
   firstCollectedAt: Date
   updatedAt: Date
-  card: Parameters<typeof toCardSummary>[0]
+  card: Parameters<typeof toCardSummary>[0] & {
+    set: {
+      name: string
+      nameEn: string | null
+      nameFr: string | null
+    } | null
+  }
 }
 
 export class PokemonRepository {
@@ -152,14 +160,19 @@ export class PokemonRepository {
       sort: CollectionSort
       source: CollectionSource
       locale: SupportedLocale
+      setId?: string
     },
   ): Promise<UserCollectionResponse> {
-    const rows = await this.listUserCollectionRows(
+    const allRows = await this.listUserCollectionRows(
       userId,
       options.locale,
       options.sort,
       options.source,
     )
+    const sets = this.buildCollectionSetOptions(allRows, options.locale)
+    const rows = options.setId
+      ? allRows.filter((row) => row.card.setId === options.setId)
+      : allRows
     const total = rows.length
     const totalCards = rows.reduce((count, row) => count + row.quantity, 0)
     const pageCount = Math.max(1, Math.ceil(total / options.pageSize))
@@ -181,7 +194,32 @@ export class PokemonRepository {
         pageCount,
       },
       sort: options.sort,
+      sets,
     }
+  }
+
+  private buildCollectionSetOptions(
+    rows: CollectionInventoryRow[],
+    locale: SupportedLocale,
+  ): CollectionSetOption[] {
+    const sets = new Map<string, CollectionSetOption>()
+
+    for (const row of rows) {
+      const existing = sets.get(row.card.setId)
+
+      if (existing) {
+        existing.count += 1
+        continue
+      }
+
+      sets.set(row.card.setId, {
+        id: row.card.setId,
+        name: row.card.set ? getLocalizedSetName(row.card.set, locale) : row.card.setId,
+        count: 1,
+      })
+    }
+
+    return [...sets.values()].sort((first, second) => first.name.localeCompare(second.name))
   }
 
   // Owned card ids, deduped and finish-agnostic: a card held in any finish appears once.
@@ -346,7 +384,11 @@ export class PokemonRepository {
     const ownedRows = await this.db.userCard.findMany({
       where,
       include: {
-        card: true,
+        card: {
+          include: {
+            set: true,
+          },
+        },
       },
     })
 
@@ -357,7 +399,11 @@ export class PokemonRepository {
     const giftedRows = await this.db.giftedUserCard.findMany({
       where,
       include: {
-        card: true,
+        card: {
+          include: {
+            set: true,
+          },
+        },
       },
     })
 

@@ -154,6 +154,7 @@ export const createPokemonController = ({
           pageSize: query.pageSize ?? 24,
           sort: query.sort ?? 'recent',
           source: query.source ?? 'all',
+          setId: query.setId,
           locale: resolveLocaleOverride(query.locale, context.locale),
         })
 

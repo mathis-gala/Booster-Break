@@ -84,6 +84,7 @@ export class PokemonService {
       sort: CollectionSort
       source: CollectionSource
       locale: SupportedLocale
+      setId?: string
     },
   ): Promise<UserCollectionResponse> {
     return this.options.pokemonRepository.listUserCollection(user.id, options)
