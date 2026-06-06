@@ -1,8 +1,9 @@
 import { useMemo, useState } from 'react'
-import { XIcon } from 'lucide-react'
+import { SparklesIcon, XIcon } from 'lucide-react'
 import type { PokemonCardSummary, PokemonSetSummary } from '@tcg-collection/shared'
 
 import { Button } from '@/components/ui/button'
+import { cn } from '@/lib/utils'
 import { formatRarity } from '@/features/i18n/rarity-labels'
 import { groupCardsByRarity, getRarityChanceLabel } from '../lib/pack-rarity'
 import { m } from '@/paraglide/messages'
@@ -14,6 +15,7 @@ interface BoosterPreviewDialogProps {
   onClose: () => void
   set: PokemonSetSummary
   showRarityChanceLabels?: boolean
+  ownedCardIds?: ReadonlySet<string>
 }
 
 export function BoosterPreviewDialog({
@@ -22,9 +24,16 @@ export function BoosterPreviewDialog({
   onClose,
   set,
   showRarityChanceLabels = true,
+  ownedCardIds,
 }: BoosterPreviewDialogProps) {
   const [selectedPreviewCard, setSelectedPreviewCard] = useState<PokemonCardSummary>()
+  const [highlightOwned, setHighlightOwned] = useState(false)
   const previewCardsByRarity = useMemo(() => groupCardsByRarity(cards), [cards])
+  const canHighlightOwned = Boolean(ownedCardIds) && cards.length > 0
+  const ownedCount = useMemo(
+    () => (ownedCardIds ? cards.filter((card) => ownedCardIds.has(card.id)).length : 0),
+    [cards, ownedCardIds],
+  )
 
   function closePreview() {
     setSelectedPreviewCard(undefined)
@@ -50,18 +59,34 @@ export function BoosterPreviewDialog({
                 {m.packs_preview_title({ set: set.name })}
               </h3>
               <p className="text-sm font-semibold text-muted-foreground">
-                {m.packs_sorted_by_rarity()}
+                {highlightOwned && canHighlightOwned
+                  ? m.packs_owned_summary({ owned: ownedCount, total: cards.length })
+                  : m.packs_sorted_by_rarity()}
               </p>
             </div>
-            <Button
-              type="button"
-              variant="outline"
-              size="icon"
-              onClick={closePreview}
-              aria-label={m.packs_close_preview()}
-            >
-              <XIcon aria-hidden="true" />
-            </Button>
+            <div className="flex shrink-0 items-center gap-2">
+              {canHighlightOwned ? (
+                <Button
+                  type="button"
+                  variant={highlightOwned ? 'default' : 'outline'}
+                  size="sm"
+                  onClick={() => setHighlightOwned((value) => !value)}
+                  aria-pressed={highlightOwned}
+                >
+                  <SparklesIcon className="size-4" aria-hidden="true" />
+                  {highlightOwned ? m.packs_owned_highlight_on() : m.packs_owned_highlight_off()}
+                </Button>
+              ) : null}
+              <Button
+                type="button"
+                variant="outline"
+                size="icon"
+                onClick={closePreview}
+                aria-label={m.packs_close_preview()}
+              >
+                <XIcon aria-hidden="true" />
+              </Button>
+            </div>
           </div>
 
           {isPending ? (
@@ -83,25 +108,39 @@ export function BoosterPreviewDialog({
                     ) : null}
                   </h4>
                   <div className="flex flex-wrap gap-2">
-                    {rarityCards.map((card) => (
-                      <button
-                        key={card.id}
-                        type="button"
-                        className="w-20 rounded-md focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
-                        onClick={() => setSelectedPreviewCard(card)}
-                        aria-label={m.packs_view_card_aria({ name: card.name })}
-                      >
-                        {card.imageSmall ? (
-                          <img
-                            src={card.imageSmall}
-                            alt={card.name}
-                            className="aspect-[63/88] w-full rounded-md object-cover shadow-sm transition-transform hover:-translate-y-0.5"
-                          />
-                        ) : (
-                          <div className="aspect-[63/88] rounded-md bg-muted" aria-hidden="true" />
-                        )}
-                      </button>
-                    ))}
+                    {rarityCards.map((card) => {
+                      const isOwned = ownedCardIds?.has(card.id) ?? false
+                      const isDimmed = highlightOwned && canHighlightOwned && !isOwned
+
+                      return (
+                        <button
+                          key={card.id}
+                          type="button"
+                          className="group relative w-20 rounded-md focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                          onClick={() => setSelectedPreviewCard(card)}
+                          aria-label={m.packs_view_card_aria({ name: card.name })}
+                        >
+                          {card.imageSmall ? (
+                            <img
+                              src={card.imageSmall}
+                              alt={card.name}
+                              className={cn(
+                                'aspect-[63/88] w-full rounded-md object-cover shadow-sm transition-all group-hover:-translate-y-0.5',
+                                isDimmed && 'opacity-35 grayscale',
+                              )}
+                            />
+                          ) : (
+                            <div
+                              className={cn(
+                                'aspect-[63/88] rounded-md bg-muted',
+                                isDimmed && 'opacity-35',
+                              )}
+                              aria-hidden="true"
+                            />
+                          )}
+                        </button>
+                      )
+                    })}
                   </div>
                 </section>
               ))}

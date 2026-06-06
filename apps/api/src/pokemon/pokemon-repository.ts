@@ -183,6 +183,38 @@ export class PokemonRepository {
     }
   }
 
+  async listOwnedCardIds(userId: string): Promise<string[]> {
+    const where = {
+      userId,
+      quantity: {
+        gt: 0,
+      },
+    }
+
+    const [ownedRows, giftedRows] = await Promise.all([
+      this.db.userCard.findMany({
+        where,
+        select: {
+          cardId: true,
+        },
+      }),
+      this.db.giftedUserCard.findMany({
+        where,
+        select: {
+          cardId: true,
+        },
+      }),
+    ])
+
+    const cardIds = new Set<string>()
+
+    for (const row of [...ownedRows, ...giftedRows]) {
+      cardIds.add(row.cardId)
+    }
+
+    return [...cardIds]
+  }
+
   async recordPackOpening(
     userId: string,
     setId: string,

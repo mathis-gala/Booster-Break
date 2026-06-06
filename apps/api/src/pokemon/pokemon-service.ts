@@ -2,6 +2,7 @@ import type {
   CollectionSort,
   CollectionSource,
   OpenPackResponse,
+  OwnedCardIdsResponse,
   PackOpenStatusResponse,
   PokemonCardSummary,
   PokemonSetSummary,
@@ -90,6 +91,23 @@ export class PokemonService {
     }
 
     return this.options.pokemonRepository.listUserCollection(user.id, options)
+  }
+
+  async listOwnedCardIds(
+    cookieHeader: string | undefined,
+  ): Promise<OwnedCardIdsResponse | PokemonServiceError> {
+    const user = await this.options.authService.getCurrentUser(cookieHeader)
+
+    if (!user) {
+      return {
+        error: 'unauthenticated',
+        message: 'Sign in to view your collection.',
+      }
+    }
+
+    const cardIds = await this.options.pokemonRepository.listOwnedCardIds(user.id)
+
+    return { cardIds }
   }
 
   async getPackOpenStatus(cookieHeader: string | undefined): Promise<PackOpenStatusResponse> {

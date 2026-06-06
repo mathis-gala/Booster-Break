@@ -1,13 +1,15 @@
-import { useState } from 'react'
+import { useMemo, useState } from 'react'
 
 import { PackStage } from '../components/PackStage'
 import {
   useOpenPokemonPackMutation,
+  useOwnedCardIdsQuery,
   usePackOpenStatusQuery,
   usePokemonCollectionCountQuery,
   usePokemonPreviewCardsQuery,
   usePokemonSetsQuery,
 } from '../hooks/usePokemonQueries'
+import { useCurrentUserQuery } from '../hooks/useAuthQueries'
 import { useLocale } from '@/features/i18n/useLocale'
 
 export function PacksView() {
@@ -31,6 +33,13 @@ export function PacksView() {
   const collection = usePokemonCollectionCountQuery(locale)
   const previewCards = usePokemonPreviewCardsQuery(previewSetId, locale)
   const previewSet = sets.data?.find((set) => set.id === previewSetId)
+  const currentUser = useCurrentUserQuery()
+  const isAuthenticated = currentUser.data?.authenticated ?? false
+  const ownedCardIdsQuery = useOwnedCardIdsQuery(isAuthenticated)
+  const ownedCardIds = useMemo(
+    () => (ownedCardIdsQuery.data ? new Set(ownedCardIdsQuery.data) : undefined),
+    [ownedCardIdsQuery.data],
+  )
 
   return (
     <div className="w-full max-w-6xl">
@@ -56,6 +65,7 @@ export function PacksView() {
         onPreviewSet={setPreviewSetId}
         onClosePreview={() => setPreviewSetId(undefined)}
         collectionCount={collection.data?.pagination.totalCards ?? 0}
+        previewOwnedCardIds={ownedCardIds}
       />
     </div>
   )

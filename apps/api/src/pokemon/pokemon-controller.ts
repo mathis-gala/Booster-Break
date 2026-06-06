@@ -153,6 +153,15 @@ export const createPokemonController = ({
         query: collectionQuerySchema,
       },
     )
+    .get('/collection/owned-ids', async ({ headers, status }) => {
+      const result = await pokemonService.listOwnedCardIds(headers.cookie)
+
+      if (!isPokemonServiceError(result)) {
+        return result
+      }
+
+      return status(toPokemonErrorStatus(result.error), result)
+    })
     .post(
       '/packs/open',
       async ({ headers, body, status }) => {

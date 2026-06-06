@@ -8,6 +8,7 @@ import type {
 } from '@tcg-collection/shared'
 
 import {
+  fetchOwnedCardIds,
   fetchPackOpenStatus,
   fetchSandboxPokemonCards,
   fetchSandboxPokemonSets,
@@ -122,6 +123,14 @@ export function usePokemonCollectionCountQuery(locale: SupportedLocale) {
   return useQuery({
     queryKey: pokemonQueryKeys.collection.packCount(locale),
     queryFn: () => fetchUserCollection({ page: 1, pageSize: 1, sort: 'recent', locale }),
+  })
+}
+
+export function useOwnedCardIdsQuery(enabled = true) {
+  return useQuery({
+    queryKey: pokemonQueryKeys.collection.ownedIds(),
+    queryFn: fetchOwnedCardIds,
+    enabled,
   })
 }
 
