@@ -1,11 +1,11 @@
-import { useState, useSyncExternalStore } from 'react'
+import { useMemo, useState, useSyncExternalStore } from 'react'
 import { Clock3Icon, EyeIcon, UserRoundIcon, XIcon } from 'lucide-react'
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 
 import type { TradeAuctionResponse, TradeOfferResponse } from '@tcg-collection/shared'
 import { Button } from '@/components/ui/button'
 import { useLocale } from '@/features/i18n/useLocale'
 import { m } from '@/paraglide/messages'
-import { useCurrentUserQuery } from '@/features/dashboard/hooks/useAuthQueries'
 import { formatCardFinish } from '@/features/dashboard/lib/card-format'
 import {
   describeAuctionRemaining,
@@ -13,13 +13,6 @@ import {
   MAX_ACTIVE_AUCTIONS_PER_USER,
 } from '../lib/trade-utils'
 import { tradeClock } from '../lib/trade-clock'
-import {
-  useAcceptTradeOfferMutation,
-  useCancelTradeAuctionMutation,
-  useCancelTradeOfferMutation,
-  useTradeAuctionQuery,
-  useTradeAuctionsQuery,
-} from '../hooks/useTradeQueries'
 import { TradeAuctionList } from '../components/TradeAuctionList'
 import { TradeOfferComposer } from '../components/TradeOfferComposer'
 import { TradeOffersPanel } from '../components/TradeOffersPanel'
@@ -32,9 +25,17 @@ import { FoilCardImage } from '@/features/dashboard/components/FoilCardImage'
 import { CardImageDialog } from '@/features/dashboard/components/CardImageDialog'
 import { formatRarity } from '@/features/i18n/rarity-labels'
 import {
-  usePokemonPreviewCardsQuery,
-  usePokemonSetsQuery,
-} from '@/features/dashboard/hooks/usePokemonQueries'
+  useAcceptTradeOfferMutationOption,
+  useCancelTradeAuctionMutationOption,
+  useCancelTradeOfferMutationOption,
+} from '@/lib/mutations/trade'
+import { useCurrentUserQueryOption } from '@/lib/queries/auth'
+import {
+  useOwnedCardIdsQueryOption,
+  usePokemonPreviewCardsQueryOption,
+  usePokemonSetsQueryOption,
+} from '@/lib/queries/pokemon'
+import { useTradeAuctionQueryOption, useTradeAuctionsQueryOption } from '@/lib/queries/trade'
 import { BoosterPreviewDialog } from '@/features/dashboard/components/BoosterPreviewDialog'
 import { buildAcceptedOfferNotification } from '../lib/trade-notification-factory'
 import { getTradeFilterBadges, getTradeRequirementBadges } from '../lib/trade-constraint-display'
@@ -77,8 +78,9 @@ export function TradeView() {
   const [acceptedAuction, setAcceptedAuction] = useState<TradeAuctionResponse | null>(null)
   const [isTradeAcceptedNotificationOpen, setIsTradeAcceptedNotificationOpen] = useState(false)
 
-  const auth = useCurrentUserQuery()
-  const auctions = useTradeAuctionsQuery(locale)
+  const queryClient = useQueryClient()
+  const auth = useQuery(useCurrentUserQueryOption())
+  const auctions = useQuery(useTradeAuctionsQueryOption())
   const currentUserId = auth.data?.authenticated ? auth.data.user.id : undefined
 
   const auctionsFromList = auctions.data?.auctions ?? []
@@ -95,31 +97,41 @@ export function TradeView() {
   const auctionPageCount = Math.max(1, Math.ceil(auctionsFromList.length / AUCTIONS_PER_PAGE))
 
   const auctionQueryEnabled = Boolean(selectedAuctionId && isDetailsDialogOpen)
-  const auctionQuery = useTradeAuctionQuery(selectedAuctionId, locale, auctionQueryEnabled)
+  const auctionQuery = useQuery(
+    useTradeAuctionQueryOption(selectedAuctionId, auctionQueryEnabled),
+  )
+  const ownedCardIdsQuery = useQuery(useOwnedCardIdsQueryOption(Boolean(auth.data?.authenticated)))
   const selectedAuction =
     auctionQueryEnabled && auctionQuery.data
       ? auctionQuery.data
       : selectedAuctionId
         ? auctionsFromList.find((auction) => auction.id === selectedAuctionId)
         : undefined
-  const setsQuery = usePokemonSetsQuery(locale)
-  const selectedAuctionSetCardsQuery = usePokemonPreviewCardsQuery(
-    selectedAuction?.offeredCard.setId,
-    locale,
+  const setsQuery = useQuery(usePokemonSetsQueryOption())
+  const selectedAuctionSetCardsQuery = useQuery(
+    usePokemonPreviewCardsQueryOption(selectedAuction?.offeredCard.setId),
+  )
+  const ownedCardIds = useMemo(
+    () => (ownedCardIdsQuery.data ? new Set(ownedCardIdsQuery.data) : undefined),
+    [ownedCardIdsQuery.data],
   )
 
-  const cancelAuctionMutation = useCancelTradeAuctionMutation({
-    onSuccess: () => {
-      setSelectedAuctionId(undefined)
-      setIsDetailsDialogOpen(false)
-    },
-  })
-  const cancelOfferMutation = useCancelTradeOfferMutation()
-  const acceptOfferMutation = useAcceptTradeOfferMutation({
-    onError: () => {
-      toast.show(m.trade_accept_offer_error())
-    },
-  })
+  const cancelAuctionMutation = useMutation(
+    useCancelTradeAuctionMutationOption(queryClient, {
+      onSuccess: () => {
+        setSelectedAuctionId(undefined)
+        setIsDetailsDialogOpen(false)
+      },
+    }),
+  )
+  const cancelOfferMutation = useMutation(useCancelTradeOfferMutationOption(queryClient))
+  const acceptOfferMutation = useMutation(
+    useAcceptTradeOfferMutationOption(queryClient, {
+      onError: () => {
+        toast.show(m.trade_accept_offer_error())
+      },
+    }),
+  )
 
   const closeAuctionDetails = () => {
     setIsDetailsDialogOpen(false)
@@ -333,7 +345,7 @@ export function TradeView() {
                             <TradeBadge
                               kind="set"
                               value={selectedAuction.offeredCard.setId}
-                              className="max-w-[8.5rem] truncate"
+                              className="max-w-34 truncate"
                             >
                               {getAuctionSetName(selectedAuction.offeredCard.setId)}
                             </TradeBadge>
@@ -421,12 +433,12 @@ export function TradeView() {
                               }
                               alt={selectedAuction.offeredCard.name}
                               finish={selectedAuction.offeredCardFinish}
-                              className="aspect-[63/88] w-full rounded-lg"
+                              className="aspect-63/88 w-full rounded-lg"
                             />
                           </button>
                         ) : (
                           <div
-                            className="aspect-[63/88] w-full rounded-lg bg-muted"
+                            className="aspect-63/88 w-full rounded-lg bg-muted"
                             aria-hidden="true"
                           />
                         )}
@@ -480,7 +492,6 @@ export function TradeView() {
                 <TradeOfferComposer
                   key={`trade-offer-${selectedAuction.id}-${locale}`}
                   auction={selectedAuction}
-                  locale={locale}
                   userId={currentUserId}
                   onOfferCreated={() => {
                     auctionQuery.refetch()
@@ -529,6 +540,7 @@ export function TradeView() {
               releaseDate: '',
             }
           }
+          ownedCardIds={ownedCardIds}
           onClose={() => setIsAuctionSetPreviewOpen(false)}
         />
       ) : null}

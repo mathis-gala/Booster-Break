@@ -4,6 +4,7 @@ import type {
   TradeOfferResponse,
 } from '@tcg-collection/shared'
 import { DEFAULT_LOCALE } from '@tcg-collection/shared'
+import type { AuthUser } from '../auth/types'
 import { normalizeTradeFilters, normalizeTradeRequirements } from './trade-normalizers'
 import {
   buildTradeOfferAcceptedNotificationInput,
@@ -35,7 +36,7 @@ export class TradeOfferService {
   constructor(private readonly options: TradeServiceOptions) {}
 
   async createOffer(
-    cookieHeader: string | undefined,
+    user: AuthUser,
     auctionId: string,
     input: CreateOfferRequest,
     locale: SupportedLocale = DEFAULT_LOCALE,
@@ -43,8 +44,7 @@ export class TradeOfferService {
     await this.expireAuctions(now())
 
     const userOrError = await resolveAuthenticatedTradeUser(
-      this.options.authService,
-      cookieHeader,
+      user,
       'Sign in to submit a trade offer.',
     )
 
@@ -198,15 +198,11 @@ export class TradeOfferService {
     return toTradeOfferResponse(createdOffer, locale)
   }
 
-  async cancelOffer(
-    cookieHeader: string | undefined,
-    offerId: string,
-  ): Promise<TradeServiceResult<void>> {
+  async cancelOffer(user: AuthUser, offerId: string): Promise<TradeServiceResult<void>> {
     await this.expireAuctions(now())
 
     const userOrError = await resolveAuthenticatedTradeUser(
-      this.options.authService,
-      cookieHeader,
+      user,
       'Sign in to cancel a trade offer.',
     )
 
@@ -250,15 +246,14 @@ export class TradeOfferService {
   }
 
   async acceptOffer(
-    cookieHeader: string | undefined,
+    user: AuthUser,
     auctionId: string,
     offerId: string,
   ): Promise<TradeServiceResult<void>> {
     await this.expireAuctions(now())
 
     const userOrError = await resolveAuthenticatedTradeUser(
-      this.options.authService,
-      cookieHeader,
+      user,
       'Sign in to accept a trade offer.',
     )
 

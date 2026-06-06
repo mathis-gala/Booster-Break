@@ -1,6 +1,5 @@
 import { useSyncExternalStore } from 'react'
-import { useQueryClient } from '@tanstack/react-query'
-import { useCurrentUserQuery } from '@/features/dashboard/hooks/useAuthQueries'
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { toast } from '@/features/toast/toast-store'
 import { m } from '@/paraglide/messages'
 import { useLocale } from '@/features/i18n/useLocale'
@@ -10,11 +9,10 @@ import type {
   TradeNotificationListResponse,
   TradeNotificationResponse,
 } from '@tcg-collection/shared'
-import {
-  refreshTradeMarketQueries,
-  useTradeNotificationViewedMutation,
-  useTradeNotificationsQuery,
-} from '../hooks/useTradeQueries'
+import { refreshTradeMarketQueries } from '../hooks/useTradeQueries'
+import { useTradeNotificationViewedMutationOption } from '@/lib/mutations/trade'
+import { useCurrentUserQueryOption } from '@/lib/queries/auth'
+import { useTradeNotificationsQueryOption } from '@/lib/queries/trade'
 import { tradeQueryKeys } from '../lib/query-keys'
 import { TradeNotificationModal } from './TradeNotificationModal'
 
@@ -60,13 +58,13 @@ const useTradeNotificationMarketInvalidation = (
 }
 
 export function TradeNotificationManager() {
-  const auth = useCurrentUserQuery()
+  const auth = useQuery(useCurrentUserQueryOption())
   const { locale } = useLocale()
   const isAuthenticated = auth.data?.authenticated ?? false
 
   const queryClient = useQueryClient()
-  const notificationsQuery = useTradeNotificationsQuery(locale, isAuthenticated)
-  const markViewedMutation = useTradeNotificationViewedMutation()
+  const notificationsQuery = useQuery(useTradeNotificationsQueryOption(isAuthenticated))
+  const markViewedMutation = useMutation(useTradeNotificationViewedMutationOption(queryClient))
   useTradeNotificationMarketInvalidation(queryClient, locale, isAuthenticated)
 
   const notifications = isAuthenticated ? (notificationsQuery.data?.notifications ?? []) : []

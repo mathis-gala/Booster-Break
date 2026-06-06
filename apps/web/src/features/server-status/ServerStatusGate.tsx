@@ -4,27 +4,15 @@ import { useQuery } from '@tanstack/react-query'
 
 import { Button, buttonVariants } from '@/components/ui/button'
 import { LanguageSelector } from '@/features/dashboard/components/LanguageSelector'
-import { fetchHealth } from '@/features/dashboard/lib/api'
 import { useLocale } from '@/features/i18n/useLocale'
+import { useHealthQueryOption } from '@/lib/queries/health'
 import { cn } from '@/lib/utils'
 import { m } from '@/paraglide/messages'
-
-const serverStatusQueryKey = ['server-status'] as const
 
 export function ServerStatusGate() {
   useLocale()
   const location = useLocation()
-  const health = useQuery({
-    queryKey: serverStatusQueryKey,
-    queryFn: fetchHealth,
-    enabled: location.pathname !== '/setup',
-    refetchOnWindowFocus: true,
-    retry: false,
-    staleTime: 0,
-    meta: {
-      suppressToast: true,
-    },
-  })
+  const health = useQuery(useHealthQueryOption(location.pathname !== '/setup'))
 
   if (location.pathname === '/setup' || !health.isError) {
     return null

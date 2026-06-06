@@ -38,10 +38,10 @@ const NotificationCardList = ({ title, cards }: NotificationCardListProps) => {
                 src={card.imageSmall}
                 alt={card.name}
                 finish={card.finish}
-                className="aspect-[63/88] w-28 rounded-md"
+                className="aspect-63/88 w-28 rounded-md"
               />
             ) : (
-              <div className="aspect-[63/88] w-28 rounded-md bg-muted" aria-hidden="true" />
+              <div className="aspect-63/88 w-28 rounded-md bg-muted" aria-hidden="true" />
             )}
             <p className="w-full min-w-0 break-words text-xs font-black leading-tight">
               {card.name}

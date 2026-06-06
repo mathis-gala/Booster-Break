@@ -63,7 +63,7 @@ export function PackRevealDialog({
           <div className="grid justify-items-center gap-4">
             <div
               key={`${openPackResult.openingId}-${currentRevealCard.id}-${revealedCardIndex}`}
-              className="relative flex aspect-[63/88] w-full max-w-[24rem] animate-[pack-card-reveal_720ms_cubic-bezier(0.22,1,0.36,1)_both] items-center justify-center justify-self-center will-change-transform"
+              className="relative flex aspect-63/88 w-full max-w-[24rem] animate-[pack-card-reveal_720ms_cubic-bezier(0.22,1,0.36,1)_both] items-center justify-center justify-self-center will-change-transform"
             >
               {currentRevealImageUrl ? (
                 <FoilCardImage
@@ -178,10 +178,10 @@ function RevealThumbnails({
               src={card.imageSmall}
               alt=""
               finish={card.finish}
-              className="aspect-[63/88] w-full rounded-sm object-cover"
+              className="aspect-63/88 w-full rounded-sm object-cover"
             />
           ) : (
-            <span className="block aspect-[63/88] rounded-sm bg-muted" aria-hidden="true" />
+            <span className="block aspect-63/88 rounded-sm bg-muted" aria-hidden="true" />
           )}
         </button>
       ))}

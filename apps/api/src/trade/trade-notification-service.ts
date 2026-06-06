@@ -1,5 +1,6 @@
 import type { SupportedLocale, TradeNotificationListResponse } from '@tcg-collection/shared'
 import { DEFAULT_LOCALE } from '@tcg-collection/shared'
+import type { AuthUser } from '../auth/types'
 import { resolveAuthenticatedTradeUser } from './trade-auth'
 import { TradeNotificationReadModel } from './trade-notification-read-model'
 import type { TradeServiceOptions, TradeServiceResult } from './trade-types'
@@ -12,12 +13,11 @@ export class TradeNotificationService {
   }
 
   async listTradeNotifications(
-    cookieHeader: string | undefined,
+    user: AuthUser,
     locale: SupportedLocale = DEFAULT_LOCALE,
   ): Promise<TradeServiceResult<TradeNotificationListResponse>> {
     const userOrError = await resolveAuthenticatedTradeUser(
-      this.options.authService,
-      cookieHeader,
+      user,
       'Sign in to load your notifications.',
     )
 
@@ -29,12 +29,11 @@ export class TradeNotificationService {
   }
 
   async markTradeNotificationViewed(
-    cookieHeader: string | undefined,
+    user: AuthUser,
     notificationId: string,
   ): Promise<TradeServiceResult<void>> {
     const userOrError = await resolveAuthenticatedTradeUser(
-      this.options.authService,
-      cookieHeader,
+      user,
       'Sign in to update notifications.',
     )
 

@@ -8,6 +8,7 @@ import type {
   TradeOfferResponse,
 } from '@tcg-collection/shared'
 import { DEFAULT_LOCALE } from '@tcg-collection/shared'
+import type { AuthUser } from '../auth/types'
 import { TradeAuctionService } from './trade-auction-service'
 import { TradeNotificationService } from './trade-notification-service'
 import { TradeOfferService } from './trade-offer-service'
@@ -31,61 +32,55 @@ export class TradeService {
   getAuction(
     auctionId: string,
     locale: SupportedLocale = DEFAULT_LOCALE,
-    cookieHeader?: string,
+    user?: AuthUser,
   ): Promise<TradeServiceResult<TradeAuctionResponse>> {
-    return this.auctionService.getAuction(auctionId, locale, cookieHeader)
+    return this.auctionService.getAuction(auctionId, locale, user)
   }
 
   listTradeNotifications(
-    cookieHeader: string | undefined,
+    user: AuthUser,
     locale: SupportedLocale = DEFAULT_LOCALE,
   ): Promise<TradeServiceResult<TradeNotificationListResponse>> {
-    return this.notificationService.listTradeNotifications(cookieHeader, locale)
+    return this.notificationService.listTradeNotifications(user, locale)
   }
 
   markTradeNotificationViewed(
-    cookieHeader: string | undefined,
+    user: AuthUser,
     notificationId: string,
   ): Promise<TradeServiceResult<void>> {
-    return this.notificationService.markTradeNotificationViewed(cookieHeader, notificationId)
+    return this.notificationService.markTradeNotificationViewed(user, notificationId)
   }
 
   createAuction(
-    cookieHeader: string | undefined,
+    user: AuthUser,
     input: CreateAuctionRequest,
     locale: SupportedLocale = DEFAULT_LOCALE,
   ): Promise<TradeServiceResult<TradeAuctionResponse>> {
-    return this.auctionService.createAuction(cookieHeader, input, locale)
+    return this.auctionService.createAuction(user, input, locale)
   }
 
   createOffer(
-    cookieHeader: string | undefined,
+    user: AuthUser,
     auctionId: string,
     input: CreateOfferRequest,
     locale: SupportedLocale = DEFAULT_LOCALE,
   ): Promise<TradeServiceResult<TradeOfferResponse>> {
-    return this.offerService.createOffer(cookieHeader, auctionId, input, locale)
+    return this.offerService.createOffer(user, auctionId, input, locale)
   }
 
-  cancelOffer(
-    cookieHeader: string | undefined,
-    offerId: string,
-  ): Promise<TradeServiceResult<void>> {
-    return this.offerService.cancelOffer(cookieHeader, offerId)
+  cancelOffer(user: AuthUser, offerId: string): Promise<TradeServiceResult<void>> {
+    return this.offerService.cancelOffer(user, offerId)
   }
 
-  cancelAuction(
-    cookieHeader: string | undefined,
-    auctionId: string,
-  ): Promise<TradeServiceResult<void>> {
-    return this.auctionService.cancelAuction(cookieHeader, auctionId)
+  cancelAuction(user: AuthUser, auctionId: string): Promise<TradeServiceResult<void>> {
+    return this.auctionService.cancelAuction(user, auctionId)
   }
 
   acceptOffer(
-    cookieHeader: string | undefined,
+    user: AuthUser,
     auctionId: string,
     offerId: string,
   ): Promise<TradeServiceResult<void>> {
-    return this.offerService.acceptOffer(cookieHeader, auctionId, offerId)
+    return this.offerService.acceptOffer(user, auctionId, offerId)
   }
 }

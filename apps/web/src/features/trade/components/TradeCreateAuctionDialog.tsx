@@ -55,7 +55,6 @@ export function TradeCreateAuctionDialog({
         </div>
         <TradeCreateAuctionPanel
           key={`trade-create-${locale}`}
-          locale={locale}
           auth={auth}
           activeAuctions={activeAuctions}
           onAuctionCreated={onAuctionCreated}

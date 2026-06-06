@@ -1,5 +1,5 @@
 import { type FormEvent } from 'react'
-import type { CollectionSort, SupportedLocale, TradeAuctionResponse } from '@tcg-collection/shared'
+import type { CollectionSort, TradeAuctionResponse } from '@tcg-collection/shared'
 import { m } from '@/paraglide/messages'
 import { toast } from '@/features/toast/toast-store'
 import { useTradeOfferComposer } from '../hooks/useTradeOfferComposer'
@@ -8,14 +8,12 @@ import { TradeOfferComposerPreviewSection } from './TradeOfferComposerPreviewSec
 
 interface TradeOfferComposerProps {
   auction: TradeAuctionResponse
-  locale: SupportedLocale
   userId?: string
   onOfferCreated: () => void
 }
 
 export function TradeOfferComposer({
   auction,
-  locale,
   userId,
   onOfferCreated,
 }: TradeOfferComposerProps) {
@@ -45,7 +43,6 @@ export function TradeOfferComposer({
     isSubmitting,
   } = useTradeOfferComposer({
     auction,
-    locale,
     userId,
     onOfferCreated,
   })

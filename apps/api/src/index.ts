@@ -51,7 +51,6 @@ const pokemonService = new PokemonService({
 
 const tradeRepository = new PrismaTradeRepository(prisma)
 const tradeService = new TradeService({
-  authService,
   tradeRepository,
 })
 
@@ -65,6 +64,7 @@ export const app = new Elysia()
   .use(createAuthController({ config, service: authService }))
   .use(
     createPokemonController({
+      authService,
       config,
       localizedPokemonClients,
       pokemonClient,
