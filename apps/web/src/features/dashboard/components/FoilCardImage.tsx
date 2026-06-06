@@ -27,10 +27,16 @@ export function FoilCardImage({ src, alt, finish, className }: FoilCardImageProp
         </>
       ) : null}
       {isReverseHolo ? (
-        <span
-          className="reverse-holo-sequins pointer-events-none absolute inset-0 rounded-[inherit]"
-          aria-hidden="true"
-        />
+        <>
+          <span
+            className="reverse-holo-foil pointer-events-none absolute inset-0 rounded-[inherit]"
+            aria-hidden="true"
+          />
+          <span
+            className="reverse-holo-sweep pointer-events-none absolute inset-0 rounded-[inherit]"
+            aria-hidden="true"
+          />
+        </>
       ) : null}
     </span>
   )

@@ -3,8 +3,8 @@ import type { CollectionSort, UserCollectionCard } from '@tcg-collection/shared'
 
 import { Button } from '@/components/ui/button'
 import { m } from '@/paraglide/messages'
+import { CardImageDialog } from './CardImageDialog'
 import { CollectionCardItem } from './CollectionCardItem'
-import { FoilCardImage } from './FoilCardImage'
 
 interface CollectionPanelProps {
   cards: UserCollectionCard[]
@@ -154,29 +154,7 @@ export function CollectionPanel({
         </div>
       </section>
       {selectedCard ? (
-        <div
-          className="fixed inset-0 z-[60] flex items-center justify-center bg-slate-950/78 p-4 backdrop-blur-sm"
-          role="dialog"
-          aria-modal="true"
-          aria-label={selectedCard.name}
-          onClick={() => setSelectedCard(undefined)}
-        >
-          <div
-            className="relative flex max-h-[95vh] w-[min(28rem,92vw)] items-center justify-center"
-            onClick={(event) => event.stopPropagation()}
-          >
-            {(selectedCard.imageLarge ?? selectedCard.imageSmall) ? (
-              <FoilCardImage
-                src={selectedCard.imageLarge ?? selectedCard.imageSmall ?? ''}
-                alt={selectedCard.name}
-                finish={selectedCard.finish}
-                className="max-h-[95vh] w-full object-contain drop-shadow-2xl"
-              />
-            ) : (
-              <div className="aspect-63/88 w-full rounded-lg bg-muted" aria-hidden="true" />
-            )}
-          </div>
-        </div>
+        <CardImageDialog card={selectedCard} onClose={() => setSelectedCard(undefined)} />
       ) : null}
     </>
   )
