@@ -76,6 +76,10 @@ export interface UserCollectionResponse {
   sort: CollectionSort
 }
 
+export interface OwnedCardIdsResponse {
+  cardIds: string[]
+}
+
 export type PackOpenStatusResponse =
   | {
       authenticated: true

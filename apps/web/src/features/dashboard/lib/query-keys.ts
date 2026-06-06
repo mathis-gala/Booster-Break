@@ -27,6 +27,7 @@ export const pokemonQueryKeys = {
     page: (params: CollectionPageKeyParams) => ['pokemon', 'collection', params] as const,
     allCards: (locale: SupportedLocale, sort: CollectionSort, source?: CollectionSource) =>
       ['pokemon', 'collection', 'all', locale, sort, source ?? 'all'] as const,
+    ownedIds: () => ['pokemon', 'collection', 'owned-ids'] as const,
     packCount: (locale: SupportedLocale) =>
       ['pokemon', 'collection', 'pack-count', locale] as const,
   },

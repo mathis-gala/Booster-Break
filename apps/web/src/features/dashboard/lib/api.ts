@@ -3,6 +3,7 @@ import type {
   CollectionSort,
   CollectionSource,
   OpenPackResponse,
+  OwnedCardIdsResponse,
   PackOpenStatusResponse,
   PokemonCardSummary,
   PokemonSetSummary,
@@ -232,6 +233,24 @@ export async function fetchUserCollection(
   }
 
   return response.json()
+}
+
+export async function fetchOwnedCardIds(): Promise<string[]> {
+  const response = await apiFetch('/pokemon/collection/owned-ids', {
+    credentials: 'include',
+  })
+
+  if (response.status === 401) {
+    return []
+  }
+
+  if (!response.ok) {
+    throw new Error(m.api_unable_load_collection())
+  }
+
+  const payload = (await response.json()) as OwnedCardIdsResponse
+
+  return payload.cardIds
 }
 
 const configuredApiOrigin = (import.meta.env.VITE_API_ORIGIN ?? '').replace(/\/$/, '')
