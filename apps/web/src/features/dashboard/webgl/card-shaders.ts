@@ -45,7 +45,7 @@ float sparkle(vec2 uv, float time) {
 
 float outsideArtWindow(vec2 uv) {
   float insideX = step(0.085, uv.x) * step(uv.x, 0.915);
-  float insideY = step(0.435, uv.y) * step(uv.y, 0.815);
+  float insideY = step(0.49, uv.y) * step(uv.y, 0.87);
   return 1.0 - insideX * insideY;
 }
 

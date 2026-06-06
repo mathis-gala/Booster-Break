@@ -220,8 +220,8 @@ body,
 .reverse-holo-sweep {
   --reverse-art-left: 8.5%;
   --reverse-art-right: 91.5%;
-  --reverse-art-top: 18.5%;
-  --reverse-art-bottom: 56.5%;
+  --reverse-art-top: 13%;
+  --reverse-art-bottom: 51%;
   clip-path: polygon(
     0 0,
     100% 0,
