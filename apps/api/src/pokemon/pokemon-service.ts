@@ -19,8 +19,9 @@ import {
   SYNCED_BOOSTER_LIMIT,
 } from './pokemon-config'
 import { drawPokemonPackCards } from './pack-draft'
+import { PokemonCatalogSyncService } from './pokemon-catalog-sync-service'
 import { ScrydexSealedClient } from './scrydex-sealed-client'
-import { getSetSeriesName, TcgDexClient } from './tcgdex-client'
+import { TcgDexClient } from './tcgdex-client'
 
 export interface PokemonServiceOptions {
   authService: AuthService
@@ -50,8 +51,11 @@ interface PokemonSyncResult {
 
 export class PokemonService {
   private syncPromise?: Promise<PokemonSyncResult>
+  private readonly catalogSyncService: PokemonCatalogSyncService
 
-  constructor(private readonly options: PokemonServiceOptions) {}
+  constructor(private readonly options: PokemonServiceOptions) {
+    this.catalogSyncService = new PokemonCatalogSyncService(options)
+  }
 
   async listSets(locale: SupportedLocale): Promise<PokemonSetSummary[]> {
     const sets = await this.options.pokemonRepository.listSets(locale)
@@ -138,42 +142,12 @@ export class PokemonService {
         continue
       }
 
-      const localizedSet = await this.options.localizedPokemonClients.fr.getSetById(set.id)
-
-      await this.options.pokemonRepository.upsertSet(set, syncedAt, boosterImageUrl, {
-        en: {
-          name: set.name,
-          series: getSetSeriesName(set),
-        },
-        fr: localizedSet
-          ? {
-              name: localizedSet.name,
-              series: getSetSeriesName(localizedSet),
-            }
-          : undefined,
-      })
-
-      const cards = await this.options.pokemonClient.getCardsBySet(set)
-      const localizedCards = await this.options.localizedPokemonClients.fr.getCardsByIds(
-        cards.map((card) => card.id),
-      )
-      const localizedCardNames = new Map(
-        localizedCards.map((card) => [
-          card.id,
-          {
-            fr: card.name,
-          },
-        ]),
-      )
-      cardCount += cards.length
-      setCount += 1
-
-      await this.options.pokemonRepository.replaceSetCards(
-        set.id,
-        cards,
+      const syncedSet = await this.catalogSyncService.syncSet(set, {
         syncedAt,
-        localizedCardNames,
-      )
+        boosterImageUrl,
+      })
+      cardCount += syncedSet.cards
+      setCount += 1
     }
 
     return {
