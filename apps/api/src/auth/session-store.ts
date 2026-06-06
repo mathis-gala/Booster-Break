@@ -183,7 +183,7 @@ export class MemoryAuthStore implements AuthStore {
       }
     }
 
-    for (const [tokenId, token] of this.magicLoginTokens) {
+    for (const token of this.magicLoginTokens.values()) {
       if (token.expiresAt.getTime() <= now || token.usedAt?.getTime()) {
         this.deleteMagicLoginToken(token)
       }

@@ -12,15 +12,17 @@ export const createAuthRequiredPlugin = ({
   authService,
   unauthenticatedMessage = defaultUnauthenticatedMessage,
 }: AuthRequiredPluginOptions) =>
-  new Elysia({ name: 'auth-required' }).onBeforeHandle(async ({ headers, set }) => {
-    const currentUser = await authService.getCurrentUser(headers.cookie)
+  new Elysia({ name: 'auth-required' })
+    .resolve(async ({ headers, status }) => {
+      const currentUser = await authService.getCurrentUser(headers.cookie)
 
-    if (!currentUser) {
-      set.status = 401
-
-      return {
-        error: 'unauthenticated',
-        message: unauthenticatedMessage,
+      if (!currentUser) {
+        return status(401, {
+          error: 'unauthenticated',
+          message: unauthenticatedMessage,
+        })
       }
-    }
-  })
+
+      return { currentUser }
+    })
+    .as('scoped')

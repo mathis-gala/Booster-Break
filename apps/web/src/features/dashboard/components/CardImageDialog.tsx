@@ -30,7 +30,7 @@ export function CardImageDialog({ card, onClose }: CardImageDialogProps) {
             className="max-h-[95vh] w-full object-contain drop-shadow-2xl"
           />
         ) : (
-          <div className="aspect-[63/88] w-full rounded-lg bg-muted" aria-hidden="true" />
+          <div className="aspect-63/88 w-full rounded-lg bg-muted" aria-hidden="true" />
         )}
       </div>
     </div>

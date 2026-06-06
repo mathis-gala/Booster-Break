@@ -94,10 +94,10 @@ export function TradeAuctionList({
                           }
                           alt={auction.offeredCard.name}
                           finish={auction.offeredCardFinish}
-                          className="aspect-[63/88] w-full max-w-full rounded-sm"
+                          className="aspect-63/88 w-full max-w-full rounded-sm"
                         />
                       ) : (
-                        <div className="aspect-[63/88] rounded-sm bg-muted" aria-hidden="true" />
+                        <div className="aspect-63/88 rounded-sm bg-muted" aria-hidden="true" />
                       )}
                     </div>
                     <div className="space-y-1.5 text-xs">

@@ -1,41 +1,46 @@
 import { useMemo, useState } from 'react'
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 
 import { PackStage } from '../components/PackStage'
-import {
-  useOpenPokemonPackMutation,
-  useOwnedCardIdsQuery,
-  usePackOpenStatusQuery,
-  usePokemonCollectionCountQuery,
-  usePokemonPreviewCardsQuery,
-  usePokemonSetsQuery,
-} from '../hooks/usePokemonQueries'
-import { useCurrentUserQuery } from '../hooks/useAuthQueries'
+import { usePackOpenStatusClock } from '../hooks/usePackOpenStatusClock'
 import { useLocale } from '@/features/i18n/useLocale'
+import { useOpenPokemonPackMutationOption } from '@/lib/mutations/pokemon'
+import { useCurrentUserQueryOption } from '@/lib/queries/auth'
+import {
+  useOwnedCardIdsQueryOption,
+  usePackOpenStatusQueryOption,
+  usePokemonCollectionCountQueryOption,
+  usePokemonPreviewCardsQueryOption,
+  usePokemonSetsQueryOption,
+} from '@/lib/queries/pokemon'
 
 export function PacksView() {
-  const { locale } = useLocale()
+  useLocale()
   const [isRevealOpen, setIsRevealOpen] = useState(false)
   const [isPreparingReveal, setIsPreparingReveal] = useState(false)
   const [revealedCardIndex, setRevealedCardIndex] = useState(0)
   const [maxRevealedCardIndex, setMaxRevealedCardIndex] = useState(0)
   const [previewSetId, setPreviewSetId] = useState<string>()
-  const sets = usePokemonSetsQuery(locale)
-  const packStatus = usePackOpenStatusQuery()
-  const openPack = useOpenPokemonPackMutation({
-    locale,
-    onPreparingChange: setIsPreparingReveal,
-    onPrepared: () => {
-      setRevealedCardIndex(0)
-      setMaxRevealedCardIndex(0)
-      setIsRevealOpen(true)
-    },
-  })
-  const collection = usePokemonCollectionCountQuery(locale)
-  const previewCards = usePokemonPreviewCardsQuery(previewSetId, locale)
+  const queryClient = useQueryClient()
+  const sets = useQuery(usePokemonSetsQueryOption())
+  const packStatusQuery = useQuery(usePackOpenStatusQueryOption())
+  const packOpenStatus = usePackOpenStatusClock(packStatusQuery.data)
+  const openPack = useMutation(
+    useOpenPokemonPackMutationOption(queryClient, {
+      onPreparingChange: setIsPreparingReveal,
+      onPrepared: () => {
+        setRevealedCardIndex(0)
+        setMaxRevealedCardIndex(0)
+        setIsRevealOpen(true)
+      },
+    }),
+  )
+  const collection = useQuery(usePokemonCollectionCountQueryOption())
+  const previewCards = useQuery(usePokemonPreviewCardsQueryOption(previewSetId))
   const previewSet = sets.data?.find((set) => set.id === previewSetId)
-  const currentUser = useCurrentUserQuery()
+  const currentUser = useQuery(useCurrentUserQueryOption())
   const isAuthenticated = currentUser.data?.authenticated ?? false
-  const ownedCardIdsQuery = useOwnedCardIdsQuery(isAuthenticated)
+  const ownedCardIdsQuery = useQuery(useOwnedCardIdsQueryOption(isAuthenticated))
   const ownedCardIds = useMemo(
     () => (ownedCardIdsQuery.data ? new Set(ownedCardIdsQuery.data) : undefined),
     [ownedCardIdsQuery.data],
@@ -49,8 +54,8 @@ export function PacksView() {
         onOpenPack={(setId) => openPack.mutate(setId)}
         openPackIsPending={openPack.isPending || isPreparingReveal}
         openPackResult={openPack.data}
-        packOpenStatus={packStatus.data}
-        packOpenStatusIsPending={packStatus.isPending}
+        packOpenStatus={packOpenStatus}
+        packOpenStatusIsPending={packStatusQuery.isPending}
         isRevealOpen={isRevealOpen}
         onCloseReveal={() => setIsRevealOpen(false)}
         revealedCardIndex={revealedCardIndex}

@@ -1,5 +1,5 @@
 import { useMemo } from 'react'
-import { type CollectionSort, type SupportedLocale } from '@tcg-collection/shared'
+import { type CollectionSort } from '@tcg-collection/shared'
 import type { AuthMeResponse } from '@tcg-collection/shared'
 import { m } from '@/paraglide/messages'
 import { formatCardFinish } from '@/features/dashboard/lib/card-format'
@@ -10,14 +10,12 @@ import { TradeCreateAuctionCardSection } from './TradeCreateAuctionCardSection'
 import { TradeCreateAuctionFiltersSection } from './TradeCreateAuctionFiltersSection'
 
 interface TradeCreateAuctionPanelProps {
-  locale: SupportedLocale
   auth: AuthMeResponse
   activeAuctions: number
   onAuctionCreated: () => void
 }
 
 export function TradeCreateAuctionPanel({
-  locale,
   auth,
   activeAuctions,
   onAuctionCreated,
@@ -48,7 +46,6 @@ export function TradeCreateAuctionPanel({
     rarityOptions,
     typeOptions,
   } = useTradeCreateAuctionForm({
-    locale,
     activeAuctions,
     authAuthenticated: auth.authenticated,
     onAuctionCreated,

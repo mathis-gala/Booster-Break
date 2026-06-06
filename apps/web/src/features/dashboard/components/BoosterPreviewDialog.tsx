@@ -125,14 +125,14 @@ export function BoosterPreviewDialog({
                               src={card.imageSmall}
                               alt={card.name}
                               className={cn(
-                                'aspect-[63/88] w-full rounded-md object-cover shadow-sm transition-all group-hover:-translate-y-0.5',
+                                'aspect-63/88 w-full rounded-md object-cover shadow-sm transition-all group-hover:-translate-y-0.5',
                                 isDimmed && 'opacity-35 grayscale',
                               )}
                             />
                           ) : (
                             <div
                               className={cn(
-                                'aspect-[63/88] rounded-md bg-muted',
+                                'aspect-63/88 rounded-md bg-muted',
                                 isDimmed && 'opacity-35',
                               )}
                               aria-hidden="true"

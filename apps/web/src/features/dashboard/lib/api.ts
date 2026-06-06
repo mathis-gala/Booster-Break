@@ -1,289 +1,54 @@
-import type { AuthMeResponse, HealthResponse } from '@tcg-collection/shared'
-import type {
-  CollectionSort,
-  CollectionSource,
-  OpenPackResponse,
-  OwnedCardIdsResponse,
-  PackOpenStatusResponse,
-  PokemonCardSummary,
-  PokemonSetSummary,
-  SupportedLocale,
-  UserCollectionResponse,
-} from '@tcg-collection/shared'
-import { DEFAULT_LOCALE } from '@tcg-collection/shared'
-import { toast } from '@/features/toast/toast-store'
+import type { HealthResponse, OpenPackResponse } from '@tcg-collection/shared'
+import { api, getApiUrl } from '@/lib/api-client'
+import type { EdenError } from '@/lib/queries/eden-query-option'
 import { m } from '@/paraglide/messages'
 
-export async function fetchHealth(): Promise<HealthResponse> {
-  const response = await apiFetch('/health')
+export { getApiUrl }
 
-  if (!response.ok) {
+export async function fetchHealth(): Promise<HealthResponse> {
+  const { data, error } = await api.health.get()
+
+  if (error || !data) {
     throw new Error(m.api_unable_reach())
   }
 
-  return response.json()
-}
-
-export async function fetchCurrentUser(): Promise<AuthMeResponse> {
-  const response = await apiFetch('/auth/me', {
-    credentials: 'include',
-  })
-
-  if (response.status === 401) {
-    return { authenticated: false }
-  }
-
-  if (!response.ok) {
-    throw new Error(m.api_unable_auth_session())
-  }
-
-  return response.json()
+  return data
 }
 
 export async function logout(): Promise<void> {
-  const response = await apiFetch('/auth/logout', {
-    method: 'POST',
-    credentials: 'include',
-  })
+  const { error, status } = await api.auth.logout.post()
 
-  if (!response.ok && response.status !== 204) {
+  if (error && status !== 204) {
     throw new Error(m.api_unable_logout())
   }
 }
 
-export async function fetchPokemonSets(
-  locale: SupportedLocale = DEFAULT_LOCALE,
-): Promise<PokemonSetSummary[]> {
-  const response = await apiFetch(`/pokemon/sets?locale=${encodeURIComponent(locale)}`)
-
-  if (!response.ok) {
-    throw new Error(m.api_unable_load_sets())
-  }
-
-  const payload = (await response.json()) as { sets: PokemonSetSummary[] }
-
-  return payload.sets
-}
-
-export async function fetchSandboxPokemonSets(
-  locale: SupportedLocale = DEFAULT_LOCALE,
-): Promise<PokemonSetSummary[]> {
-  const response = await apiFetch(
-    `/pokemon/packs/sandbox/sets?locale=${encodeURIComponent(locale)}`,
-  )
-
-  if (!response.ok) {
-    throw new Error(m.api_unable_load_sandbox_sets())
-  }
-
-  const payload = (await response.json()) as { sets: PokemonSetSummary[] }
-
-  return payload.sets
-}
-
-export async function fetchSandboxPokemonCards(
-  setId: string,
-  locale: SupportedLocale = DEFAULT_LOCALE,
-): Promise<PokemonCardSummary[]> {
-  const searchParams = new URLSearchParams({
-    setId,
-    locale,
-  })
-  const response = await apiFetch(`/pokemon/packs/sandbox/cards?${searchParams.toString()}`)
-
-  if (!response.ok) {
-    throw new Error(m.api_unable_load_cards())
-  }
-
-  const payload = (await response.json()) as { cards: PokemonCardSummary[] }
-
-  return payload.cards
-}
-
-export async function fetchPokemonCards(
-  setId: string,
-  locale: SupportedLocale = DEFAULT_LOCALE,
-): Promise<PokemonCardSummary[]> {
-  const searchParams = new URLSearchParams({
-    setId,
-    locale,
-  })
-  const response = await apiFetch(`/pokemon/cards?${searchParams.toString()}`)
-
-  if (!response.ok) {
-    throw new Error(m.api_unable_load_cards())
-  }
-
-  const payload = (await response.json()) as { cards: PokemonCardSummary[] }
-
-  return payload.cards
-}
-
-export async function fetchPackOpenStatus(): Promise<PackOpenStatusResponse> {
-  const response = await apiFetch('/pokemon/packs/status', {
-    credentials: 'include',
-  })
-
-  if (!response.ok) {
-    throw new Error(m.api_unable_load_pack_status())
-  }
-
-  return response.json()
-}
-
 export async function openPokemonPack(
   setId?: string,
-  locale: SupportedLocale = 'fr',
 ): Promise<OpenPackResponse> {
-  const response = await apiFetch('/pokemon/packs/open', {
-    method: 'POST',
-    credentials: 'include',
-    headers: {
-      'Content-Type': 'application/json',
-    },
-    body: JSON.stringify({
-      setId,
-      locale,
-    }),
+  const { data, error } = await api.pokemon.packs.open.post({
+    setId,
   })
 
-  if (!response.ok) {
-    const payload = (await response.json().catch(() => undefined)) as
-      | { message?: string; error?: string }
-      | undefined
-
-    throw new Error(toApiErrorMessage(payload, m.api_unable_open_pack()))
+  if (error || !data) {
+    throw new Error(toApiErrorMessage(toApiErrorPayload(error), m.api_unable_open_pack()))
   }
 
-  return response.json()
+  return data
 }
 
 export async function openPokemonPackSandbox(
   setId?: string,
-  locale: SupportedLocale = DEFAULT_LOCALE,
 ): Promise<OpenPackResponse> {
-  const response = await apiFetch('/pokemon/packs/sandbox/open', {
-    method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
-    },
-    body: JSON.stringify({
-      setId,
-      locale,
-    }),
+  const { data, error } = await api.pokemon.packs.sandbox.open.post({
+    setId,
   })
 
-  if (!response.ok) {
-    const payload = (await response.json().catch(() => undefined)) as
-      | { message?: string; error?: string }
-      | undefined
-
-    throw new Error(toApiErrorMessage(payload, m.api_unable_open_sandbox_pack()))
+  if (error || !data) {
+    throw new Error(toApiErrorMessage(toApiErrorPayload(error), m.api_unable_open_sandbox_pack()))
   }
 
-  return response.json()
-}
-
-export interface FetchUserCollectionOptions {
-  page: number
-  pageSize: number
-  sort: CollectionSort
-  source?: CollectionSource
-  locale: SupportedLocale
-}
-
-export async function fetchUserCollection(
-  options: FetchUserCollectionOptions = {
-    page: 1,
-    pageSize: 24,
-    sort: 'recent',
-    locale: DEFAULT_LOCALE,
-  },
-): Promise<UserCollectionResponse> {
-  const searchParams = new URLSearchParams({
-    page: String(options.page),
-    pageSize: String(options.pageSize),
-    sort: options.sort,
-    locale: options.locale,
-  })
-
-  if (options.source) {
-    searchParams.set('source', options.source)
-  }
-  const response = await apiFetch(`/pokemon/collection?${searchParams.toString()}`, {
-    credentials: 'include',
-  })
-
-  if (response.status === 401) {
-    return {
-      cards: [],
-      pagination: {
-        page: options.page,
-        pageSize: options.pageSize,
-        total: 0,
-        totalCards: 0,
-        pageCount: 1,
-      },
-      sort: options.sort,
-    }
-  }
-
-  if (!response.ok) {
-    throw new Error(m.api_unable_load_collection())
-  }
-
-  return response.json()
-}
-
-export async function fetchOwnedCardIds(): Promise<string[]> {
-  const response = await apiFetch('/pokemon/collection/owned-ids', {
-    credentials: 'include',
-  })
-
-  if (response.status === 401) {
-    return []
-  }
-
-  if (!response.ok) {
-    throw new Error(m.api_unable_load_collection())
-  }
-
-  const payload = (await response.json()) as OwnedCardIdsResponse
-
-  return payload.cardIds
-}
-
-const configuredApiOrigin = (import.meta.env.VITE_API_ORIGIN ?? '').replace(/\/$/, '')
-const localApiOrigin = (import.meta.env.VITE_LOCAL_API_ORIGIN ?? '').replace(/\/$/, '')
-let activeApiOrigin = configuredApiOrigin
-let hasShownLocalFallbackToast = false
-
-export const getApiUrl = (path: `/${string}`): string => {
-  return activeApiOrigin ? `${activeApiOrigin}${path}` : `/api${path}`
-}
-
-export const apiFetch = async (path: `/${string}`, init?: RequestInit): Promise<Response> => {
-  try {
-    return await fetch(getApiUrl(path), init)
-  } catch (error) {
-    if (!shouldTryLocalApiFallback()) {
-      throw error
-    }
-
-    const response = await fetch(`${localApiOrigin}${path}`, init)
-    activeApiOrigin = localApiOrigin
-
-    if (!hasShownLocalFallbackToast) {
-      toast.show(m.api_using_local_fallback({ origin: localApiOrigin }), 'success')
-      hasShownLocalFallbackToast = true
-    }
-
-    return response
-  }
-}
-
-const shouldTryLocalApiFallback = (): boolean => {
-  return localApiOrigin.length > 0 && activeApiOrigin !== localApiOrigin
+  return data
 }
 
 const toApiErrorMessage = (
@@ -302,4 +67,10 @@ const toApiErrorMessage = (
     default:
       return payload?.error ?? fallback
   }
+}
+
+const toApiErrorPayload = (
+  error: EdenError | null,
+): { message?: string; error?: string } | undefined => {
+  return error?.value
 }

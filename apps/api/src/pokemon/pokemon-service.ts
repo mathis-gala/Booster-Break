@@ -11,6 +11,7 @@ import type {
 } from '@tcg-collection/shared'
 import { DEFAULT_LOCALE } from '@tcg-collection/shared'
 import { AuthService } from '../auth/auth-service'
+import type { AuthUser } from '../auth/types'
 import { PokemonRepository } from './pokemon-repository'
 import {
   PACK_OPEN_COOLDOWN_SECONDS,
@@ -72,7 +73,7 @@ export class PokemonService {
   }
 
   async listUserCollection(
-    cookieHeader: string | undefined,
+    user: AuthUser,
     options: {
       page: number
       pageSize: number
@@ -80,31 +81,11 @@ export class PokemonService {
       source: CollectionSource
       locale: SupportedLocale
     },
-  ): Promise<UserCollectionResponse | PokemonServiceError> {
-    const user = await this.options.authService.getCurrentUser(cookieHeader)
-
-    if (!user) {
-      return {
-        error: 'unauthenticated',
-        message: 'Sign in to view your collection.',
-      }
-    }
-
+  ): Promise<UserCollectionResponse> {
     return this.options.pokemonRepository.listUserCollection(user.id, options)
   }
 
-  async listOwnedCardIds(
-    cookieHeader: string | undefined,
-  ): Promise<OwnedCardIdsResponse | PokemonServiceError> {
-    const user = await this.options.authService.getCurrentUser(cookieHeader)
-
-    if (!user) {
-      return {
-        error: 'unauthenticated',
-        message: 'Sign in to view your collection.',
-      }
-    }
-
+  async listOwnedCardIds(user: AuthUser): Promise<OwnedCardIdsResponse> {
     const cardIds = await this.options.pokemonRepository.listOwnedCardIds(user.id)
 
     return { cardIds }
@@ -208,18 +189,9 @@ export class PokemonService {
   }
 
   async openPack(
-    cookieHeader: string | undefined,
+    user: AuthUser,
     input: { setId?: string; locale?: SupportedLocale },
   ): Promise<OpenPackResponse | PokemonServiceError> {
-    const user = await this.options.authService.getCurrentUser(cookieHeader)
-
-    if (!user) {
-      return {
-        error: 'unauthenticated',
-        message: 'Sign in to open booster packs and save cards to your collection.',
-      }
-    }
-
     const locale = input.locale ?? DEFAULT_LOCALE
     const setId = input.setId ?? (await this.options.pokemonRepository.listSets(locale))[0]?.id
 

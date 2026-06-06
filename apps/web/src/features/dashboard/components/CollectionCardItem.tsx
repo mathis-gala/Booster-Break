@@ -48,10 +48,10 @@ export const CollectionCardItem = memo(function CollectionCardItem({
                 src={card.imageSmall}
                 alt={card.name}
                 finish={card.finish}
-                className="aspect-[63/88] w-full rounded-md object-cover transition-transform hover:-translate-y-0.5"
+                className="aspect-63/88 w-full rounded-md object-cover transition-transform hover:-translate-y-0.5"
               />
             ) : (
-              <div className="aspect-[63/88] w-full rounded-md bg-muted" aria-hidden="true" />
+              <div className="aspect-63/88 w-full rounded-md bg-muted" aria-hidden="true" />
             )}
           </button>
         ) : card.imageSmall ? (
@@ -59,10 +59,10 @@ export const CollectionCardItem = memo(function CollectionCardItem({
             src={card.imageSmall}
             alt={card.name}
             finish={card.finish}
-            className="aspect-[63/88] w-full rounded-md object-cover transition-transform hover:-translate-y-0.5"
+            className="aspect-63/88 w-full rounded-md object-cover transition-transform hover:-translate-y-0.5"
           />
         ) : (
-          <div className="aspect-[63/88] w-full rounded-md bg-muted" aria-hidden="true" />
+          <div className="aspect-63/88 w-full rounded-md bg-muted" aria-hidden="true" />
         )}
         {badge ? (
           <span className="absolute right-1 top-1 rounded-full bg-sidebar px-1.5 py-0.5 text-[0.62rem] font-black text-sidebar-foreground">

@@ -1,13 +1,14 @@
 import { useMemo, useState } from 'react'
 import type { FormEvent } from 'react'
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import type {
   CollectionSort,
-  SupportedLocale,
   TradeAuctionResponse,
   TradeOfferItem,
   UserCollectionCard,
 } from '@tcg-collection/shared'
-import { usePokemonCollectionAllQuery } from '@/features/dashboard/hooks/usePokemonQueries'
+import { useCreateTradeOfferMutationOption } from '@/lib/mutations/trade'
+import { usePokemonCollectionAllQueryOption } from '@/lib/queries/pokemon'
 import { toast } from '@/features/toast/toast-store'
 import {
   MAX_PENDING_OFFERS_PER_AUCTION_BY_USER,
@@ -15,7 +16,6 @@ import {
   offerCardKey,
   toCardFinish,
 } from '../lib/trade-utils'
-import { useCreateTradeOfferMutation } from './useTradeQueries'
 import { m } from '@/paraglide/messages'
 import { matchesCardNameSearch } from '@/features/dashboard/lib/card-search'
 
@@ -28,7 +28,6 @@ const PAGE_SIZE = 16
 
 interface UseTradeOfferComposerProps {
   auction: TradeAuctionResponse
-  locale: SupportedLocale
   userId?: string
   onOfferCreated: () => void
 }
@@ -67,32 +66,38 @@ export interface UseTradeOfferComposerResult {
 
 export function useTradeOfferComposer({
   auction,
-  locale,
   userId,
   onOfferCreated,
 }: UseTradeOfferComposerProps): UseTradeOfferComposerResult {
+  const queryClient = useQueryClient()
   const [page, setPage] = useState(1)
   const [preference, setPreference] = useState<CollectionSort>('quantity')
   const [searchQuery, setSearchQuery] = useState('')
   const [selection, setSelection] = useState<Record<string, SelectedOfferCard>>({})
 
-  const collection = usePokemonCollectionAllQuery({
-    sort: preference,
-    source: 'owned',
-    locale,
-    enabled: Boolean(userId),
-  })
+  const collection = useQuery(
+    usePokemonCollectionAllQueryOption(
+      {
+        sort: preference,
+        source: 'owned',
+      },
+      {
+        enabled: Boolean(userId),
+      },
+    ),
+  )
 
-  const createOffer = useCreateTradeOfferMutation({
-    locale,
-    onSuccess: () => {
-      setSelection({})
-      onOfferCreated()
-    },
-    onError: (error) => {
-      toast.show(error.message)
-    },
-  })
+  const createOffer = useMutation(
+    useCreateTradeOfferMutationOption(queryClient, {
+      onSuccess: () => {
+        setSelection({})
+        onOfferCreated()
+      },
+      onError: (error) => {
+        toast.show(error.message)
+      },
+    }),
+  )
 
   const isAuctionOwner = auction.creatorId === userId
   const activeOfferCount = userId
@@ -126,12 +131,13 @@ export function useTradeOfferComposer({
     return null
   })()
 
-  const availableCards = collection.data?.cards ?? []
   const eligibleCards = useMemo(() => {
+    const availableCards = collection.data?.cards ?? []
+
     return availableCards.filter((card) =>
       cardMatchesAuctionFilters(card, auction.requirements, auction.filters),
     )
-  }, [availableCards, auction.requirements, auction.filters])
+  }, [collection.data?.cards, auction.requirements, auction.filters])
   const filteredCards = useMemo(() => {
     const query = searchQuery.trim().toLowerCase()
 
