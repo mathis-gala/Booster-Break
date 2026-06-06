@@ -1,5 +1,5 @@
 import { useMemo, useState, useSyncExternalStore } from 'react'
-import { Clock3Icon, EyeIcon, UserRoundIcon, XIcon } from 'lucide-react'
+import { BookOpenIcon, Clock3Icon, EyeIcon, UserRoundIcon, XIcon } from 'lucide-react'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 
 import type { TradeAuctionResponse, TradeOfferResponse } from '@tcg-collection/shared'
@@ -17,6 +17,7 @@ import { TradeAuctionList } from '../components/TradeAuctionList'
 import { TradeOfferComposer } from '../components/TradeOfferComposer'
 import { TradeOffersPanel } from '../components/TradeOffersPanel'
 import { TradeBadge } from '../components/TradeBadge'
+import { TradeNotOwnedBadge } from '../components/TradeNotOwnedBadge'
 import { TradeNotificationModal } from '../components/TradeNotificationModal'
 import { TradeCreateAuctionDialog } from '../components/TradeCreateAuctionDialog'
 import { TradeOfferSuccessDialog } from '../components/TradeOfferSuccessDialog'
@@ -73,6 +74,7 @@ export function TradeView() {
   const [isAuctionCardOpen, setIsAuctionCardOpen] = useState(false)
   const [isAuctionSetPreviewOpen, setIsAuctionSetPreviewOpen] = useState(false)
   const [auctionPage, setAuctionPage] = useState(1)
+  const [showOnlyNotOwned, setShowOnlyNotOwned] = useState(false)
   const [isOfferSuccessDialogOpen, setIsOfferSuccessDialogOpen] = useState(false)
   const [acceptedOffer, setAcceptedOffer] = useState<TradeOfferForModal | null>(null)
   const [acceptedAuction, setAcceptedAuction] = useState<TradeAuctionResponse | null>(null)
@@ -94,12 +96,9 @@ export function TradeView() {
     Boolean(currentUserId) &&
     userActiveAuctions < MAX_ACTIVE_AUCTIONS_PER_USER,
   )
-  const auctionPageCount = Math.max(1, Math.ceil(auctionsFromList.length / AUCTIONS_PER_PAGE))
 
   const auctionQueryEnabled = Boolean(selectedAuctionId && isDetailsDialogOpen)
-  const auctionQuery = useQuery(
-    useTradeAuctionQueryOption(selectedAuctionId, auctionQueryEnabled),
-  )
+  const auctionQuery = useQuery(useTradeAuctionQueryOption(selectedAuctionId, auctionQueryEnabled))
   const ownedCardIdsQuery = useQuery(useOwnedCardIdsQueryOption(Boolean(auth.data?.authenticated)))
   const selectedAuction =
     auctionQueryEnabled && auctionQuery.data
@@ -111,10 +110,24 @@ export function TradeView() {
   const selectedAuctionSetCardsQuery = useQuery(
     usePokemonPreviewCardsQueryOption(selectedAuction?.offeredCard.setId),
   )
+  // Set of owned *card ids* (finish-agnostic): the /collection/owned-ids endpoint
+  // selects cardId from userCard + giftedUserCard and dedupes, so a card present in
+  // any finish (normal/holo/reverse_holo) appears exactly once.
   const ownedCardIds = useMemo(
     () => (ownedCardIdsQuery.data ? new Set(ownedCardIdsQuery.data) : undefined),
     [ownedCardIdsQuery.data],
   )
+
+  const canFilterOnlyNotOwned = Boolean(currentUserId)
+  const isOnlyNotOwnedActive = showOnlyNotOwned && Boolean(ownedCardIds)
+  // "Only not owned" filters by card id, NOT by finish/print: an auction is hidden as
+  // soon as the user owns any finish of the offered card. The auction's
+  // offeredCardFinish is deliberately not compared.
+  const visibleAuctions =
+    isOnlyNotOwnedActive && ownedCardIds
+      ? auctionsFromList.filter((auction) => !ownedCardIds.has(auction.offeredCard.id))
+      : auctionsFromList
+  const auctionPageCount = Math.max(1, Math.ceil(visibleAuctions.length / AUCTIONS_PER_PAGE))
 
   const cancelAuctionMutation = useMutation(
     useCancelTradeAuctionMutationOption(queryClient, {
@@ -198,7 +211,7 @@ export function TradeView() {
 
   const clampedAuctionPage = Math.min(auctionPage, auctionPageCount)
   const auctionStart = (clampedAuctionPage - 1) * AUCTIONS_PER_PAGE
-  const auctionsPage = auctionsFromList.slice(auctionStart, auctionStart + AUCTIONS_PER_PAGE)
+  const auctionsPage = visibleAuctions.slice(auctionStart, auctionStart + AUCTIONS_PER_PAGE)
 
   return (
     <div className="flex w-full max-w-7xl flex-col gap-4">
@@ -231,11 +244,29 @@ export function TradeView() {
       </header>
 
       <div className="space-y-4">
+        {canFilterOnlyNotOwned ? (
+          <div className="flex items-center justify-end">
+            <Button
+              type="button"
+              variant={showOnlyNotOwned ? 'default' : 'outline'}
+              size="sm"
+              aria-pressed={showOnlyNotOwned}
+              onClick={() => {
+                setShowOnlyNotOwned((value) => !value)
+                setAuctionPage(1)
+              }}
+            >
+              <BookOpenIcon className="size-4" aria-hidden="true" />
+              {m.trade_filter_only_not_owned()}
+            </Button>
+          </div>
+        ) : null}
         <TradeAuctionList
           auctions={auctionsPage}
           selectedAuctionId={selectedAuctionId}
           locale={locale}
           currentUserId={currentUserId}
+          ownedCardIds={ownedCardIds}
           getRemainingMs={remainingMs}
           onSelectAuction={openAuction}
           isCancelling={cancelAuctionMutation.isPending}
@@ -319,9 +350,14 @@ export function TradeView() {
                   <div className="mt-2 grid gap-3 md:grid-cols-[1fr_18rem] md:items-center">
                     <div className="space-y-3">
                       <div className="rounded-sm border border-border bg-card/40 p-2">
-                        <p className="text-xs uppercase tracking-wider text-muted-foreground">
-                          {m.trade_card_details_title()}
-                        </p>
+                        <div className="flex items-center justify-between gap-2">
+                          <p className="text-xs uppercase tracking-wider text-muted-foreground">
+                            {m.trade_card_details_title()}
+                          </p>
+                          {ownedCardIds && !ownedCardIds.has(selectedAuction.offeredCard.id) ? (
+                            <TradeNotOwnedBadge />
+                          ) : null}
+                        </div>
                         <p className="mt-1 text-sm font-semibold">
                           {selectedAuction.offeredCard.name}
                         </p>

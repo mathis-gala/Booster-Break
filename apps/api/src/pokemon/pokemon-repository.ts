@@ -183,6 +183,10 @@ export class PokemonRepository {
     }
   }
 
+  // Returns owned card ids at the CARD level, NOT per finish/print. Rows are selected
+  // by cardId only and deduped into a set, so a card the user holds in any finish
+  // (normal/holo/reverse_holo) is reported once. Consumers (e.g. the trade "not owned"
+  // badge/filter) therefore treat a card as owned regardless of which finish is owned.
   async listOwnedCardIds(userId: string): Promise<string[]> {
     const where = {
       userId,
