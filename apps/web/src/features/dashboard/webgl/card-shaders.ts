@@ -43,18 +43,14 @@ float sparkle(vec2 uv, float time) {
   return dotShape * blink;
 }
 
-float outsideArtWindow(vec2 uv) {
-  float insideX = step(0.085, uv.x) * step(uv.x, 0.915);
-  float insideY = step(0.49, uv.y) * step(uv.y, 0.87);
-  return 1.0 - insideX * insideY;
-}
-
 float emblemPattern(vec2 uv) {
   vec2 grid = fract(uv * vec2(8.5, 12.0)) - 0.5;
-  float ring = smoothstep(0.235, 0.215, abs(length(grid) - 0.22));
-  float split = smoothstep(0.024, 0.0, abs(grid.y));
-  float center = smoothstep(0.07, 0.045, length(grid));
-  return max(ring, max(split * 0.55, center * 0.75));
+  float diamond = abs(grid.x) + abs(grid.y);
+  float diamondEdge = smoothstep(0.035, 0.0, abs(diamond - 0.34));
+  float slash = smoothstep(0.035, 0.0, abs(grid.x + grid.y * 0.65));
+  float chevron = smoothstep(0.035, 0.0, abs(abs(grid.x) - grid.y - 0.12));
+  float inset = smoothstep(0.13, 0.09, max(abs(grid.x), abs(grid.y)));
+  return max(diamondEdge, max(slash * 0.42, max(chevron * 0.55, inset * 0.34)));
 }
 
 void main() {
@@ -75,24 +71,27 @@ void main() {
   vec3 color = texel.rgb * (0.64 + diffuse * 0.36) + rim * 0.08;
 
   if (isFront && uFinish == 1) {
-    float band = sin((vUv.x * 1.5 + vUv.y * 0.8 + uTime * 0.22) * 18.0) * 0.5 + 0.5;
-    float sweep = smoothstep(0.64, 1.0, band);
-    color += rainbow(vUv.x + vUv.y + uTime * 0.05) * sweep * 0.27;
+    float angleGlow = pow(1.0 - abs(normal.z), 0.68);
+    float diagonal = sin((vUv.x * 1.35 + vUv.y * 0.9 + normal.x * 0.9 + normal.y * 0.58 + uTime * 0.1) * 18.0);
+    float sweep = smoothstep(0.28, 1.0, diagonal * 0.5 + 0.5);
+    float glint = smoothstep(0.74, 1.0, sin((vUv.x - vUv.y * 0.48 + normal.x * 0.2) * 76.0) * 0.5 + 0.5);
+    vec3 prismColor = rainbow(vUv.x + vUv.y + normal.x * 0.38 + uTime * 0.045);
+    vec3 holo = prismColor * (sweep * 0.24 + glint * 0.08) * (0.62 + angleGlow * 1.1);
+    color += holo * (0.52 + angleGlow * 0.32);
   }
 
   if (isFront && uFinish == 2) {
-    float bodyFoil = outsideArtWindow(vUv);
     float angleGlow = pow(1.0 - abs(normal.z), 0.72);
     float diagonal = sin((vUv.x * 2.2 - vUv.y * 1.35 + normal.x * 0.95 + normal.y * 0.65 + uTime * 0.08) * 20.0);
     float prism = smoothstep(0.24, 1.0, diagonal * 0.5 + 0.5);
-    float microLine = smoothstep(0.78, 1.0, sin((vUv.x + vUv.y * 0.42 + normal.x * 0.12) * 92.0) * 0.5 + 0.5);
+    float microLine = smoothstep(0.72, 1.0, sin((vUv.x + vUv.y * 0.42 + normal.x * 0.12) * 104.0) * 0.5 + 0.5);
+    float crossLine = smoothstep(0.82, 1.0, sin((vUv.x * 0.38 - vUv.y + normal.y * 0.16) * 78.0) * 0.5 + 0.5);
     float emblem = emblemPattern(vUv + normal.xy * 0.035);
-    float shine = sparkle(vUv * vec2(1.0, 1.2) + normal.xy * 0.06, uTime);
     vec3 prismColor = rainbow(vUv.x - vUv.y + normal.x * 0.34 + uTime * 0.035);
-    vec3 foil = prismColor * (prism * 0.22 + microLine * 0.06 + emblem * 0.13);
-    foil += vec3(0.85, 0.94, 1.0) * shine * 0.16;
-    foil *= bodyFoil * (0.52 + angleGlow * 1.2);
-    color = mix(color, color * 1.05 + foil, bodyFoil * (0.5 + angleGlow * 0.28));
+    vec3 foil = prismColor * (prism * 0.16 + microLine * 0.09 + crossLine * 0.05 + emblem * 0.2);
+    foil += vec3(0.72, 0.88, 1.0) * (microLine + crossLine) * 0.035;
+    foil *= 0.48 + angleGlow * 1.05;
+    color = mix(color, color * 1.035 + foil, 0.42 + angleGlow * 0.24);
   }
 
   gl_FragColor = vec4(color, texel.a);

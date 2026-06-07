@@ -1,5 +1,5 @@
-const CARD_WIDTH = 2.5
-const CARD_HEIGHT = 3.5
+const CARD_WIDTH = 3
+const CARD_HEIGHT = 4.2
 const CARD_DEPTH = 0.05
 
 export const CARD_VERTEX_STRIDE_FLOATS = 9

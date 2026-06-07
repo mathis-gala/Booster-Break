@@ -1,8 +1,10 @@
+import { useState } from 'react'
 import { ArrowLeftIcon, ArrowRightIcon, SparklesIcon, XIcon } from 'lucide-react'
 import type { OpenPackResponse } from '@tcg-collection/shared'
 
 import { Button } from '@/components/ui/button'
 import { m } from '@/paraglide/messages'
+import { CardImageDialog } from './CardImageDialog'
 import { FoilCardImage } from './FoilCardImage'
 
 interface PackRevealDialogProps {
@@ -22,6 +24,7 @@ export function PackRevealDialog({
   onRevealCardIndexChange,
   resultLabel,
 }: PackRevealDialogProps) {
+  const [selectedPreviewCard, setSelectedPreviewCard] = useState<OpenPackResponse['cards'][number]>()
   const currentRevealCard = openPackResult.cards[revealedCardIndex]
   const currentRevealImageUrl = currentRevealCard?.imageLarge ?? currentRevealCard?.imageSmall
   const revealedCards = openPackResult.cards.slice(0, maxRevealedCardIndex + 1)
@@ -66,12 +69,19 @@ export function PackRevealDialog({
               className="relative flex aspect-63/88 w-full max-w-[24rem] animate-[pack-card-reveal_720ms_cubic-bezier(0.22,1,0.36,1)_both] items-center justify-center justify-self-center will-change-transform"
             >
               {currentRevealImageUrl ? (
-                <FoilCardImage
-                  src={currentRevealImageUrl}
-                  alt={currentRevealCard.name}
-                  finish={currentRevealCard.finish}
-                  className="size-full rounded-lg object-contain drop-shadow-2xl"
-                />
+                <button
+                  type="button"
+                  className="size-full rounded-lg focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                  onClick={() => setSelectedPreviewCard(currentRevealCard)}
+                  aria-label={m.packs_view_card_aria({ name: currentRevealCard.name })}
+                >
+                  <FoilCardImage
+                    src={currentRevealImageUrl}
+                    alt={currentRevealCard.name}
+                    finish={currentRevealCard.finish}
+                    className="size-full rounded-lg object-contain drop-shadow-2xl"
+                  />
+                </button>
               ) : (
                 <div className="size-full rounded-lg bg-muted" aria-hidden="true" />
               )}
@@ -95,6 +105,12 @@ export function PackRevealDialog({
           </div>
         ) : null}
       </div>
+      {selectedPreviewCard ? (
+        <CardImageDialog
+          card={selectedPreviewCard}
+          onClose={() => setSelectedPreviewCard(undefined)}
+        />
+      ) : null}
     </div>
   )
 }
