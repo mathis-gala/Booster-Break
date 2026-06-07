@@ -4,9 +4,8 @@ import { getRarityRank } from '@tcg-collection/shared'
 const UNKNOWN_RARITY_RANK = 999
 
 /**
- * Probability multiplier applied per rarity tier above the recycled rarity.
- * The reward is guaranteed to be *at least* the same rarity, with a quickly
- * decaying chance of landing on a higher tier so upgrades never feel granted.
+ * Probability multiplier per rarity tier above the recycled rarity. Rewards are
+ * always at least the same rarity, with a quickly decaying chance of a higher tier.
  */
 const TIER_UPGRADE_DECAY = 0.22
 
@@ -16,9 +15,8 @@ export interface RecycleRarityGroup {
 }
 
 /**
- * Draws `count` reward cards for cards recycled at `rarityRank`. Each reward is
- * pulled from the catalog at a rarity rank greater than or equal to the recycled
- * rarity, weighted so the same tier is by far the most likely outcome.
+ * Draws `count` rewards for cards recycled at `rarityRank`, each pulled at a rank
+ * >= the recycled rarity and weighted so the same tier is by far the most likely.
  */
 export const drawRecycleRewards = (
   rarityRank: number,

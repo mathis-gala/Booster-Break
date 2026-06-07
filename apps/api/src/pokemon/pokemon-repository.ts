@@ -37,9 +37,8 @@ type CollectionInventoryCard = Parameters<typeof toCardSummary>[0] & {
 }
 
 /**
- * Thrown inside the recycle transaction when a card selected for recycling is no
- * longer fully owned at write time (e.g. spent by a concurrent recycle or trade).
- * Rolls back the transaction so nothing is consumed and no reward is granted.
+ * Thrown inside the recycle transaction when a selected card is no longer fully
+ * owned at write time (e.g. spent by a concurrent recycle/trade), rolling it back.
  */
 export class RecycleConflictError extends Error {
   constructor() {
@@ -390,9 +389,8 @@ export class PokemonRepository {
     minRarityRank: number,
     locale: SupportedLocale = 'fr',
   ): Promise<PokemonCardSummary[]> {
-    // A reward is only ever drawn at or above the recycled rarity, so fetch just
-    // those rarities instead of the whole catalog. getRaritiesAtOrAboveRank also
-    // drops unknown rarities, which drawRecycleRewards never selects anyway.
+    // Rewards only draw at or above the recycled rarity, so fetch just those
+    // rarities, not the whole catalog (unknown rarities are dropped too).
     const cards = await this.db.pokemonCard.findMany({
       where: {
         rarity: {
@@ -453,13 +451,10 @@ export class PokemonRepository {
   }
 
   /**
-   * Counts, per (cardId, finish), how many owned copies the user has committed to
-   * a live trade. Trades do not escrow — the copies stay in `user_cards` until the
-   * trade settles — so recycling must treat these as unavailable, otherwise a user
-   * could recycle a card they have already promised and leave a dangling trade.
-   *
-   * Two commitments reserve a copy: an active auction the user created (one copy of
-   * the offered card) and a pending offer the user proposed (its committed cards).
+   * Counts, per (cardId, finish), owned copies the user has committed to a live
+   * trade. Trades don't escrow (copies stay in `user_cards` until settlement), so
+   * recycling must treat these as unavailable. A copy is reserved by an active
+   * auction the user created or a pending offer they proposed.
    */
   async listRecycleReservedQuantities(
     userId: string,
@@ -536,11 +531,9 @@ export class PokemonRepository {
       }
 
       for (const item of consumed) {
-        // Consume atomically against the live row inside the transaction. The
-        // service validated ownership earlier with a non-transactional read, so
-        // a concurrent recycle/trade could have spent these copies in between.
-        // If any copy is no longer available we throw to roll back the whole
-        // transaction, so no reward is ever granted for cards we failed to spend.
+        // Consume atomically against the live row: ownership was validated earlier
+        // with a non-transactional read, so a concurrent recycle/trade may have
+        // spent these copies. If any is gone we throw to roll back the whole tx.
         const consumedCopies = await this.consumeUserCardCopies(tx, userId, item)
 
         if (!consumedCopies) {
@@ -579,12 +572,11 @@ export class PokemonRepository {
   }
 
   /**
-   * Atomically removes `item.quantity` copies of a card from the user, returning
-   * false (without mutating) when fewer copies remain than requested. The two
-   * guarded writes — decrement when a surplus remains, delete when consuming the
-   * last copies — never match a row that is short, so a stale over-consume fails
-   * closed. updatedAt is deliberately left untouched: a spent card is not
-   * "recently acquired" and must not jump ahead of the reward in the Recent sort.
+   * Atomically removes `item.quantity` copies, returning false (without mutating)
+   * when fewer remain than requested — the two guarded writes (decrement on
+   * surplus, delete on last copies) never match a short row, so a stale
+   * over-consume fails closed. updatedAt is left untouched so a spent card isn't
+   * treated as "recently acquired" and bumped ahead of the reward in Recent sort.
    */
   private async consumeUserCardCopies(
     tx: Prisma.TransactionClient,
