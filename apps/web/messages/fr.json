@@ -160,6 +160,7 @@
   "recycle_sign_in": "Connecte-toi pour recycler des cartes de ta collection.",
   "recycle_error_invalid": "Ta sélection a changé. Rafraîchis ta collection puis réessaie.",
   "recycle_error_nothing": "Sélectionne au moins 5 cartes de même rareté.",
+  "recycle_error_conflict": "Ta collection a changé pendant le recyclage. Réessaie.",
   "recycle_error_generic": "Impossible de recycler des cartes pour le moment.",
   "recycle_reward_title": "Tu as fabriqué {count} carte(s)",
   "recycle_reward_subtitle": "Ajoutée(s) directement à ta collection.",

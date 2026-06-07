@@ -26,6 +26,8 @@ const toRecycleErrorMessage = (
       return m.recycle_error_invalid()
     case 'recycle_nothing':
       return m.recycle_error_nothing()
+    case 'recycle_conflict':
+      return m.recycle_error_conflict()
     default:
       return payload?.message ?? m.recycle_error_generic()
   }

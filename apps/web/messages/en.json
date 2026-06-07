@@ -160,6 +160,7 @@
   "recycle_sign_in": "Sign in to recycle cards from your collection.",
   "recycle_error_invalid": "Your selection changed. Refresh your collection and try again.",
   "recycle_error_nothing": "Select at least 5 cards sharing the same rarity.",
+  "recycle_error_conflict": "Your collection changed while recycling. Please try again.",
   "recycle_error_generic": "Unable to recycle cards right now.",
   "recycle_reward_title": "You crafted {count} card(s)",
   "recycle_reward_subtitle": "Added straight to your collection.",
