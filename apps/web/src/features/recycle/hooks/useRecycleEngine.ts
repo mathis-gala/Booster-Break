@@ -27,9 +27,8 @@ export interface RecycleAnimationState {
 }
 
 /**
- * All recycle state and actions for a given set of owned cards. Shared by the
- * standalone Recycle tab and the Collection tab's recycle mode so both stay in
- * sync. `cards` must be the full owned collection (selection/totals are global).
+ * All recycle state and actions for a set of owned cards. `cards` must be the
+ * full owned collection (selection/totals are global).
  */
 export function useRecycleEngine(cards: UserCollectionCard[]) {
   const queryClient = useQueryClient()

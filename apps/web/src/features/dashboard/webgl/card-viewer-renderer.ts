@@ -137,10 +137,8 @@ export class CardViewerRenderer {
   }
 
   private resize(): void {
-    // Size from the layout box, not getBoundingClientRect(): the latter reflects
-    // CSS transforms, so measuring while the card plays its scale-in reveal would
-    // lock the drawing buffer to a shrunken, low-res size (the ResizeObserver only
-    // watches the layout box and never fires to correct it once the transform ends).
+    // Measure the layout box, not getBoundingClientRect() — the latter reflects CSS
+    // transforms, so sizing during the card's scale-in reveal would lock the buffer low-res.
     const width = this.canvas.clientWidth
     const height = this.canvas.clientHeight
     const pixelRatio = Math.min(window.devicePixelRatio || 1, 2)

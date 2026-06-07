@@ -52,9 +52,8 @@ export interface RecyclePageSegment {
 }
 
 /**
- * Flattens rarity groups in order, takes one page, then re-splits that page into
- * rarity segments so headers reappear across page boundaries. Selection/totals
- * stay global; only the rendered slice is limited.
+ * Flattens rarity groups, takes one page, then re-splits it into rarity segments
+ * so headers reappear across page boundaries. Only the rendered slice is limited.
  */
 export const paginateRarityGroups = (
   groups: RecycleRarityGroup[],
@@ -134,9 +133,9 @@ export interface RecyclePreviewCard {
 }
 
 /**
- * Splits the selection into the exact batches of {@link RECYCLE_COST} cards that
- * each craft one reward, grouped by rarity and ordered the same way the server
- * produces rewards. Batch `i` therefore shows the real cards behind reward `i`.
+ * Splits the selection into {@link RECYCLE_COST}-card batches that each craft one
+ * reward, ordered like the server's rewards so batch `i` shows the cards behind
+ * reward `i`.
  */
 export const buildRecycleBatches = (
   selection: RecycleSelection,

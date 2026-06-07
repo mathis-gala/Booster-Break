@@ -17,9 +17,8 @@ import { groupCardsByRarity, paginateRarityGroups } from '../lib/recycle-utils'
 const PAGE_SIZE = 24
 
 /**
- * Recycle mode rendered inside the Collection tab's panel: same chrome (search,
- * sort minus rarity, pagination) but the cards are shown in rarity sections like
- * the standalone Recycle tab. Selection/totals stay global across pages/search.
+ * Recycle mode inside the Collection panel: same chrome, cards grouped into
+ * rarity sections. Selection/totals stay global across pages and search.
  */
 export function CollectionRecyclePanel() {
   const [page, setPage] = useState(1)

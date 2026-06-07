@@ -36,8 +36,7 @@ export function RecycleAnimationOverlay({
   const [index, setIndex] = useState(0)
   const advance = useCallback(() => setIndex((current) => current + 1), [])
 
-  // Warm the browser cache for every reward image the moment they arrive, so the
-  // 3D viewer's texture is ready by the time each card is revealed.
+  // Warm the browser cache for reward images so the 3D viewer's texture is ready at reveal.
   useEffect(() => {
     if (!rewards) {
       return

@@ -17,7 +17,7 @@ import { paginateRarityGroups } from '../lib/recycle-utils'
 const PAGE_SIZE = 18
 
 interface RecyclePanelProps {
-  /** Show the title + description header (the standalone Recycle tab). */
+  /** Show the title + description header. */
   showHeader?: boolean
 }
 
