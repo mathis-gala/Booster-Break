@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react'
+import { useMemo } from 'react'
 import { useQuery } from '@tanstack/react-query'
 import type { CollectionSort } from '@tcg-collection/shared'
 import { RECYCLE_COST } from '@tcg-collection/shared'
@@ -16,15 +16,30 @@ import { groupCardsByRarity, paginateRarityGroups } from '../lib/recycle-utils'
 
 const PAGE_SIZE = 24
 
+interface CollectionRecyclePanelProps {
+  page: number
+  sort: CollectionSort
+  searchQuery: string
+  onPageChange: (page: number) => void
+  onSortChange: (sort: CollectionSort) => void
+  onSearchChange: (searchQuery: string) => void
+}
+
 /**
  * Recycle mode inside the Collection panel: same chrome, cards grouped into
  * rarity sections. Selection/totals stay global across pages and search.
+ *
+ * Search/sort/page are owned by the parent so they persist when the user toggles
+ * between browse and recycle (this panel unmounts on toggle).
  */
-export function CollectionRecyclePanel() {
-  const [page, setPage] = useState(1)
-  const [sort, setSort] = useState<CollectionSort>('recent')
-  const [searchQuery, setSearchQuery] = useState('')
-
+export function CollectionRecyclePanel({
+  page,
+  sort,
+  searchQuery,
+  onPageChange,
+  onSortChange,
+  onSearchChange,
+}: CollectionRecyclePanelProps) {
   const collection = useQuery(usePokemonCollectionAllQueryOption({ sort, source: 'owned' }))
   const allCards = useMemo(() => collection.data?.cards ?? [], [collection.data?.cards])
 
@@ -78,14 +93,14 @@ export function CollectionRecyclePanel() {
           />
         )}
         onSortChange={(nextSort) => {
-          setSort(nextSort)
-          setPage(1)
+          onSortChange(nextSort)
+          onPageChange(1)
         }}
         onSearchChange={(nextSearchQuery) => {
-          setSearchQuery(nextSearchQuery)
-          setPage(1)
+          onSearchChange(nextSearchQuery)
+          onPageChange(1)
         }}
-        onPageChange={setPage}
+        onPageChange={onPageChange}
       />
 
       {engine.animation ? (

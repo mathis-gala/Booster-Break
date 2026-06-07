@@ -24,6 +24,11 @@ export function CollectionView() {
   const [sort, setSort] = useState<CollectionSort>('recent')
   const [searchQuery, setSearchQuery] = useState('')
   const [selectedSetId, setSelectedSetId] = useState<string>()
+  // Recycle keeps its own search/sort/page, held here so they persist across the
+  // browse/recycle toggle (CollectionRecyclePanel unmounts when not in recycle mode).
+  const [recyclePage, setRecyclePage] = useState(1)
+  const [recycleSort, setRecycleSort] = useState<CollectionSort>('recent')
+  const [recycleSearchQuery, setRecycleSearchQuery] = useState('')
   const pageSize = 24
   const isBrowsing = mode === 'browse'
   const isSearching = searchQuery.trim().length > 0
@@ -79,7 +84,14 @@ export function CollectionView() {
 
       {mode === 'recycle' ? (
         <div className="flex w-full justify-center">
-          <CollectionRecyclePanel />
+          <CollectionRecyclePanel
+            page={recyclePage}
+            sort={recycleSort}
+            searchQuery={recycleSearchQuery}
+            onPageChange={setRecyclePage}
+            onSortChange={setRecycleSort}
+            onSearchChange={setRecycleSearchQuery}
+          />
         </div>
       ) : (
         <div className="flex w-full justify-center">
