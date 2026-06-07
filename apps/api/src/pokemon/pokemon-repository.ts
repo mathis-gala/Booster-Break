@@ -25,19 +25,23 @@ import { SYNCED_BOOSTER_LIMIT } from './pokemon-config'
 import type { Set as TcgDexSet } from '@tcgdex/sdk'
 import type { TcgDexCard } from './tcgdex-client'
 
+type CollectionInventorySet = {
+  name: string
+  nameEn: string | null
+  nameFr: string | null
+}
+
+type CollectionInventoryCard = Parameters<typeof toCardSummary>[0] & {
+  set: CollectionInventorySet | null
+}
+
 type CollectionInventoryRow = {
   cardId: string
   finish: string
   quantity: number
   firstCollectedAt: Date
   updatedAt: Date
-  card: Parameters<typeof toCardSummary>[0] & {
-    set: {
-      name: string
-      nameEn: string | null
-      nameFr: string | null
-    } | null
-  }
+  card: CollectionInventoryCard
 }
 
 export class PokemonRepository {

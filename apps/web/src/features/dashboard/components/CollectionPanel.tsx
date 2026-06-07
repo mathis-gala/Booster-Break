@@ -1,4 +1,5 @@
 import { useMemo, useState } from 'react'
+import { ChevronDownIcon } from 'lucide-react'
 import type {
   CollectionSetOption,
   CollectionSort,
@@ -6,6 +7,13 @@ import type {
 } from '@tcg-collection/shared'
 
 import { Button } from '@/components/ui/button'
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuRadioGroup,
+  DropdownMenuRadioItem,
+  DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu'
 import { m } from '@/paraglide/messages'
 import { CardImageDialog } from './CardImageDialog'
 import { CollectionCardItem } from './CollectionCardItem'
@@ -70,6 +78,10 @@ export function CollectionPanel({
     () => new Map(sets.map((set) => [set.id, set.name])),
     [sets],
   )
+  const activeSet = sets.find((set) => set.id === selectedSetId)
+  const setTriggerLabel = activeSet
+    ? `${activeSet.name} (${activeSet.count})`
+    : m.collection_filter_all_sets()
 
   return (
     <>
@@ -101,24 +113,53 @@ export function CollectionPanel({
                   aria-label={m.trade_search_by_pokemon_aria()}
                 />
               </label>
-              <label className="flex w-full items-center gap-2 sm:w-auto">
+              <div className="flex w-full items-center gap-2 sm:w-auto">
                 <span className="w-20 shrink-0 text-xs font-black uppercase tracking-wide text-muted-foreground sm:w-auto">
                   {m.collection_filter_set_label()}
                 </span>
-                <select
-                  value={selectedSetId ?? ''}
-                  onChange={(event) => onSetChange(event.target.value || undefined)}
-                  className="min-w-0 flex-1 rounded-md border bg-background px-2 py-2 text-sm sm:max-w-[12rem] sm:flex-none"
-                  aria-label={m.collection_filter_set_label()}
-                >
-                  <option value="">{m.collection_filter_all_sets()}</option>
-                  {sets.map((set) => (
-                    <option key={set.id} value={set.id}>
-                      {set.name} ({set.count})
-                    </option>
-                  ))}
-                </select>
-              </label>
+                <DropdownMenu modal={false}>
+                  <DropdownMenuTrigger
+                    aria-label={m.collection_filter_set_label()}
+                    className="flex h-9 min-w-0 flex-1 cursor-pointer items-center justify-between gap-2 rounded-md border border-border bg-background px-2.5 text-sm font-medium transition-colors hover:bg-muted focus-visible:border-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-foreground/15 sm:w-48 sm:flex-none"
+                  >
+                    <span className="truncate">{setTriggerLabel}</span>
+                    <ChevronDownIcon
+                      aria-hidden="true"
+                      className="size-4 shrink-0 text-muted-foreground"
+                    />
+                  </DropdownMenuTrigger>
+                  <DropdownMenuContent
+                    align="start"
+                    sideOffset={6}
+                    className="max-h-72 w-auto min-w-(--anchor-width) max-w-64"
+                  >
+                    <DropdownMenuRadioGroup
+                      value={selectedSetId ?? ''}
+                      onValueChange={(value) => onSetChange(value || undefined)}
+                    >
+                      <DropdownMenuRadioItem
+                        value=""
+                        closeOnClick
+                        label={m.collection_filter_all_sets()}
+                        className="cursor-pointer focus:bg-muted focus:text-foreground"
+                      >
+                        {m.collection_filter_all_sets()}
+                      </DropdownMenuRadioItem>
+                      {sets.map((set) => (
+                        <DropdownMenuRadioItem
+                          key={set.id}
+                          value={set.id}
+                          closeOnClick
+                          label={`${set.name} (${set.count})`}
+                          className="cursor-pointer focus:bg-muted focus:text-foreground"
+                        >
+                          {set.name} ({set.count})
+                        </DropdownMenuRadioItem>
+                      ))}
+                    </DropdownMenuRadioGroup>
+                  </DropdownMenuContent>
+                </DropdownMenu>
+              </div>
               <div className="flex flex-wrap gap-2">
                 {sortActions.map((action) => (
                   <Button
