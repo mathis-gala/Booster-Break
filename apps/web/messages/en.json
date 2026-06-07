@@ -161,7 +161,7 @@
   "recycle_error_generic": "Unable to recycle cards right now.",
   "recycle_reward_title": "You crafted {count} card(s)",
   "recycle_reward_subtitle": "Added straight to your collection.",
-  "recycle_reward_close": "Nice!",
+  "recycle_reward_close": "Done",
   "sort_recent": "Recent",
   "sort_quantity": "Quantity",
   "sort_name": "Name",

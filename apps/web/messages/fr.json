@@ -161,7 +161,7 @@
   "recycle_error_generic": "Impossible de recycler des cartes pour le moment.",
   "recycle_reward_title": "Tu as fabriqué {count} carte(s)",
   "recycle_reward_subtitle": "Ajoutée(s) directement à ta collection.",
-  "recycle_reward_close": "Super !",
+  "recycle_reward_close": "Terminé",
   "sort_recent": "Récent",
   "sort_quantity": "Quantité",
   "sort_name": "Nom",

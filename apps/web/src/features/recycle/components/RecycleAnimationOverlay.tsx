@@ -250,15 +250,6 @@ function RewardReveal({
         </p>
       ) : null}
 
-      {isLast ? (
-        <div className="text-center">
-          <p className="text-lg font-black text-white">
-            {m.recycle_reward_title({ count: total })}
-          </p>
-          <p className="text-sm font-medium text-white/70">{m.recycle_reward_subtitle()}</p>
-        </div>
-      ) : null}
-
       <button
         type="button"
         className="w-full max-w-xs cursor-pointer rounded-lg bg-sidebar px-4 py-2.5 text-sm font-black text-sidebar-foreground transition-colors hover:bg-sidebar/90 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"

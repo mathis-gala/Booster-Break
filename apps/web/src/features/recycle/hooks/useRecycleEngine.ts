@@ -71,7 +71,6 @@ export function useRecycleEngine(cards: UserCollectionCard[]) {
             ? { ...current, rewards: result.awardedCards }
             : { batches: [], rewards: result.awardedCards },
         )
-        toast.show(m.recycle_success({ count: result.rewardCount }), 'success')
       },
       onError: (error) => {
         setAnimation(null)
