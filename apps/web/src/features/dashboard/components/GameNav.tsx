@@ -1,4 +1,5 @@
 import { useState } from 'react'
+import { useNavigate } from '@tanstack/react-router'
 import {
   ArrowRightLeftIcon,
   BookOpenIcon,
@@ -36,8 +37,15 @@ export function GameNav({
   isLoggingOut,
 }: GameNavProps) {
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false)
+  const navigate = useNavigate()
 
   function selectTab(tab: DashboardTab) {
+    if (tab === 'leaders') {
+      void navigate({ to: '/leaderboard' })
+      setIsMobileMenuOpen(false)
+      return
+    }
+
     onTabChange(tab)
     setIsMobileMenuOpen(false)
   }
@@ -146,7 +154,7 @@ const navItems: NavItem[] = [
   { id: 'collection', icon: BookOpenIcon },
   { id: 'boards', icon: GalleryHorizontalEndIcon, disabled: true },
   { id: 'trade', icon: ArrowRightLeftIcon },
-  { id: 'leaders', icon: TrophyIcon, disabled: true },
+  { id: 'leaders', icon: TrophyIcon },
 ]
 
 const getNavLabel = (tab: DashboardTab): string => {

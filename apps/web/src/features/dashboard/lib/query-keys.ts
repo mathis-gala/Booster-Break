@@ -22,6 +22,7 @@ export const pokemonQueryKeys = {
     ['pokemon', 'sandbox', 'cards', setId, locale] as const,
   cards: (setId: string | undefined, locale: SupportedLocale) =>
     ['pokemon', 'cards', setId, locale] as const,
+  leaderboard: () => ['pokemon', 'leaderboard'] as const,
   packStatus: () => ['pokemon', 'packs', 'status'] as const,
   collection: {
     all: ['pokemon', 'collection'] as const,

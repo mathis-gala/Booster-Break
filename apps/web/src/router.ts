@@ -1,6 +1,7 @@
 import { createRootRoute, createRoute, createRouter } from '@tanstack/react-router'
 
 import { DashboardPage } from '@/pages/DashboardPage'
+import { LeaderboardPage } from '@/pages/LeaderboardPage'
 import { RootLayout } from '@/pages/RootLayout'
 import { SetupPage } from '@/pages/SetupPage'
 
@@ -20,7 +21,13 @@ const setupRoute = createRoute({
   component: SetupPage,
 })
 
-const routeTree = rootRoute.addChildren([indexRoute, setupRoute])
+const leaderboardRoute = createRoute({
+  getParentRoute: () => rootRoute,
+  path: '/leaderboard',
+  component: LeaderboardPage,
+})
+
+const routeTree = rootRoute.addChildren([indexRoute, setupRoute, leaderboardRoute])
 
 const basepath =
   import.meta.env.BASE_URL === '/' ? '/' : import.meta.env.BASE_URL.replace(/\/$/, '')

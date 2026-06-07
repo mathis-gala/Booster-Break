@@ -154,6 +154,14 @@ export const useOwnedCardIdsQueryOption = (enabled = true) =>
     toError: () => new Error(m.api_unable_load_collection()),
   })
 
+export const usePokemonLeaderboardQueryOption = () =>
+  edenQueryOption({
+    edenQuery: api.pokemon.leaderboard.get,
+    queryKey: pokemonQueryKeys.leaderboard(),
+    mapData: (data) => data,
+    toError: () => new Error(m.api_unable_load_leaderboard()),
+  })
+
 export const usePokemonPreviewCardsQueryOption = (
   setId: string | undefined,
 ) => {
