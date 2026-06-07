@@ -316,7 +316,12 @@ export class PokemonService {
       }
 
       if (!candidates) {
-        candidates = await this.options.pokemonRepository.listRecycleRewardCandidates(locale)
+        // Buckets are processed lowest-rarity first, so the first one that yields
+        // a reward sets the rank floor for every candidate we need to fetch.
+        candidates = await this.options.pokemonRepository.listRecycleRewardCandidates(
+          bucket.rarityRank,
+          locale,
+        )
       }
 
       const rewards = drawRecycleRewards(bucket.rarityRank, maxReward, candidates)

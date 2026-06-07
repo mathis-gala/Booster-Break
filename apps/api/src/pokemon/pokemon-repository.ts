@@ -8,7 +8,7 @@ import type {
   SupportedLocale,
   UserCollectionResponse,
 } from '@tcg-collection/shared'
-import { getFinishRank, getRarityRank } from '@tcg-collection/shared'
+import { getFinishRank, getRaritiesAtOrAboveRank, getRarityRank } from '@tcg-collection/shared'
 import type { Prisma } from '@prisma/client'
 import type { AppPrisma } from '../db/prisma'
 import {
@@ -386,12 +386,31 @@ export class PokemonRepository {
     return { openingId, newCardIds: [...newCardIds] }
   }
 
-  async listRecycleRewardCandidates(locale: SupportedLocale = 'fr'): Promise<PokemonCardSummary[]> {
+  async listRecycleRewardCandidates(
+    minRarityRank: number,
+    locale: SupportedLocale = 'fr',
+  ): Promise<PokemonCardSummary[]> {
+    // A reward is only ever drawn at or above the recycled rarity, so fetch just
+    // those rarities instead of the whole catalog. getRaritiesAtOrAboveRank also
+    // drops unknown rarities, which drawRecycleRewards never selects anyway.
     const cards = await this.db.pokemonCard.findMany({
       where: {
         rarity: {
-          not: null,
+          in: getRaritiesAtOrAboveRank(minRarityRank),
         },
+      },
+      select: {
+        id: true,
+        setId: true,
+        localId: true,
+        name: true,
+        nameEn: true,
+        nameFr: true,
+        rarity: true,
+        category: true,
+        rawJson: true,
+        imageSmall: true,
+        imageLarge: true,
       },
     })
 

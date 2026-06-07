@@ -57,6 +57,17 @@ export const getRarityRank = (rarity: string | null | undefined): number => {
   return rarity ? (rarityRank[rarity] ?? 999) : 999
 }
 
+/**
+ * Every known rarity string whose rank is at least `minRank`. Used to fetch only
+ * the cards a recycle reward could land on instead of the whole catalog. Unknown
+ * rarities (rank 999) are intentionally excluded — they are never reward targets.
+ */
+export const getRaritiesAtOrAboveRank = (minRank: number): string[] => {
+  return Object.entries(rarityRank)
+    .filter(([, rank]) => rank >= minRank)
+    .map(([rarity]) => rarity)
+}
+
 export const getFinishRank = (finish: string | null | undefined): number => {
   return finishRank[finish as CardFinish] ?? 999
 }

@@ -1,6 +1,6 @@
 import { describe, expect, test } from 'bun:test'
 import type { PokemonCardSummary } from '@tcg-collection/shared'
-import { RECYCLE_COST } from '@tcg-collection/shared'
+import { getRarityRank, RECYCLE_COST } from '@tcg-collection/shared'
 import { isPokemonServiceError, PokemonService } from '../../src/pokemon/pokemon-service'
 import { PokemonRepository, RecycleConflictError } from '../../src/pokemon/pokemon-repository'
 import type { AuthUser } from '../../src/auth/types'
@@ -20,6 +20,8 @@ interface FakeRepoState {
   }>
   // Copies committed to a live trade (active auction / pending offer).
   reserved?: ReservedRow[]
+  // Minimum rarity rank the service asked the catalog query to fetch.
+  candidateMinRank?: number
   // When set, the repository write fails as if a concurrent recycle/trade spent
   // the cards between the ownership read and the transaction.
   recycleConflict?: boolean
@@ -33,7 +35,8 @@ const makeService = (state: FakeRepoState) => {
     async listRecycleReservedQuantities(_userId: string, cardIds: string[]) {
       return (state.reserved ?? []).filter((row) => cardIds.includes(row.cardId))
     },
-    async listRecycleRewardCandidates() {
+    async listRecycleRewardCandidates(minRarityRank: number) {
+      state.candidateMinRank = minRarityRank
       return state.catalog
     },
     async recycleCards(
@@ -131,6 +134,9 @@ describe('PokemonService.recycleCards', () => {
 
     expect(result.rewardCount).toBe(2)
     expect(result.recycledCount).toBe(RECYCLE_COST * 2)
+    // Candidates are fetched once, floored at the lowest recycled tier (Common = 10),
+    // so the Uncommon bucket reuses the same superset instead of a second query.
+    expect(state.candidateMinRank).toBe(getRarityRank('Common'))
   })
 
   test('rejects when the user does not own enough copies', async () => {
