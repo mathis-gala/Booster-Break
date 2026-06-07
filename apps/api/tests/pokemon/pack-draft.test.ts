@@ -29,8 +29,8 @@ describe('drawPokemonPackCards', () => {
   })
 
   test('can pull an ACE SPEC Rare in the rare slot', () => {
-    // Roll lands in the rare slot's ACE SPEC band (after Double Rare 13.76% + Ultra Rare 6.57%).
-    Math.random = () => 0.22
+    // Roll lands in the rare slot's thin ACE SPEC band: 20.33% (Double Rare + Ultra Rare) to 20.42%.
+    Math.random = () => 0.204
 
     const cards = drawPokemonPackCards([
       ...makeCards('common', 'Common', 6, ['normal', 'reverse_holo']),
