@@ -87,6 +87,19 @@ export interface OwnedCardIdsResponse {
   cardIds: string[]
 }
 
+export interface LeaderboardPlayer {
+  userId: string
+  name: string
+  avatarUrl?: string
+  totalCards: number
+  uniqueCards: number
+}
+
+export interface PokemonLeaderboardResponse {
+  mostCards: LeaderboardPlayer[]
+  mostUniqueCards: LeaderboardPlayer[]
+}
+
 export type PackOpenStatusResponse =
   | {
       authenticated: true
