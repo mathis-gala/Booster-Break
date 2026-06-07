@@ -1,5 +1,6 @@
 import type {
   CardFinish,
+  CollectionSetOption,
   CollectionSort,
   CollectionSource,
   PokemonCardSummary,
@@ -8,9 +9,11 @@ import type {
   UserCollectionResponse,
 } from '@tcg-collection/shared'
 import { getFinishRank, getRarityRank } from '@tcg-collection/shared'
+import type { Prisma } from '@prisma/client'
 import type { AppPrisma } from '../db/prisma'
 import {
   getLocalizedCardName,
+  getLocalizedSetName,
   type LocalizedCardNames,
   type LocalizedSetText,
   toCardSummary,
@@ -22,13 +25,23 @@ import { SYNCED_BOOSTER_LIMIT } from './pokemon-config'
 import type { Set as TcgDexSet } from '@tcgdex/sdk'
 import type { TcgDexCard } from './tcgdex-client'
 
+type CollectionInventorySet = {
+  name: string
+  nameEn: string | null
+  nameFr: string | null
+}
+
+type CollectionInventoryCard = Parameters<typeof toCardSummary>[0] & {
+  set: CollectionInventorySet | null
+}
+
 type CollectionInventoryRow = {
   cardId: string
   finish: string
   quantity: number
   firstCollectedAt: Date
   updatedAt: Date
-  card: Parameters<typeof toCardSummary>[0]
+  card: CollectionInventoryCard
 }
 
 export class PokemonRepository {
@@ -151,14 +164,17 @@ export class PokemonRepository {
       sort: CollectionSort
       source: CollectionSource
       locale: SupportedLocale
+      setId?: string
     },
   ): Promise<UserCollectionResponse> {
-    const rows = await this.listUserCollectionRows(
+    const allRows = await this.listUserCollectionRows(
       userId,
       options.locale,
       options.sort,
       options.source,
     )
+    const sets = this.buildCollectionSetOptions(allRows, options.locale)
+    const rows = options.setId ? allRows.filter((row) => row.card.setId === options.setId) : allRows
     const total = rows.length
     const totalCards = rows.reduce((count, row) => count + row.quantity, 0)
     const pageCount = Math.max(1, Math.ceil(total / options.pageSize))
@@ -180,16 +196,95 @@ export class PokemonRepository {
         pageCount,
       },
       sort: options.sort,
+      sets,
     }
+  }
+
+  private buildCollectionSetOptions(
+    rows: CollectionInventoryRow[],
+    locale: SupportedLocale,
+  ): CollectionSetOption[] {
+    const sets = new Map<string, CollectionSetOption>()
+
+    for (const row of rows) {
+      const existing = sets.get(row.card.setId)
+
+      if (existing) {
+        existing.count += 1
+        continue
+      }
+
+      sets.set(row.card.setId, {
+        id: row.card.setId,
+        name: row.card.set ? getLocalizedSetName(row.card.set, locale) : row.card.setId,
+        count: 1,
+      })
+    }
+
+    return [...sets.values()].sort((first, second) => first.name.localeCompare(second.name))
+  }
+
+  // Owned card ids, deduped and finish-agnostic: a card held in any finish appears once.
+  async listOwnedCardIds(userId: string): Promise<string[]> {
+    const where = {
+      userId,
+      quantity: {
+        gt: 0,
+      },
+    }
+
+    const [ownedRows, giftedRows] = await Promise.all([
+      this.db.userCard.findMany({
+        where,
+        select: {
+          cardId: true,
+        },
+      }),
+      this.db.giftedUserCard.findMany({
+        where,
+        select: {
+          cardId: true,
+        },
+      }),
+    ])
+
+    const cardIds = new Set<string>()
+
+    for (const row of [...ownedRows, ...giftedRows]) {
+      cardIds.add(row.cardId)
+    }
+
+    return [...cardIds]
+  }
+
+  // Ownership is finish-agnostic (by cardId), matching getOwnedCardIds.
+  private async listOwnedCardIdsForCards(
+    tx: Prisma.TransactionClient,
+    userId: string,
+    cardIds: string[],
+  ): Promise<Set<string>> {
+    const where = {
+      userId,
+      cardId: { in: cardIds },
+      quantity: { gt: 0 },
+    }
+
+    const [ownedRows, giftedRows] = await Promise.all([
+      tx.userCard.findMany({ where, select: { cardId: true } }),
+      tx.giftedUserCard.findMany({ where, select: { cardId: true } }),
+    ])
+
+    return new Set([...ownedRows, ...giftedRows].map((row) => row.cardId))
   }
 
   async recordPackOpening(
     userId: string,
     setId: string,
     cards: PokemonCardSummary[],
-  ): Promise<string> {
+  ): Promise<{ openingId: string; newCardIds: string[] }> {
     const openingId = crypto.randomUUID()
     const openedAt = new Date()
+    const newCardIds = new Set<string>()
 
     await this.db.$transaction(async (tx) => {
       await tx.packOpening.create({
@@ -201,7 +296,17 @@ export class PokemonRepository {
         },
       })
 
+      const previouslyOwned = await this.listOwnedCardIdsForCards(
+        tx,
+        userId,
+        cards.map((card) => card.id),
+      )
+
       for (const [index, card] of cards.entries()) {
+        if (!previouslyOwned.has(card.id)) {
+          newCardIds.add(card.id)
+        }
+
         await tx.packOpeningCard.create({
           data: {
             packOpeningId: openingId,
@@ -237,7 +342,7 @@ export class PokemonRepository {
       }
     })
 
-    return openingId
+    return { openingId, newCardIds: [...newCardIds] }
   }
 
   async getLatestPackOpening(userId: string): Promise<{ openedAt: Date } | undefined> {
@@ -281,7 +386,11 @@ export class PokemonRepository {
     const ownedRows = await this.db.userCard.findMany({
       where,
       include: {
-        card: true,
+        card: {
+          include: {
+            set: true,
+          },
+        },
       },
     })
 
@@ -292,7 +401,11 @@ export class PokemonRepository {
     const giftedRows = await this.db.giftedUserCard.findMany({
       where,
       include: {
-        card: true,
+        card: {
+          include: {
+            set: true,
+          },
+        },
       },
     })
 

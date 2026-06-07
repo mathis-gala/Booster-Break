@@ -1,9 +1,11 @@
 import { Elysia } from 'elysia'
 import { createAuthRequiredPlugin } from '../auth/auth-required-plugin'
+import type { AuthUser } from '../auth/types'
+import { localePlugin, resolveLocaleOverride } from '../i18n/locale'
+import type { SupportedLocale } from '@tcg-collection/shared'
 import type { TradeService } from './trade-service'
 import { isTradeServiceError } from './trade-service-result'
 import type { TradeControllerErrorCode, TradeControllerOptions } from './trade-types'
-import { DEFAULT_LOCALE } from '@tcg-collection/shared'
 import {
   createAuctionSchema,
   createOfferSchema,
@@ -21,16 +23,23 @@ export const createTradeController = ({
   const authenticatedRoutes = createAuthenticatedTradeRoutes(service, authService)
 
   return new Elysia({ prefix: '/trade' })
-    .get('/auctions', async ({ query }) => service.listAuctions(query.locale ?? DEFAULT_LOCALE), {
-      query: tradeLocaleQuerySchema,
-    })
+    .use(localePlugin)
+    .get(
+      '/auctions',
+      async ({ locale, query }) =>
+        service.listAuctions(resolveLocaleOverride(query.locale, locale)),
+      {
+        query: tradeLocaleQuerySchema,
+      },
+    )
     .get(
       '/auctions/:auctionId',
-      async ({ headers, params, query, status }) => {
+      async ({ headers, locale, params, query, status }) => {
+        const currentUser = await authService.getCurrentUser(headers.cookie)
         const result = await service.getAuction(
           params.auctionId,
-          query.locale ?? DEFAULT_LOCALE,
-          headers.cookie,
+          resolveLocaleOverride(query.locale, locale),
+          currentUser,
         )
 
         if (isTradeServiceError(result)) {
@@ -52,6 +61,7 @@ const createAuthenticatedTradeRoutes = (
   authService: TradeControllerOptions<TradeService>['authService'],
 ) => {
   return new Elysia()
+    .use(localePlugin)
     .use(
       createAuthRequiredPlugin({
         authService,
@@ -60,11 +70,12 @@ const createAuthenticatedTradeRoutes = (
     )
     .post(
       '/auctions',
-      async ({ body, headers, query, status }) => {
+      async (context) => {
+        const { body, currentUser, query, status } = getAuthenticatedContext(context)
         const result = await service.createAuction(
-          headers.cookie,
+          currentUser,
           body,
-          query.locale ?? DEFAULT_LOCALE,
+          resolveLocaleOverride(query.locale, context.locale),
         )
 
         if (isTradeServiceError(result)) {
@@ -80,12 +91,13 @@ const createAuthenticatedTradeRoutes = (
     )
     .post(
       '/auctions/:auctionId/offers',
-      async ({ body, headers, params, query, status }) => {
+      async (context) => {
+        const { body, currentUser, params, query, status } = getAuthenticatedContext(context)
         const result = await service.createOffer(
-          headers.cookie,
+          currentUser,
           params.auctionId,
           body,
-          query.locale ?? DEFAULT_LOCALE,
+          resolveLocaleOverride(query.locale, context.locale),
         )
 
         if (isTradeServiceError(result)) {
@@ -102,8 +114,9 @@ const createAuthenticatedTradeRoutes = (
     )
     .delete(
       '/offers/:offerId',
-      async ({ headers, params, status }) => {
-        const result = await service.cancelOffer(headers.cookie, params.offerId)
+      async (context) => {
+        const { currentUser, params, status } = getAuthenticatedContext(context)
+        const result = await service.cancelOffer(currentUser, params.offerId)
 
         if (isTradeServiceError(result)) {
           return status(toTradeErrorStatus(result.error), result)
@@ -115,8 +128,9 @@ const createAuthenticatedTradeRoutes = (
     )
     .post(
       '/auctions/:auctionId/offer/:offerId/accept',
-      async ({ headers, params, status }) => {
-        const result = await service.acceptOffer(headers.cookie, params.auctionId, params.offerId)
+      async (context) => {
+        const { currentUser, params, status } = getAuthenticatedContext(context)
+        const result = await service.acceptOffer(currentUser, params.auctionId, params.offerId)
 
         if (isTradeServiceError(result)) {
           return status(toTradeErrorStatus(result.error), result)
@@ -130,8 +144,9 @@ const createAuthenticatedTradeRoutes = (
     )
     .delete(
       '/auctions/:auctionId',
-      async ({ headers, params, status }) => {
-        const result = await service.cancelAuction(headers.cookie, params.auctionId)
+      async (context) => {
+        const { currentUser, params, status } = getAuthenticatedContext(context)
+        const result = await service.cancelAuction(currentUser, params.auctionId)
 
         if (isTradeServiceError(result)) {
           return status(toTradeErrorStatus(result.error), result)
@@ -145,10 +160,11 @@ const createAuthenticatedTradeRoutes = (
     )
     .get(
       '/notifications',
-      async ({ headers, query, status }) => {
+      async (context) => {
+        const { currentUser, query, status } = getAuthenticatedContext(context)
         const result = await service.listTradeNotifications(
-          headers.cookie,
-          query.locale ?? DEFAULT_LOCALE,
+          currentUser,
+          resolveLocaleOverride(query.locale, context.locale),
         )
 
         if (isTradeServiceError(result)) {
@@ -163,11 +179,9 @@ const createAuthenticatedTradeRoutes = (
     )
     .post(
       '/notifications/:notificationId/viewed',
-      async ({ headers, params, status }) => {
-        const result = await service.markTradeNotificationViewed(
-          headers.cookie,
-          params.notificationId,
-        )
+      async (context) => {
+        const { currentUser, params, status } = getAuthenticatedContext(context)
+        const result = await service.markTradeNotificationViewed(currentUser, params.notificationId)
 
         if (isTradeServiceError(result)) {
           return status(toTradeErrorStatus(result.error), result)
@@ -200,3 +214,8 @@ const toTradeErrorStatus = (error: TradeControllerErrorCode): 401 | 403 | 404 | 
       return 409
   }
 }
+
+const getAuthenticatedContext = <TContext>(
+  context: TContext,
+): TContext & { currentUser: AuthUser; locale: SupportedLocale } =>
+  context as TContext & { currentUser: AuthUser; locale: SupportedLocale }

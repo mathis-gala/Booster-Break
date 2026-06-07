@@ -70,10 +70,34 @@ export interface CollectionPagination {
   pageCount: number
 }
 
+export interface CollectionSetOption {
+  id: string
+  name: string
+  count: number
+}
+
 export interface UserCollectionResponse {
   cards: UserCollectionCard[]
   pagination: CollectionPagination
   sort: CollectionSort
+  sets: CollectionSetOption[]
+}
+
+export interface OwnedCardIdsResponse {
+  cardIds: string[]
+}
+
+export interface LeaderboardPlayer {
+  userId: string
+  name: string
+  avatarUrl?: string
+  totalCards: number
+  uniqueCards: number
+}
+
+export interface PokemonLeaderboardResponse {
+  mostCards: LeaderboardPlayer[]
+  mostUniqueCards: LeaderboardPlayer[]
 }
 
 export type PackOpenStatusResponse =
@@ -92,10 +116,14 @@ export type PackOpenStatusResponse =
       cooldownDurationSeconds: number
     }
 
+export interface OpenedPackCard extends PokemonCardSummary {
+  isNew: boolean
+}
+
 export interface OpenPackResponse {
   openingId: string
   set: PokemonSetSummary
-  cards: PokemonCardSummary[]
+  cards: OpenedPackCard[]
 }
 
 export type TradeAuctionStatus = 'active' | 'accepted' | 'cancelled' | 'expired'

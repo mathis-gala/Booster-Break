@@ -17,6 +17,16 @@ const UNCOMMON_RARITIES = ['Uncommon']
 const RARE_RARITIES = ['Rare']
 const REVERSE_FOIL_RARITIES = [...COMMON_RARITIES, ...UNCOMMON_RARITIES, ...RARE_RARITIES]
 
+// In Prismatic Evolutions (sv08.5) the ACE SPEC Rare replaces the first reverse holo
+// slot ~4.76% of the time (TCGplayer sample) and is additive: the rare slot still yields its own.
+const FIRST_FOIL_SLOT_RULES: ChanceRule[] = [
+  {
+    chance: 4.76,
+    finish: 'holo',
+    rarities: ['ACE SPEC Rare', 'Ace Spec Rare', 'ACE SPEC rare'],
+  },
+]
+
 const SECOND_FOIL_SLOT_RULES: ChanceRule[] = [
   {
     chance: 7.67,
@@ -70,12 +80,7 @@ export const drawPokemonPackCards = (allCards: PokemonCardSummary[]): PokemonCar
       selectedCards,
       'normal',
     ),
-    ...drawManyUnique(
-      getReverseFoilCandidates(allCards),
-      FIRST_REVERSE_FOIL_SLOTS,
-      selectedCards,
-      'reverse_holo',
-    ),
+    ...drawFirstFoilSlot(allCards, selectedCards),
     ...drawSecondFoilSlot(allCards, selectedCards),
     ...drawRareSlot(allCards, selectedCards),
   ]
@@ -85,6 +90,24 @@ export const drawPokemonPackCards = (allCards: PokemonCardSummary[]): PokemonCar
   }
 
   return cards
+}
+
+const drawFirstFoilSlot = (
+  allCards: PokemonCardSummary[],
+  selectedCards: Set<string>,
+): PokemonCardSummary[] => {
+  const aceSpec = drawChanceRule(allCards, FIRST_FOIL_SLOT_RULES, selectedCards)
+
+  if (aceSpec) {
+    return [aceSpec]
+  }
+
+  return drawManyUnique(
+    getReverseFoilCandidates(allCards),
+    FIRST_REVERSE_FOIL_SLOTS,
+    selectedCards,
+    'reverse_holo',
+  )
 }
 
 const drawSecondFoilSlot = (

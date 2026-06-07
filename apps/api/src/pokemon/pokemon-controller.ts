@@ -1,10 +1,11 @@
 import type { SupportedLocale } from '@tcg-collection/shared'
-import { DEFAULT_LOCALE } from '@tcg-collection/shared'
 import { Elysia } from 'elysia'
 import { AuthService } from '../auth/auth-service'
 import { createAuthRequiredPlugin } from '../auth/auth-required-plugin'
 import type { AuthStore } from '../auth/session-store'
+import type { AuthUser } from '../auth/types'
 import type { ApiConfig } from '../config'
+import { localePlugin, resolveLocaleOverride } from '../i18n/locale'
 import { PokemonRepository } from './pokemon-repository'
 import { PokemonSandboxService } from './pokemon-sandbox-service'
 import { isPokemonServiceError, PokemonService } from './pokemon-service'
@@ -67,10 +68,11 @@ export const createPokemonController = ({
     })
 
   const publicRoutes = new Elysia()
+    .use(localePlugin)
     .get(
       '/sets',
-      async ({ query }) => ({
-        sets: await pokemonService.listSets(query.locale ?? DEFAULT_LOCALE),
+      async ({ locale, query }) => ({
+        sets: await pokemonService.listSets(resolveLocaleOverride(query.locale, locale)),
       }),
       {
         query: localeQuerySchema,
@@ -78,8 +80,11 @@ export const createPokemonController = ({
     )
     .get(
       '/cards',
-      async ({ query }) => ({
-        cards: await pokemonService.listCards(query.setId, query.locale ?? DEFAULT_LOCALE),
+      async ({ locale, query }) => ({
+        cards: await pokemonService.listCards(
+          query.setId,
+          resolveLocaleOverride(query.locale, locale),
+        ),
       }),
       {
         query: cardsQuerySchema,
@@ -87,8 +92,8 @@ export const createPokemonController = ({
     )
     .get(
       '/packs/sandbox/sets',
-      async ({ query }) => ({
-        sets: await pokemonSandboxService.listSets(query.locale ?? DEFAULT_LOCALE),
+      async ({ locale, query }) => ({
+        sets: await pokemonSandboxService.listSets(resolveLocaleOverride(query.locale, locale)),
       }),
       {
         query: localeQuerySchema,
@@ -96,8 +101,11 @@ export const createPokemonController = ({
     )
     .get(
       '/packs/sandbox/cards',
-      async ({ query }) => ({
-        cards: await pokemonSandboxService.listCards(query.setId, query.locale ?? DEFAULT_LOCALE),
+      async ({ locale, query }) => ({
+        cards: await pokemonSandboxService.listCards(
+          query.setId,
+          resolveLocaleOverride(query.locale, locale),
+        ),
       }),
       {
         query: cardsQuerySchema,
@@ -106,8 +114,11 @@ export const createPokemonController = ({
     .get('/packs/status', async ({ headers }) => pokemonService.getPackOpenStatus(headers.cookie))
     .post(
       '/packs/sandbox/open',
-      async ({ body, status }) => {
-        const result = await pokemonSandboxService.openPack(body)
+      async ({ body, locale, status }) => {
+        const result = await pokemonSandboxService.openPack({
+          ...body,
+          locale: resolveLocaleOverride(body.locale, locale),
+        })
 
         if (!isPokemonServiceError(result)) {
           return result
@@ -120,7 +131,7 @@ export const createPokemonController = ({
       },
     )
 
-  const authenticatedRoutes = new Elysia()
+  const authenticatedRoutes = new Elysia().use(localePlugin)
 
   if (resolvedAuthService) {
     authenticatedRoutes.use(
@@ -131,16 +142,18 @@ export const createPokemonController = ({
     )
   }
 
-  authenticatedRoutes
+  const authenticatedPokemonRoutes = authenticatedRoutes
     .get(
       '/collection',
-      async ({ headers, query, status }) => {
-        const result = await pokemonService.listUserCollection(headers.cookie, {
+      async (context) => {
+        const { currentUser, query, status } = getAuthenticatedContext(context)
+        const result = await pokemonService.listUserCollection(currentUser, {
           page: query.page ?? 1,
           pageSize: query.pageSize ?? 24,
           sort: query.sort ?? 'recent',
           source: query.source ?? 'all',
-          locale: query.locale ?? DEFAULT_LOCALE,
+          setId: query.setId,
+          locale: resolveLocaleOverride(query.locale, context.locale),
         })
 
         if (!isPokemonServiceError(result)) {
@@ -153,10 +166,24 @@ export const createPokemonController = ({
         query: collectionQuerySchema,
       },
     )
+    .get('/collection/owned-ids', async (context) => {
+      const { currentUser, status } = getAuthenticatedContext(context)
+      const result = await pokemonService.listOwnedCardIds(currentUser)
+
+      if (!isPokemonServiceError(result)) {
+        return result
+      }
+
+      return status(toPokemonErrorStatus(result.error), result)
+    })
     .post(
       '/packs/open',
-      async ({ headers, body, status }) => {
-        const result = await pokemonService.openPack(headers.cookie, body)
+      async (context) => {
+        const { currentUser, body, locale, status } = getAuthenticatedContext(context)
+        const result = await pokemonService.openPack(currentUser, {
+          ...body,
+          locale: resolveLocaleOverride(body.locale, locale),
+        })
 
         if (!isPokemonServiceError(result)) {
           return result
@@ -169,7 +196,7 @@ export const createPokemonController = ({
       },
     )
 
-  return new Elysia({ prefix: '/pokemon' }).use(publicRoutes).use(authenticatedRoutes)
+  return new Elysia({ prefix: '/pokemon' }).use(publicRoutes).use(authenticatedPokemonRoutes)
 }
 
 const toPokemonErrorStatus = (error: string): 401 | 404 | 409 => {
@@ -191,3 +218,8 @@ const mustProvideAuthStore = (store: AuthStore | undefined): AuthStore => {
 
   return store
 }
+
+const getAuthenticatedContext = <TContext>(
+  context: TContext,
+): TContext & { currentUser: AuthUser; locale: SupportedLocale } =>
+  context as TContext & { currentUser: AuthUser; locale: SupportedLocale }

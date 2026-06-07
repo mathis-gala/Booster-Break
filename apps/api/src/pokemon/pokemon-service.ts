@@ -2,6 +2,7 @@ import type {
   CollectionSort,
   CollectionSource,
   OpenPackResponse,
+  OwnedCardIdsResponse,
   PackOpenStatusResponse,
   PokemonCardSummary,
   PokemonSetSummary,
@@ -10,6 +11,7 @@ import type {
 } from '@tcg-collection/shared'
 import { DEFAULT_LOCALE } from '@tcg-collection/shared'
 import { AuthService } from '../auth/auth-service'
+import type { AuthUser } from '../auth/types'
 import { PokemonRepository } from './pokemon-repository'
 import {
   PACK_OPEN_COOLDOWN_SECONDS,
@@ -17,8 +19,9 @@ import {
   SYNCED_BOOSTER_LIMIT,
 } from './pokemon-config'
 import { drawPokemonPackCards } from './pack-draft'
+import { PokemonCatalogSyncService } from './pokemon-catalog-sync-service'
 import { ScrydexSealedClient } from './scrydex-sealed-client'
-import { getSetSeriesName, TcgDexClient } from './tcgdex-client'
+import { TcgDexClient } from './tcgdex-client'
 
 export interface PokemonServiceOptions {
   authService: AuthService
@@ -48,8 +51,11 @@ interface PokemonSyncResult {
 
 export class PokemonService {
   private syncPromise?: Promise<PokemonSyncResult>
+  private readonly catalogSyncService: PokemonCatalogSyncService
 
-  constructor(private readonly options: PokemonServiceOptions) {}
+  constructor(private readonly options: PokemonServiceOptions) {
+    this.catalogSyncService = new PokemonCatalogSyncService(options)
+  }
 
   async listSets(locale: SupportedLocale): Promise<PokemonSetSummary[]> {
     const sets = await this.options.pokemonRepository.listSets(locale)
@@ -71,25 +77,23 @@ export class PokemonService {
   }
 
   async listUserCollection(
-    cookieHeader: string | undefined,
+    user: AuthUser,
     options: {
       page: number
       pageSize: number
       sort: CollectionSort
       source: CollectionSource
       locale: SupportedLocale
+      setId?: string
     },
-  ): Promise<UserCollectionResponse | PokemonServiceError> {
-    const user = await this.options.authService.getCurrentUser(cookieHeader)
-
-    if (!user) {
-      return {
-        error: 'unauthenticated',
-        message: 'Sign in to view your collection.',
-      }
-    }
-
+  ): Promise<UserCollectionResponse> {
     return this.options.pokemonRepository.listUserCollection(user.id, options)
+  }
+
+  async listOwnedCardIds(user: AuthUser): Promise<OwnedCardIdsResponse> {
+    const cardIds = await this.options.pokemonRepository.listOwnedCardIds(user.id)
+
+    return { cardIds }
   }
 
   async getPackOpenStatus(cookieHeader: string | undefined): Promise<PackOpenStatusResponse> {
@@ -139,42 +143,12 @@ export class PokemonService {
         continue
       }
 
-      const localizedSet = await this.options.localizedPokemonClients.fr.getSetById(set.id)
-
-      await this.options.pokemonRepository.upsertSet(set, syncedAt, boosterImageUrl, {
-        en: {
-          name: set.name,
-          series: getSetSeriesName(set),
-        },
-        fr: localizedSet
-          ? {
-              name: localizedSet.name,
-              series: getSetSeriesName(localizedSet),
-            }
-          : undefined,
-      })
-
-      const cards = await this.options.pokemonClient.getCardsBySet(set)
-      const localizedCards = await this.options.localizedPokemonClients.fr.getCardsByIds(
-        cards.map((card) => card.id),
-      )
-      const localizedCardNames = new Map(
-        localizedCards.map((card) => [
-          card.id,
-          {
-            fr: card.name,
-          },
-        ]),
-      )
-      cardCount += cards.length
-      setCount += 1
-
-      await this.options.pokemonRepository.replaceSetCards(
-        set.id,
-        cards,
+      const syncedSet = await this.catalogSyncService.syncSet(set, {
         syncedAt,
-        localizedCardNames,
-      )
+        boosterImageUrl,
+      })
+      cardCount += syncedSet.cards
+      setCount += 1
     }
 
     return {
@@ -190,18 +164,9 @@ export class PokemonService {
   }
 
   async openPack(
-    cookieHeader: string | undefined,
+    user: AuthUser,
     input: { setId?: string; locale?: SupportedLocale },
   ): Promise<OpenPackResponse | PokemonServiceError> {
-    const user = await this.options.authService.getCurrentUser(cookieHeader)
-
-    if (!user) {
-      return {
-        error: 'unauthenticated',
-        message: 'Sign in to open booster packs and save cards to your collection.',
-      }
-    }
-
     const locale = input.locale ?? DEFAULT_LOCALE
     const setId = input.setId ?? (await this.options.pokemonRepository.listSets(locale))[0]?.id
 
@@ -239,12 +204,17 @@ export class PokemonService {
       }
     }
 
-    const openingId = await this.options.pokemonRepository.recordPackOpening(user.id, set.id, cards)
+    const { openingId, newCardIds } = await this.options.pokemonRepository.recordPackOpening(
+      user.id,
+      set.id,
+      cards,
+    )
+    const newCardIdSet = new Set(newCardIds)
 
     return {
       openingId,
       set,
-      cards,
+      cards: cards.map((card) => ({ ...card, isNew: newCardIdSet.has(card.id) })),
     }
   }
 

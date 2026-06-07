@@ -5,6 +5,7 @@ import type {
   TradeAuctionResponse,
 } from '@tcg-collection/shared'
 import { DEFAULT_LOCALE } from '@tcg-collection/shared'
+import type { AuthUser } from '../auth/types'
 import {
   isTradeAuctionResponse,
   safeToTradeAuctionResponse,
@@ -41,11 +42,10 @@ export class TradeAuctionService {
   async getAuction(
     auctionId: string,
     locale: SupportedLocale = DEFAULT_LOCALE,
-    cookieHeader?: string,
+    user?: AuthUser,
   ): Promise<TradeServiceResult<TradeAuctionResponse>> {
     await this.expireAuctions(now())
 
-    const user = await this.options.authService.getCurrentUser(cookieHeader)
     const auction = await this.options.tradeRepository.getAuctionById(auctionId, Boolean(user))
 
     if (!auction) {
@@ -73,15 +73,14 @@ export class TradeAuctionService {
   }
 
   async createAuction(
-    cookieHeader: string | undefined,
+    user: AuthUser,
     input: CreateAuctionRequest,
     locale: SupportedLocale = DEFAULT_LOCALE,
   ): Promise<TradeServiceResult<TradeAuctionResponse>> {
     await this.expireAuctions(now())
 
     const userOrError = await resolveAuthenticatedTradeUser(
-      this.options.authService,
-      cookieHeader,
+      user,
       'Sign in to create a trade auction.',
     )
 
@@ -127,17 +126,10 @@ export class TradeAuctionService {
     return toTradeAuctionResponse(auction, [], locale)
   }
 
-  async cancelAuction(
-    cookieHeader: string | undefined,
-    auctionId: string,
-  ): Promise<TradeServiceResult<void>> {
+  async cancelAuction(user: AuthUser, auctionId: string): Promise<TradeServiceResult<void>> {
     await this.expireAuctions(now())
 
-    const userOrError = await resolveAuthenticatedTradeUser(
-      this.options.authService,
-      cookieHeader,
-      'Sign in to cancel an auction.',
-    )
+    const userOrError = await resolveAuthenticatedTradeUser(user, 'Sign in to cancel an auction.')
 
     if ('error' in userOrError) {
       return userOrError

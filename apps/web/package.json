@@ -14,6 +14,7 @@
   },
   "dependencies": {
     "@base-ui/react": "^1.5.0",
+    "@elysiajs/eden": "^1.4.9",
     "@fontsource-variable/geist": "^5.2.9",
     "@inlang/paraglide-js": "^2.18.1",
     "@tanstack/react-query": "latest",
@@ -23,6 +24,7 @@
     "@tcg-collection/shared": "workspace:*",
     "class-variance-authority": "^0.7.1",
     "clsx": "^2.1.1",
+    "gl-matrix": "^3.4.4",
     "lucide-react": "^1.16.0",
     "react": "^19.2.6",
     "react-dom": "^19.2.6",

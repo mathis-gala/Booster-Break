@@ -30,6 +30,7 @@ interface PackStageProps {
   onPreviewSet: (setId: string) => void
   onClosePreview: () => void
   collectionCount: number
+  previewOwnedCardIds?: ReadonlySet<string>
 }
 
 export function PackStage({
@@ -51,6 +52,7 @@ export function PackStage({
   onPreviewSet,
   onClosePreview,
   collectionCount,
+  previewOwnedCardIds,
 }: PackStageProps) {
   const [selectedSetId, setSelectedSetId] = useState<string>()
   const boosterSets = useMemo(
@@ -107,6 +109,7 @@ export function PackStage({
           isPending={previewIsPending}
           set={previewSet}
           onClose={onClosePreview}
+          ownedCardIds={previewOwnedCardIds}
         />
       ) : null}
     </section>

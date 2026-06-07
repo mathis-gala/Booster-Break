@@ -1,17 +1,18 @@
 import { useMemo, useState } from 'react'
+import { useMutation, useQuery } from '@tanstack/react-query'
 import type { PokemonSetSummary } from '@tcg-collection/shared'
 
 import { BoosterPickerPanel } from '../components/BoosterPickerPanel'
 import { PackBoosterStage } from '../components/PackBoosterStage'
 import { PackRevealDialog } from '../components/PackRevealDialog'
 import { BoosterPreviewDialog } from '../components/BoosterPreviewDialog'
-import {
-  useOpenPokemonPackSandboxMutation,
-  useSandboxPackOpenStatus,
-  useSandboxPokemonSetsQuery,
-  useSandboxPokemonPreviewCardsQuery,
-} from '../hooks/usePokemonQueries'
+import { useSandboxPackOpenStatus } from '../hooks/usePackOpenStatusClock'
 import { useLocale } from '@/features/i18n/useLocale'
+import { useOpenPokemonPackSandboxMutationOption } from '@/lib/mutations/pokemon'
+import {
+  useSandboxPokemonPreviewCardsQueryOption,
+  useSandboxPokemonSetsQueryOption,
+} from '@/lib/queries/pokemon'
 import { m } from '@/paraglide/messages'
 import { formatRemaining } from '../time'
 
@@ -20,7 +21,7 @@ const SANDBOX_OPEN_COOLDOWN_MS = 5 * 1000
 type SandboxSet = PokemonSetSummary & { boosterImageUrl: string }
 
 export function SandboxView() {
-  const { locale } = useLocale()
+  useLocale()
   const [isRevealOpen, setIsRevealOpen] = useState(false)
   const [isPreparingReveal, setIsPreparingReveal] = useState(false)
   const [revealedCardIndex, setRevealedCardIndex] = useState(0)
@@ -29,28 +30,27 @@ export function SandboxView() {
   const [activeSetIdOverride, setActiveSetIdOverride] = useState<string>()
   const [cooldownUntil, setCooldownUntil] = useState<string>()
 
-  const sets = useSandboxPokemonSetsQuery(locale)
+  const sets = useQuery(useSandboxPokemonSetsQueryOption())
   const packOpenStatus = useSandboxPackOpenStatus(cooldownUntil)
-  const openPack = useOpenPokemonPackSandboxMutation({
-    locale,
-    onPreparingChange: setIsPreparingReveal,
-    onPrepared: () => {
-      setRevealedCardIndex(0)
-      setMaxRevealedCardIndex(0)
-      setIsRevealOpen(true)
-      setCooldownUntil(new Date(Date.now() + SANDBOX_OPEN_COOLDOWN_MS).toISOString())
-    },
-  })
-  const previewCards = useSandboxPokemonPreviewCardsQuery(previewSetId, locale)
+  const openPack = useMutation(
+    useOpenPokemonPackSandboxMutationOption({
+      onPreparingChange: setIsPreparingReveal,
+      onPrepared: () => {
+        setRevealedCardIndex(0)
+        setMaxRevealedCardIndex(0)
+        setIsRevealOpen(true)
+        setCooldownUntil(new Date(Date.now() + SANDBOX_OPEN_COOLDOWN_MS).toISOString())
+      },
+    }),
+  )
+  const previewCards = useQuery(useSandboxPokemonPreviewCardsQueryOption(previewSetId))
 
   const boosterSets = useMemo(
     () =>
       (sets.data ?? [])
         .filter((set) => Boolean(set.boosterImageUrl))
         .slice()
-        .sort((first, second) =>
-          second.releaseDate.localeCompare(first.releaseDate),
-        ) as SandboxSet[],
+        .sort(compareSetsByReleaseDateDesc) as SandboxSet[],
     [sets.data],
   )
 
@@ -131,4 +131,22 @@ export function SandboxView() {
       ) : null}
     </div>
   )
+}
+
+const compareSetsByReleaseDateDesc = (
+  first: PokemonSetSummary,
+  second: PokemonSetSummary,
+): number =>
+  getReleaseDateSortValue(second.releaseDate) - getReleaseDateSortValue(first.releaseDate)
+
+const getReleaseDateSortValue = (releaseDate: unknown): number => {
+  if (typeof releaseDate === 'string') {
+    return Date.parse(releaseDate) || 0
+  }
+
+  if (releaseDate instanceof Date) {
+    return releaseDate.getTime()
+  }
+
+  return 0
 }

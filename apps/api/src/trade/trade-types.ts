@@ -21,7 +21,6 @@ export interface TradeControllerOptions<TService = unknown> {
 export type TradeControllerErrorCode = TradeServiceError['error']
 
 export interface TradeServiceOptions {
-  authService: AuthService
   tradeRepository: TradeRepository
 }
 

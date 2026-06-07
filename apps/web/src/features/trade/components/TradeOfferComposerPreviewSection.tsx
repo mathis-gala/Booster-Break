@@ -37,10 +37,10 @@ export function TradeOfferComposerPreviewSection({
                   src={card.card.imageSmall}
                   alt={card.card.name}
                   finish={card.card.finish}
-                  className="aspect-[63/88] w-32 rounded-md"
+                  className="aspect-63/88 w-32 rounded-md"
                 />
               ) : (
-                <div className="aspect-[63/88] w-32 rounded-md bg-muted" aria-hidden="true" />
+                <div className="aspect-63/88 w-32 rounded-md bg-muted" aria-hidden="true" />
               )}
               <p className="mt-1 max-w-full truncate text-sm font-black">{card.card.name}</p>
               <p className="text-sm font-black text-muted-foreground">x {card.quantity}</p>

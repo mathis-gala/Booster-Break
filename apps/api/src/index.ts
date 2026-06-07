@@ -7,6 +7,9 @@ import { PrismaAuthStore } from './auth/prisma-auth-store'
 import { SlackOAuthClient } from './auth/slack-oauth-client'
 import { getConfig } from './config'
 import { prisma } from './db/prisma'
+import { createLeaderboardController } from './leaderboard/leaderboard-controller'
+import { LeaderboardRepository } from './leaderboard/leaderboard-repository'
+import { LeaderboardService } from './leaderboard/leaderboard-service'
 import { createPokemonController } from './pokemon/pokemon-controller'
 import { PokemonRepository } from './pokemon/pokemon-repository'
 import { PokemonService } from './pokemon/pokemon-service'
@@ -48,10 +51,13 @@ const pokemonService = new PokemonService({
   pokemonRepository,
   sealedClient,
 })
+const leaderboardRepository = new LeaderboardRepository(prisma)
+const leaderboardService = new LeaderboardService({
+  leaderboardRepository,
+})
 
 const tradeRepository = new PrismaTradeRepository(prisma)
 const tradeService = new TradeService({
-  authService,
   tradeRepository,
 })
 
@@ -65,12 +71,18 @@ export const app = new Elysia()
   .use(createAuthController({ config, service: authService }))
   .use(
     createPokemonController({
+      authService,
       config,
       localizedPokemonClients,
       pokemonClient,
       pokemonRepository,
       sealedClient,
       service: pokemonService,
+    }),
+  )
+  .use(
+    createLeaderboardController({
+      service: leaderboardService,
     }),
   )
   .use(

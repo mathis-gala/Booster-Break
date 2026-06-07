@@ -9,6 +9,7 @@ export const pokemonRarityOrder = [
   'Illustration rare',
   'Illustration Rare',
   'Ultra Rare',
+  'ACE SPEC Rare',
   'Special illustration rare',
   'Special Illustration Rare',
   'Mega Hyper Rare',
@@ -25,6 +26,7 @@ const rarityRank: Record<string, number> = {
   'Illustration rare': 50,
   'Illustration Rare': 50,
   'Ultra Rare': 60,
+  'ACE SPEC Rare': 65,
   'Special illustration rare': 70,
   'Special Illustration Rare': 70,
   'Mega Hyper Rare': 80,
@@ -75,6 +77,8 @@ export const getRarityWeight = (rarity: string | null | undefined): number => {
       return 12
     case 'Ultra Rare':
       return 4
+    case 'ACE SPEC Rare':
+      return 3
     case 'Special illustration rare':
     case 'Special Illustration Rare':
       return 1.5
@@ -104,6 +108,8 @@ export const getPackRarityChance = (rarity: string, cards: PokemonCardSummary[])
       return 13.76
     case 'Ultra Rare':
       return 6.57
+    case 'ACE SPEC Rare':
+      return 4.76
     case 'Illustration rare':
     case 'Illustration Rare':
       return 7.67

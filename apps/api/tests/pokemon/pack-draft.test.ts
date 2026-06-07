@@ -28,6 +28,25 @@ describe('drawPokemonPackCards', () => {
     expect(cards[cards.length - 1]?.finish).toBe('holo')
   })
 
+  test('replaces the first reverse holo slot with an ACE SPEC Rare', () => {
+    // Low roll lands in the first-foil slot's ACE SPEC band (0%-4.76%).
+    Math.random = () => 0.01
+
+    const cards = drawPokemonPackCards([
+      ...makeCards('common', 'Common', 6, ['normal', 'reverse_holo']),
+      ...makeCards('uncommon', 'Uncommon', 5, ['normal', 'reverse_holo']),
+      ...makeCards('rare', 'Rare', 4, ['holo', 'reverse_holo']),
+      ...makeCards('ace-spec', 'ACE SPEC Rare', 2, ['holo']),
+    ])
+
+    expect(cards).toHaveLength(10)
+    const aceSpec = cards.find((card) => card.rarity === 'ACE SPEC Rare')
+    expect(aceSpec).toBeDefined()
+    expect(aceSpec?.finish).toBe('holo')
+    // The ACE SPEC is additive: the rare slot still yields a rare-or-better card.
+    expect(cards.some((card) => card.rarity === 'Rare')).toBe(true)
+  })
+
   test('can replace the second reverse slot with an illustration rare', () => {
     Math.random = () => 0
 

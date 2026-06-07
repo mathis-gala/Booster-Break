@@ -9,6 +9,7 @@ import { FoilCardImage } from './FoilCardImage'
 
 interface CollectionCardItemProps {
   card: UserCollectionCard
+  setName?: string
   selected?: boolean
   onSelect?: () => void
   onImageClick?: () => void
@@ -19,6 +20,7 @@ interface CollectionCardItemProps {
 
 export const CollectionCardItem = memo(function CollectionCardItem({
   card,
+  setName,
   selected = false,
   onSelect,
   onImageClick,
@@ -48,10 +50,10 @@ export const CollectionCardItem = memo(function CollectionCardItem({
                 src={card.imageSmall}
                 alt={card.name}
                 finish={card.finish}
-                className="aspect-[63/88] w-full rounded-md object-cover transition-transform hover:-translate-y-0.5"
+                className="aspect-63/88 w-full rounded-md object-cover transition-transform hover:-translate-y-0.5"
               />
             ) : (
-              <div className="aspect-[63/88] w-full rounded-md bg-muted" aria-hidden="true" />
+              <div className="aspect-63/88 w-full rounded-md bg-muted" aria-hidden="true" />
             )}
           </button>
         ) : card.imageSmall ? (
@@ -59,10 +61,10 @@ export const CollectionCardItem = memo(function CollectionCardItem({
             src={card.imageSmall}
             alt={card.name}
             finish={card.finish}
-            className="aspect-[63/88] w-full rounded-md object-cover transition-transform hover:-translate-y-0.5"
+            className="aspect-63/88 w-full rounded-md object-cover transition-transform hover:-translate-y-0.5"
           />
         ) : (
-          <div className="aspect-[63/88] w-full rounded-md bg-muted" aria-hidden="true" />
+          <div className="aspect-63/88 w-full rounded-md bg-muted" aria-hidden="true" />
         )}
         {badge ? (
           <span className="absolute right-1 top-1 rounded-full bg-sidebar px-1.5 py-0.5 text-[0.62rem] font-black text-sidebar-foreground">
@@ -76,6 +78,9 @@ export const CollectionCardItem = memo(function CollectionCardItem({
           <p className="truncate text-[0.62rem] font-semibold text-muted-foreground">
             {meta.length > 0 ? meta.join(' · ') : null}
           </p>
+          {setName ? (
+            <p className="truncate text-[0.58rem] font-semibold text-muted-foreground">{setName}</p>
+          ) : null}
         </div>
         <span className="rounded-md bg-sidebar px-1.5 py-0.5 text-[0.62rem] font-black text-sidebar-foreground">
           {card.quantity}x

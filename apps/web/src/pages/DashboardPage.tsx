@@ -1,17 +1,29 @@
 import { useState } from 'react'
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 
 import { GameNav } from '@/features/dashboard/components/GameNav'
-import { useCurrentUserQuery, useLogoutMutation } from '@/features/dashboard/hooks/useAuthQueries'
+import {
+  getInitialDashboardTab,
+  setStoredDashboardTab,
+} from '@/features/dashboard/lib/dashboard-tab-storage'
 import { useLocale } from '@/features/i18n/useLocale'
 import type { DashboardTab } from '@/features/dashboard/types'
 import { DashboardContent } from '@/features/dashboard/views/DashboardContent'
+import { useLogoutMutationOption } from '@/lib/mutations/auth'
+import { useCurrentUserQueryOption } from '@/lib/queries/auth'
 import { m } from '@/paraglide/messages'
 
 export function DashboardPage() {
   useLocale()
-  const [activeTab, setActiveTab] = useState<DashboardTab>('packs')
-  const auth = useCurrentUserQuery()
-  const logoutMutation = useLogoutMutation()
+  const [activeTab, setActiveTab] = useState<DashboardTab>(getInitialDashboardTab)
+  const queryClient = useQueryClient()
+  const auth = useQuery(useCurrentUserQueryOption())
+  const logoutMutation = useMutation(useLogoutMutationOption(queryClient))
+
+  const selectTab = (tab: DashboardTab) => {
+    setStoredDashboardTab(tab)
+    setActiveTab(tab)
+  }
 
   return (
     <div className="min-h-dvh bg-background text-foreground">
@@ -24,7 +36,7 @@ export function DashboardPage() {
 
       <GameNav
         activeTab={activeTab}
-        onTabChange={setActiveTab}
+        onTabChange={selectTab}
         auth={auth.data}
         authIsPending={auth.isPending}
         onLogout={() => logoutMutation.mutate()}

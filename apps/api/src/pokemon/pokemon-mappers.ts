@@ -130,6 +130,17 @@ export const getLocalizedCardName = (
   })
 }
 
+export const getLocalizedSetName = (
+  set: { name: string; nameEn?: string | null; nameFr?: string | null },
+  locale: SupportedLocale,
+): string => {
+  return getLocalizedValue(locale, {
+    base: set.name,
+    en: set.nameEn,
+    fr: set.nameFr,
+  })
+}
+
 const getLocalizedValue = (
   locale: SupportedLocale,
   values: { base: string; en?: string | null; fr?: string | null },

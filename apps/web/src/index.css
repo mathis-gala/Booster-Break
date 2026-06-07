@@ -184,81 +184,243 @@ body,
   }
 }
 
-@keyframes foil-hologram {
-  0% {
-    background-position: 0% 50%;
-    --foil-x: 24%;
-    --foil-y: 18%;
-  }
-
-  50% {
-    background-position: 100% 50%;
-    --foil-x: 74%;
-    --foil-y: 42%;
-  }
-
-  100% {
-    background-position: 0% 50%;
-    --foil-x: 24%;
-    --foil-y: 18%;
-  }
-}
-
-@keyframes foil-sweep {
-  0%,
-  16% {
-    transform: translateX(-115%) skewX(-12deg);
-  }
-
-  58%,
-  100% {
-    transform: translateX(115%) skewX(-12deg);
-  }
-}
-
-.reverse-holo-sequins {
+.holo-foil {
   background-image:
-    radial-gradient(circle, rgb(255 255 255 / 0.95) 0 1px, transparent 1.9px),
-    radial-gradient(circle, rgb(125 211 252 / 0.58) 0 1px, transparent 2px),
-    radial-gradient(circle, rgb(244 114 182 / 0.52) 0 1px, transparent 2.1px),
-    radial-gradient(circle, rgb(253 224 71 / 0.58) 0 1px, transparent 2px);
+    linear-gradient(
+      118deg,
+      rgb(255 255 255 / 0) 0 15%,
+      rgb(255 255 255 / 0.48) 24%,
+      rgb(255 255 255 / 0) 34% 100%
+    ),
+    linear-gradient(
+      58deg,
+      rgb(56 189 248 / 0.24),
+      rgb(236 72 153 / 0.22),
+      rgb(250 204 21 / 0.2),
+      rgb(74 222 128 / 0.16),
+      rgb(56 189 248 / 0.24)
+    );
   background-position:
     0 0,
-    11px 14px,
-    22px 7px,
-    32px 26px;
+    0 0;
   background-size:
-    26px 26px,
-    32px 32px,
-    38px 38px,
-    46px 46px;
-  filter: brightness(1.24) contrast(1.18) saturate(1.22);
+    240% 100%,
+    220% 220%;
+  filter: brightness(1.12) contrast(1.04) saturate(1.18);
   mix-blend-mode: screen;
-  opacity: 0.74;
+  opacity: 0.42;
+}
+
+.holo-glint {
+  background-image:
+    linear-gradient(
+      104deg,
+      rgb(255 255 255 / 0) 16%,
+      rgb(255 255 255 / 0.58) 39%,
+      rgb(255 255 255 / 0) 60%
+    ),
+    repeating-linear-gradient(
+      74deg,
+      rgb(255 255 255 / 0) 0 18px,
+      rgb(255 255 255 / 0.1) 19px 20px,
+      rgb(255 255 255 / 0) 21px 40px
+    );
+  background-position:
+    0 0,
+    0 0;
+  background-size:
+    230% 100%,
+    60px 60px;
+  mix-blend-mode: screen;
+  opacity: 0.36;
 }
 
 @media (prefers-reduced-motion: no-preference) {
-  .reverse-holo-sequins {
-    animation: reverse-holo-sequins 3.8s linear infinite;
+  .holo-foil {
+    animation: holo-foil 3.4s ease-in-out infinite alternate;
+  }
+
+  .holo-glint {
+    animation: holo-glint 2.3s ease-in-out infinite alternate;
   }
 }
 
-@keyframes reverse-holo-sequins {
+@keyframes new-card-badge {
   0% {
-    opacity: 0.68;
+    opacity: 0;
+    transform: translateY(10px) scale(0.5) rotate(-8deg);
+  }
+  55% {
+    opacity: 1;
+    transform: translateY(0) scale(1.18) rotate(3deg);
+  }
+  75% {
+    transform: scale(0.94) rotate(-1deg);
+  }
+  100% {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+@keyframes new-card-badge-glow {
+  0% {
+    box-shadow: 0 0 0 0 rgb(251 191 36 / 0.6);
+  }
+  70%,
+  100% {
+    box-shadow: 0 0 0 10px rgb(251 191 36 / 0);
+  }
+}
+
+.new-card-badge-pulse::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  z-index: -1;
+  border-radius: 9999px;
+  box-shadow: 0 0 0 0 rgb(251 191 36 / 0);
+  animation: new-card-badge-glow 2.4s ease-out 820ms infinite;
+  pointer-events: none;
+}
+
+@keyframes holo-foil {
+  0% {
+    opacity: 0.42;
     background-position:
       0 0,
-      11px 14px,
-      22px 7px,
-      32px 26px;
+      0 0;
+  }
+
+  50% {
+    opacity: 0.58;
+    background-position:
+      120% 0,
+      100% 45%;
   }
 
   100% {
-    opacity: 0.8;
+    opacity: 0.42;
     background-position:
-      26px 26px,
-      43px 46px,
-      60px 45px,
-      78px 72px;
+      240% 0,
+      220% 220%;
+  }
+}
+
+@keyframes holo-glint {
+  0% {
+    background-position:
+      0 0,
+      0 0;
+  }
+
+  100% {
+    background-position:
+      230% 0,
+      60px 60px;
+  }
+}
+
+.reverse-holo-foil {
+  background-image:
+    repeating-linear-gradient(
+      45deg,
+      rgb(255 255 255 / 0) 0 17px,
+      rgb(255 255 255 / 0.28) 18px 19px,
+      rgb(255 255 255 / 0) 20px 36px
+    ),
+    repeating-linear-gradient(
+      135deg,
+      rgb(255 255 255 / 0) 0 17px,
+      rgb(255 255 255 / 0.22) 18px 19px,
+      rgb(255 255 255 / 0) 20px 36px
+    ),
+    linear-gradient(
+      118deg,
+      rgb(255 255 255 / 0) 0 17%,
+      rgb(255 255 255 / 0.46) 24%,
+      rgb(255 255 255 / 0) 34% 100%
+    ),
+    linear-gradient(
+      64deg,
+      rgb(125 211 252 / 0.1),
+      rgb(244 114 182 / 0.09),
+      rgb(253 224 71 / 0.09),
+      rgb(134 239 172 / 0.08),
+      rgb(125 211 252 / 0.1)
+    );
+  background-position:
+    0 0,
+    9px 9px,
+    0 0,
+    0 0;
+  background-size:
+    36px 36px,
+    36px 36px,
+    240% 100%,
+    220% 220%;
+  filter: brightness(1.16) contrast(1.16) saturate(0.82);
+  mix-blend-mode: screen;
+  opacity: 0.32;
+}
+
+.reverse-holo-sweep {
+  background: linear-gradient(
+    105deg,
+    rgb(255 255 255 / 0) 18%,
+    rgb(255 255 255 / 0.48) 41%,
+    rgb(255 255 255 / 0) 61%
+  );
+  background-size: 230% 100%;
+  mix-blend-mode: screen;
+  opacity: 0.26;
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  .reverse-holo-foil {
+    animation: reverse-holo-foil 4.2s ease-in-out infinite alternate;
+  }
+
+  .reverse-holo-sweep {
+    animation: reverse-holo-sweep 2.7s ease-in-out infinite alternate;
+  }
+}
+
+@keyframes reverse-holo-foil {
+  0% {
+    opacity: 0.28;
+    background-position:
+      0 0,
+      9px 9px,
+      0 0,
+      0 0;
+  }
+
+  50% {
+    opacity: 0.4;
+    background-position:
+      18px 18px,
+      27px 27px,
+      120% 0,
+      100% 42%;
+  }
+
+  100% {
+    opacity: 0.28;
+    background-position:
+      36px 36px,
+      45px 45px,
+      240% 0,
+      220% 220%;
+  }
+}
+
+@keyframes reverse-holo-sweep {
+  0% {
+    background-position: 0 0;
+  }
+
+  100% {
+    background-position: 230% 0;
   }
 }

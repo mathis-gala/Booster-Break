@@ -1,6 +1,6 @@
 import type { PokemonCardSummary } from '@tcg-collection/shared'
 
-import { FoilCardImage } from './FoilCardImage'
+import { WebGlCardViewer } from './WebGlCardViewer'
 
 interface CardImageDialogProps {
   card: PokemonCardSummary
@@ -19,18 +19,19 @@ export function CardImageDialog({ card, onClose }: CardImageDialogProps) {
       onClick={onClose}
     >
       <div
-        className="relative flex max-h-[95vh] w-[min(28rem,92vw)] items-center justify-center"
+        className="relative flex max-h-[95vh] w-[min(32rem,94vw)] items-center justify-center"
         onClick={(event) => event.stopPropagation()}
       >
         {imageUrl ? (
-          <FoilCardImage
-            src={imageUrl}
+          <WebGlCardViewer
+            key={`${imageUrl}-${card.finish ?? 'normal'}`}
+            frontImageUrl={imageUrl}
             alt={card.name}
             finish={card.finish}
-            className="max-h-[95vh] w-full object-contain drop-shadow-2xl"
+            className="drop-shadow-2xl"
           />
         ) : (
-          <div className="aspect-[63/88] w-full rounded-lg bg-muted" aria-hidden="true" />
+          <div className="aspect-63/88 w-full rounded-lg bg-muted" aria-hidden="true" />
         )}
       </div>
     </div>

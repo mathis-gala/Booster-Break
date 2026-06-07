@@ -1,17 +1,14 @@
 import { useMemo, useState } from 'react'
 import type { FormEvent } from 'react'
-import {
-  pokemonRarityOrder,
-  type CollectionSort,
-  type SupportedLocale,
-} from '@tcg-collection/shared'
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
+import { pokemonRarityOrder, type CollectionSort } from '@tcg-collection/shared'
 import type { CreateAuctionRequest, UserCollectionCard } from '@tcg-collection/shared'
 import { toast } from '@/features/toast/toast-store'
 import {
-  usePokemonCollectionAllQuery,
-  usePokemonCollectionQuery,
-  usePokemonSetsQuery,
-} from '@/features/dashboard/hooks/usePokemonQueries'
+  usePokemonCollectionAllQueryOption,
+  usePokemonCollectionQueryOption,
+  usePokemonSetsQueryOption,
+} from '@/lib/queries/pokemon'
 import {
   MAX_ACTIVE_AUCTIONS_PER_USER,
   offerCardKey,
@@ -21,7 +18,7 @@ import {
   toCardFinish,
   formatTradeType,
 } from '../lib/trade-utils'
-import { useCreateTradeAuctionMutation } from './useTradeQueries'
+import { useCreateTradeAuctionMutationOption } from '@/lib/mutations/trade'
 import type { TradeFilterOption } from '../components/TradeFilterDropdown'
 import { matchesCardNameSearch } from '@/features/dashboard/lib/card-search'
 import { formatCardFinish } from '@/features/dashboard/lib/card-format'
@@ -59,7 +56,6 @@ const getRarityRank = (() => {
 })()
 
 export interface UseTradeCreateAuctionFormProps {
-  locale: SupportedLocale
   authAuthenticated: boolean
   activeAuctions: number
   onAuctionCreated: () => void
@@ -96,33 +92,43 @@ export interface UseTradeCreateAuctionFormResult {
 }
 
 export function useTradeCreateAuctionForm({
-  locale,
   authAuthenticated,
   activeAuctions,
   onAuctionCreated,
 }: UseTradeCreateAuctionFormProps): UseTradeCreateAuctionFormResult {
+  const queryClient = useQueryClient()
   const [page, setPage] = useState(1)
   const [preference, setPreference] = useState<CollectionSort>('quantity')
   const pageSize = 18
 
-  const allCardsCollection = usePokemonCollectionAllQuery({
-    sort: preference,
-    source: 'owned',
-    locale,
-    enabled: authAuthenticated,
-  })
+  const allCardsCollection = useQuery(
+    usePokemonCollectionAllQueryOption(
+      {
+        sort: preference,
+        source: 'owned',
+      },
+      {
+        enabled: authAuthenticated,
+      },
+    ),
+  )
 
-  const collection = usePokemonCollectionQuery({
-    page,
-    pageSize,
-    sort: preference,
-    source: 'owned',
-    locale,
-    keepPreviousData: true,
-    enabled: authAuthenticated,
-  })
+  const collection = useQuery(
+    usePokemonCollectionQueryOption(
+      {
+        page,
+        pageSize,
+        sort: preference,
+        source: 'owned',
+      },
+      {
+        keepPreviousData: true,
+        enabled: authAuthenticated,
+      },
+    ),
+  )
 
-  const setsQuery = usePokemonSetsQuery(locale)
+  const setsQuery = useQuery(usePokemonSetsQueryOption())
 
   const [selectedKey, setSelectedKey] = useState('')
   const [requirements, setRequirements] = useState<TradeTextListFields>({ ...defaultFilterForm })
@@ -130,24 +136,28 @@ export function useTradeCreateAuctionForm({
   const [selectedCard, setSelectedCard] = useState<UserCollectionCard | undefined>()
   const [searchQuery, setSearchQuery] = useState('')
 
-  const createAuction = useCreateTradeAuctionMutation(locale, {
-    onSuccess: () => {
-      setSelectedCard(undefined)
-      setSelectedKey('')
-      setRequirements({ ...defaultFilterForm })
-      setFilters({ ...defaultFilterForm })
-      onAuctionCreated()
-      collection.refetch()
-    },
-    onError: (error) => {
-      toast.show(error.message)
-    },
-  })
+  const createAuction = useMutation(
+    useCreateTradeAuctionMutationOption(queryClient, {
+      onSuccess: () => {
+        setSelectedCard(undefined)
+        setSelectedKey('')
+        setRequirements({ ...defaultFilterForm })
+        setFilters({ ...defaultFilterForm })
+        onAuctionCreated()
+        collection.refetch()
+      },
+      onError: (error) => {
+        toast.show(error.message)
+      },
+    }),
+  )
 
   const hasSearchQuery = searchQuery.trim().length > 0
-  const availableCards = hasSearchQuery
-    ? (allCardsCollection.data?.cards ?? [])
-    : (collection.data?.cards ?? [])
+  const availableCards = useMemo(
+    () =>
+      hasSearchQuery ? (allCardsCollection.data?.cards ?? []) : (collection.data?.cards ?? []),
+    [allCardsCollection.data?.cards, collection.data?.cards, hasSearchQuery],
+  )
 
   const matchingCards = useMemo(() => {
     if (!hasSearchQuery) {
@@ -180,7 +190,10 @@ export function useTradeCreateAuctionForm({
       .sort((a, b) => a.label.localeCompare(b.label))
   }, [setsQuery.data])
 
-  const selectorCards = allCardsCollection.data?.cards ?? []
+  const selectorCards = useMemo(
+    () => allCardsCollection.data?.cards ?? [],
+    [allCardsCollection.data?.cards],
+  )
 
   const rarityOptions = useMemo(() => {
     const knownRarities = new Map<string, string>()
