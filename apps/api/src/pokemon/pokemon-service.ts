@@ -203,12 +203,17 @@ export class PokemonService {
       }
     }
 
-    const openingId = await this.options.pokemonRepository.recordPackOpening(user.id, set.id, cards)
+    const { openingId, newCardIds } = await this.options.pokemonRepository.recordPackOpening(
+      user.id,
+      set.id,
+      cards,
+    )
+    const newCardIdSet = new Set(newCardIds)
 
     return {
       openingId,
       set,
-      cards,
+      cards: cards.map((card) => ({ ...card, isNew: newCardIdSet.has(card.id) })),
     }
   }
 

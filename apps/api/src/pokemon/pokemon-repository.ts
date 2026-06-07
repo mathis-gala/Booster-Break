@@ -8,6 +8,7 @@ import type {
   UserCollectionResponse,
 } from '@tcg-collection/shared'
 import { getFinishRank, getRarityRank } from '@tcg-collection/shared'
+import type { Prisma } from '@prisma/client'
 import type { AppPrisma } from '../db/prisma'
 import {
   getLocalizedCardName,
@@ -215,13 +216,34 @@ export class PokemonRepository {
     return [...cardIds]
   }
 
+  // Ownership is finish-agnostic (by cardId), matching getOwnedCardIds.
+  private async listOwnedCardIdsForCards(
+    tx: Prisma.TransactionClient,
+    userId: string,
+    cardIds: string[],
+  ): Promise<Set<string>> {
+    const where = {
+      userId,
+      cardId: { in: cardIds },
+      quantity: { gt: 0 },
+    }
+
+    const [ownedRows, giftedRows] = await Promise.all([
+      tx.userCard.findMany({ where, select: { cardId: true } }),
+      tx.giftedUserCard.findMany({ where, select: { cardId: true } }),
+    ])
+
+    return new Set([...ownedRows, ...giftedRows].map((row) => row.cardId))
+  }
+
   async recordPackOpening(
     userId: string,
     setId: string,
     cards: PokemonCardSummary[],
-  ): Promise<string> {
+  ): Promise<{ openingId: string; newCardIds: string[] }> {
     const openingId = crypto.randomUUID()
     const openedAt = new Date()
+    const newCardIds = new Set<string>()
 
     await this.db.$transaction(async (tx) => {
       await tx.packOpening.create({
@@ -233,7 +255,17 @@ export class PokemonRepository {
         },
       })
 
+      const previouslyOwned = await this.listOwnedCardIdsForCards(
+        tx,
+        userId,
+        cards.map((card) => card.id),
+      )
+
       for (const [index, card] of cards.entries()) {
+        if (!previouslyOwned.has(card.id)) {
+          newCardIds.add(card.id)
+        }
+
         await tx.packOpeningCard.create({
           data: {
             packOpeningId: openingId,
@@ -269,7 +301,7 @@ export class PokemonRepository {
       }
     })
 
-    return openingId
+    return { openingId, newCardIds: [...newCardIds] }
   }
 
   async getLatestPackOpening(userId: string): Promise<{ openedAt: Date } | undefined> {

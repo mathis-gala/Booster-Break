@@ -107,7 +107,7 @@ export class PokemonSandboxService {
     return {
       openingId: crypto.randomUUID(),
       set,
-      cards: drawnCards,
+      cards: drawnCards.map((card) => ({ ...card, isNew: false })),
     }
   }
 
