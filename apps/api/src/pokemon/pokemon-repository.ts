@@ -416,31 +416,36 @@ export class PokemonRepository {
 
     await this.db.$transaction(async (tx) => {
       for (const item of consumed) {
-        await tx.userCard.update({
-          where: {
-            userId_cardId_finish: {
-              userId,
-              cardId: item.cardId,
-              finish: item.finish,
-            },
+        const where = {
+          userId_cardId_finish: {
+            userId,
+            cardId: item.cardId,
+            finish: item.finish,
           },
-          data: {
-            quantity: {
-              decrement: item.quantity,
-            },
-            updatedAt: now,
-          },
-        })
-      }
+        }
+        const existing = await tx.userCard.findUnique({ where })
 
-      await tx.userCard.deleteMany({
-        where: {
-          userId,
-          quantity: {
-            lte: 0,
-          },
-        },
-      })
+        if (!existing) {
+          continue
+        }
+
+        // A CHECK (quantity > 0) constraint forbids decrementing to zero, so the
+        // row is deleted outright when every owned copy is consumed.
+        if (existing.quantity <= item.quantity) {
+          await tx.userCard.delete({ where })
+        } else {
+          // Keep the original updatedAt: a spent card is not "recently acquired",
+          // so it must not jump ahead of the reward in the Recent sort.
+          await tx.userCard.update({
+            where,
+            data: {
+              quantity: {
+                decrement: item.quantity,
+              },
+            },
+          })
+        }
+      }
 
       for (const card of rewards) {
         await tx.userCard.upsert({

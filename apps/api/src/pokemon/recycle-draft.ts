@@ -2,7 +2,6 @@ import type { CardFinish, PokemonCardSummary } from '@tcg-collection/shared'
 import { getRarityRank } from '@tcg-collection/shared'
 
 const UNKNOWN_RARITY_RANK = 999
-const HOLO_RARITY_RANK = 30
 
 /**
  * Probability multiplier applied per rarity tier above the recycled rarity.
@@ -95,9 +94,11 @@ const withRewardFinish = (card: PokemonCardSummary): PokemonCardSummary => ({
 })
 
 const pickRewardFinish = (card: PokemonCardSummary): CardFinish => {
-  if (getRarityRank(card.rarity) >= HOLO_RARITY_RANK) {
-    return card.finishes?.includes('holo') ? 'holo' : (card.finishes?.[0] ?? 'holo')
+  const finishes = card.finishes ?? []
+
+  if (finishes.length === 0) {
+    return 'normal'
   }
 
-  return 'normal'
+  return finishes[Math.floor(Math.random() * finishes.length)]
 }

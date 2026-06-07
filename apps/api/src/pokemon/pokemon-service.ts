@@ -287,7 +287,12 @@ export class PokemonService {
     const consumed: Array<{ cardId: string; finish: string; quantity: number }> = []
     const awardedCards: PokemonCardSummary[] = []
 
-    for (const bucket of buckets.values()) {
+    // Lowest rarity first so awarded cards line up with the client's animation order.
+    const orderedBuckets = [...buckets.values()].sort(
+      (first, second) => first.rarityRank - second.rarityRank,
+    )
+
+    for (const bucket of orderedBuckets) {
       const maxReward = Math.floor(bucket.total / RECYCLE_COST)
 
       if (maxReward <= 0) {

@@ -2,7 +2,6 @@ import type { DashboardTab } from '../types'
 import { CollectionView } from './CollectionView'
 import { PacksView } from './PacksView'
 import { SandboxView } from './SandboxView'
-import { RecycleView } from '../../recycle/views/RecycleView'
 import { TradeView } from '../../trade/views/TradeView'
 
 interface DashboardContentProps {
@@ -17,8 +16,6 @@ export function DashboardContent(props: DashboardContentProps) {
       return <SandboxView />
     case 'collection':
       return <CollectionView />
-    case 'recycle':
-      return <RecycleView />
     case 'trade':
       return <TradeView />
     default:

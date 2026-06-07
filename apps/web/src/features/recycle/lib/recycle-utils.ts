@@ -46,6 +46,40 @@ export const groupCardsByRarity = (cards: UserCollectionCard[]): RecycleRarityGr
 export const getSelectedQuantity = (selection: RecycleSelection, card: UserCollectionCard): number =>
   selection[recycleKey(card)] ?? 0
 
+export interface RecyclePageSegment {
+  group: RecycleRarityGroup
+  cards: UserCollectionCard[]
+}
+
+/**
+ * Flattens rarity groups in order, takes one page, then re-splits that page into
+ * rarity segments so headers reappear across page boundaries. Selection/totals
+ * stay global; only the rendered slice is limited.
+ */
+export const paginateRarityGroups = (
+  groups: RecycleRarityGroup[],
+  page: number,
+  pageSize: number,
+): { segments: RecyclePageSegment[]; pageCount: number; currentPage: number } => {
+  const flat = groups.flatMap((group) => group.cards.map((card) => ({ card, group })))
+  const pageCount = Math.max(1, Math.ceil(flat.length / pageSize))
+  const currentPage = Math.min(Math.max(page, 1), pageCount)
+  const pageItems = flat.slice((currentPage - 1) * pageSize, currentPage * pageSize)
+  const segments: RecyclePageSegment[] = []
+
+  for (const { card, group } of pageItems) {
+    const last = segments[segments.length - 1]
+
+    if (last && last.group.rarityRank === group.rarityRank) {
+      last.cards.push(card)
+    } else {
+      segments.push({ group, cards: [card] })
+    }
+  }
+
+  return { segments, pageCount, currentPage }
+}
+
 /** Total copies selected within a single rarity group. */
 export const selectedInGroup = (
   selection: RecycleSelection,
@@ -91,6 +125,63 @@ export const recyclableSurplusCount = (cards: UserCollectionCard[]): number => {
   const selection = buildAutoSelection(cards)
 
   return totalRewardCount(selection, groupCardsByRarity(cards)) * RECYCLE_COST
+}
+
+export interface RecyclePreviewCard {
+  id: string
+  imageSmall?: string
+  finish?: CardFinish
+}
+
+/**
+ * Splits the selection into the exact batches of {@link RECYCLE_COST} cards that
+ * each craft one reward, grouped by rarity and ordered the same way the server
+ * produces rewards. Batch `i` therefore shows the real cards behind reward `i`.
+ */
+export const buildRecycleBatches = (
+  selection: RecycleSelection,
+  cards: UserCollectionCard[],
+): RecyclePreviewCard[][] => {
+  const byKey = new Map(cards.map((card) => [recycleKey(card), card]))
+  // Expand the selection into individual copies, bucketed by rarity (first-seen order).
+  const copiesByRarity = new Map<number, RecyclePreviewCard[]>()
+
+  for (const [key, quantity] of Object.entries(selection)) {
+    const card = byKey.get(key)
+
+    if (!card || quantity <= 0) {
+      continue
+    }
+
+    const rarityRank = getRarityRank(card.rarity)
+
+    if (rarityRank >= UNKNOWN_RARITY_RANK) {
+      continue
+    }
+
+    const copies = copiesByRarity.get(rarityRank) ?? []
+
+    for (let copy = 0; copy < quantity; copy += 1) {
+      copies.push({ id: card.id, imageSmall: card.imageSmall, finish: card.finish })
+    }
+
+    copiesByRarity.set(rarityRank, copies)
+  }
+
+  const batches: RecyclePreviewCard[][] = []
+  // Lowest rarity first: Common batches animate, then Uncommon, then Rare, etc.
+  const ascendingRanks = [...copiesByRarity.keys()].sort((first, second) => first - second)
+
+  for (const rank of ascendingRanks) {
+    const copies = copiesByRarity.get(rank) ?? []
+    const fullBatches = Math.floor(copies.length / RECYCLE_COST)
+
+    for (let batch = 0; batch < fullBatches; batch += 1) {
+      batches.push(copies.slice(batch * RECYCLE_COST, batch * RECYCLE_COST + RECYCLE_COST))
+    }
+  }
+
+  return batches
 }
 
 export const selectionToItems = (

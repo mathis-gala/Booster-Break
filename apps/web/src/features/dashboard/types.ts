@@ -4,7 +4,6 @@ export type DashboardTab =
   | 'packs'
   | 'sandbox'
   | 'collection'
-  | 'recycle'
   | 'boards'
   | 'trade'
   | 'leaders'
