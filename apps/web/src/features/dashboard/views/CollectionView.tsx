@@ -6,6 +6,7 @@ import type { CollectionSort } from '@tcg-collection/shared'
 
 import { CollectionPanel } from '../components/CollectionPanel'
 import { CollectionRecyclePanel } from '../../recycle/components/CollectionRecyclePanel'
+import type { RecycleSelection } from '../../recycle/lib/recycle-utils'
 import { useLocale } from '@/features/i18n/useLocale'
 import {
   usePokemonCollectionAllQueryOption,
@@ -24,11 +25,13 @@ export function CollectionView() {
   const [sort, setSort] = useState<CollectionSort>('recent')
   const [searchQuery, setSearchQuery] = useState('')
   const [selectedSetId, setSelectedSetId] = useState<string>()
-  // Recycle keeps its own search/sort/page, held here so they persist across the
-  // browse/recycle toggle (CollectionRecyclePanel unmounts when not in recycle mode).
+  // Recycle keeps its own search/sort/page/selection, held here so they persist
+  // across the browse/recycle toggle (CollectionRecyclePanel unmounts when not in
+  // recycle mode).
   const [recyclePage, setRecyclePage] = useState(1)
   const [recycleSort, setRecycleSort] = useState<CollectionSort>('recent')
   const [recycleSearchQuery, setRecycleSearchQuery] = useState('')
+  const [recycleSelection, setRecycleSelection] = useState<RecycleSelection>({})
   const pageSize = 24
   const isBrowsing = mode === 'browse'
   const isSearching = searchQuery.trim().length > 0
@@ -88,9 +91,11 @@ export function CollectionView() {
             page={recyclePage}
             sort={recycleSort}
             searchQuery={recycleSearchQuery}
+            selection={recycleSelection}
             onPageChange={setRecyclePage}
             onSortChange={setRecycleSort}
             onSearchChange={setRecycleSearchQuery}
+            onSelectionChange={setRecycleSelection}
           />
         </div>
       ) : (

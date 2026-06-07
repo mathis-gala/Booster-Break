@@ -1,4 +1,5 @@
 import { useMemo } from 'react'
+import type { Dispatch, SetStateAction } from 'react'
 import { useQuery } from '@tanstack/react-query'
 import type { CollectionSort } from '@tcg-collection/shared'
 import { RECYCLE_COST } from '@tcg-collection/shared'
@@ -12,7 +13,11 @@ import { RecycleActionBar } from './RecycleActionBar'
 import { RecycleAnimationOverlay } from './RecycleAnimationOverlay'
 import { RecycleRaritySections } from './RecycleRaritySections'
 import { useRecycleEngine } from '../hooks/useRecycleEngine'
-import { groupCardsByRarity, paginateRarityGroups } from '../lib/recycle-utils'
+import {
+  groupCardsByRarity,
+  paginateRarityGroups,
+  type RecycleSelection,
+} from '../lib/recycle-utils'
 
 const PAGE_SIZE = 24
 
@@ -20,30 +25,34 @@ interface CollectionRecyclePanelProps {
   page: number
   sort: CollectionSort
   searchQuery: string
+  selection: RecycleSelection
   onPageChange: (page: number) => void
   onSortChange: (sort: CollectionSort) => void
   onSearchChange: (searchQuery: string) => void
+  onSelectionChange: Dispatch<SetStateAction<RecycleSelection>>
 }
 
 /**
  * Recycle mode inside the Collection panel: same chrome, cards grouped into
  * rarity sections. Selection/totals stay global across pages and search.
  *
- * Search/sort/page are owned by the parent so they persist when the user toggles
- * between browse and recycle (this panel unmounts on toggle).
+ * Search/sort/page/selection are owned by the parent so they persist when the
+ * user toggles between browse and recycle (this panel unmounts on toggle).
  */
 export function CollectionRecyclePanel({
   page,
   sort,
   searchQuery,
+  selection,
   onPageChange,
   onSortChange,
   onSearchChange,
+  onSelectionChange,
 }: CollectionRecyclePanelProps) {
   const collection = useQuery(usePokemonCollectionAllQueryOption({ sort, source: 'owned' }))
   const allCards = useMemo(() => collection.data?.cards ?? [], [collection.data?.cards])
 
-  const engine = useRecycleEngine(allCards)
+  const engine = useRecycleEngine(allCards, selection, onSelectionChange)
 
   const isSearching = searchQuery.trim().length > 0
   const filtered = useMemo(

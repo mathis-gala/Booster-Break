@@ -1,4 +1,5 @@
 import { useCallback, useMemo, useState } from 'react'
+import type { Dispatch, SetStateAction } from 'react'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import type { AwardedCard, UserCollectionCard } from '@tcg-collection/shared'
 import { RECYCLE_COST } from '@tcg-collection/shared'
@@ -28,11 +29,15 @@ export interface RecycleAnimationState {
 
 /**
  * All recycle state and actions for a set of owned cards. `cards` must be the
- * full owned collection (selection/totals are global).
+ * full owned collection (selection/totals are global). `selection` is owned by
+ * the caller so it survives the browse/recycle toggle (which unmounts the panel).
  */
-export function useRecycleEngine(cards: UserCollectionCard[]) {
+export function useRecycleEngine(
+  cards: UserCollectionCard[],
+  selection: RecycleSelection,
+  setSelection: Dispatch<SetStateAction<RecycleSelection>>,
+) {
   const queryClient = useQueryClient()
-  const [selection, setSelection] = useState<RecycleSelection>({})
   const [animation, setAnimation] = useState<RecycleAnimationState | null>(null)
 
   const groups = useMemo(() => groupCardsByRarity(cards), [cards])
@@ -90,9 +95,9 @@ export function useRecycleEngine(cards: UserCollectionCard[]) {
 
       return next
     })
-  }, [])
+  }, [setSelection])
 
-  const clearSelection = useCallback(() => setSelection({}), [])
+  const clearSelection = useCallback(() => setSelection({}), [setSelection])
 
   const handleAuto = useCallback(() => {
     const autoSelection = buildAutoSelection(cards)
@@ -104,7 +109,7 @@ export function useRecycleEngine(cards: UserCollectionCard[]) {
     }
 
     setSelection(autoSelection)
-  }, [cards, groups])
+  }, [cards, groups, setSelection])
 
   const handleRecycle = useCallback(() => {
     const items = selectionToItems(selection, cards)
