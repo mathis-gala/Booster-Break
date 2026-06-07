@@ -22,6 +22,7 @@ import {
   toSetWrite,
 } from './pokemon-mappers'
 import { SYNCED_BOOSTER_LIMIT } from './pokemon-config'
+import { consumeBoosterCharge, getBoosterChargeStatus, PackCooldownError } from './pack-cooldown'
 import type { Set as TcgDexSet } from '@tcgdex/sdk'
 import type { TcgDexCard } from './tcgdex-client'
 
@@ -33,18 +34,6 @@ type CollectionInventorySet = {
 
 type CollectionInventoryCard = Parameters<typeof toCardSummary>[0] & {
   set: CollectionInventorySet | null
-}
-
-export type PokemonRepositoryError = 'pack_open_cooldown'
-
-export class PokemonRepositoryErrorException extends Error {
-  constructor(
-    public readonly code: PokemonRepositoryError,
-    message?: string,
-  ) {
-    super(message)
-    this.name = 'PokemonRepositoryErrorException'
-  }
 }
 
 type CollectionInventoryRow = {
@@ -293,35 +282,28 @@ export class PokemonRepository {
     userId: string,
     setId: string,
     cards: PokemonCardSummary[],
-    cooldownSeconds: number,
   ): Promise<{ openingId: string; newCardIds: string[] }> {
     const openingId = crypto.randomUUID()
     const openedAt = new Date()
     const newCardIds = new Set<string>()
 
     await this.db.$transaction(async (tx) => {
-      await tx.$executeRaw`SELECT pg_advisory_xact_lock(hashtext(${`pack-opening:${userId}`}))`
+      // Lock the user row before reading the anchor so two concurrent opens can't both pass the
+      // cooldown gate and over-spend charges; the service's pre-check is racy on its own.
+      const lockedRows = await tx.$queryRaw<{ booster_cooldown_anchor: Date | null }[]>`
+        SELECT "booster_cooldown_anchor" FROM "users" WHERE "id" = ${userId} FOR UPDATE
+      `
+      const anchor = lockedRows[0]?.booster_cooldown_anchor ?? null
+      const status = getBoosterChargeStatus(anchor, openedAt)
 
-      const latestOpening = await tx.packOpening.findFirst({
-        where: {
-          userId,
-        },
-        orderBy: {
-          openedAt: 'desc',
-        },
-        select: {
-          openedAt: true,
-        },
-      })
-
-      if (latestOpening) {
-        const nextOpenAt = new Date(latestOpening.openedAt.getTime() + cooldownSeconds * 1000)
-
-        if (nextOpenAt > openedAt) {
-          throw new PokemonRepositoryErrorException('pack_open_cooldown')
-        }
+      if (!status.canOpen) {
+        throw new PackCooldownError(status.cooldownSeconds)
       }
 
+      await tx.user.update({
+        where: { id: userId },
+        data: { boosterCooldownAnchor: consumeBoosterCharge(anchor, openedAt) },
+      })
       await tx.packOpening.create({
         data: {
           id: openingId,
@@ -380,20 +362,13 @@ export class PokemonRepository {
     return { openingId, newCardIds: [...newCardIds] }
   }
 
-  async getLatestPackOpening(userId: string): Promise<{ openedAt: Date } | undefined> {
-    const opening = await this.db.packOpening.findFirst({
-      where: {
-        userId,
-      },
-      orderBy: {
-        openedAt: 'desc',
-      },
-      select: {
-        openedAt: true,
-      },
+  async getBoosterCooldownAnchor(userId: string): Promise<Date | null> {
+    const user = await this.db.user.findUnique({
+      where: { id: userId },
+      select: { boosterCooldownAnchor: true },
     })
 
-    return opening ?? undefined
+    return user?.boosterCooldownAnchor ?? null
   }
 
   private async listUserCollectionRows(
