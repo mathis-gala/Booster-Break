@@ -143,7 +143,6 @@
   "recycle_description": "Trade in {cost} cards of the same rarity to craft one new card. The reward is always at least the same rarity, with a chance to upgrade.",
   "recycle_summary": "{selected} selected · {rewards} new card(s)",
   "recycle_auto": "Auto ({count} surplus)",
-  "recycle_auto_empty": "No card has more than 4 copies to spare a full batch of {cost}.",
   "recycle_unselect_all": "Unselect all",
   "recycle_last_copy": "Last copy",
   "recycle_last_copy_hint": "Recycling this leaves you with none.",

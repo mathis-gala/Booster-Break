@@ -127,11 +127,9 @@ export const buildAutoSelection = (cards: UserCollectionCard[]): RecycleSelectio
   return selection
 }
 
-/** Copies the auto-selection would actually consume (only whole {@link RECYCLE_COST} batches). */
+/** Total surplus copies (beyond {@link TCG_MAX_COPIES}, excluding reserved) the auto-selection would queue. */
 export const recyclableSurplusCount = (cards: UserCollectionCard[]): number => {
-  const selection = buildAutoSelection(cards)
-
-  return totalRewardCount(selection, groupCardsByRarity(cards)) * RECYCLE_COST
+  return totalSelectedCount(buildAutoSelection(cards))
 }
 
 export interface RecyclePreviewCard {

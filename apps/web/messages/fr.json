@@ -143,7 +143,6 @@
   "recycle_description": "Échange {cost} cartes de même rareté pour en fabriquer une nouvelle. La récompense est toujours au moins de la même rareté, avec une chance d’amélioration.",
   "recycle_summary": "{selected} sélectionnée(s) · {rewards} nouvelle(s) carte(s)",
   "recycle_auto": "Auto ({count} en trop)",
-  "recycle_auto_empty": "Aucune carte n’a plus de 4 exemplaires pour réunir un lot complet de {cost}.",
   "recycle_unselect_all": "Tout désélectionner",
   "recycle_last_copy": "Dernière carte",
   "recycle_last_copy_hint": "Il ne t’en restera aucune.",

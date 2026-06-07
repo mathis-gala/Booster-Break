@@ -2,12 +2,10 @@ import { useCallback, useMemo, useState } from 'react'
 import type { Dispatch, SetStateAction } from 'react'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import type { AwardedCard, UserCollectionCard } from '@tcg-collection/shared'
-import { RECYCLE_COST } from '@tcg-collection/shared'
 
 import { usePokemonSetsQueryOption } from '@/lib/queries/pokemon'
 import { useRecyclePokemonCardsMutationOption } from '@/lib/mutations/pokemon'
 import { toast } from '@/features/toast/toast-store'
-import { m } from '@/paraglide/messages'
 
 import type { RecycleConsumedCard } from '../components/RecycleAnimationOverlay'
 import {
@@ -99,17 +97,11 @@ export function useRecycleEngine(
 
   const clearSelection = useCallback(() => setSelection({}), [setSelection])
 
+  // Selects every surplus copy (beyond the kept playable set), even when a rarity
+  // can't yet craft a full batch — the user can see what's surplus and top it up.
   const handleAuto = useCallback(() => {
-    const autoSelection = buildAutoSelection(cards)
-
-    if (totalRewardCount(autoSelection, groups) === 0) {
-      toast.show(m.recycle_auto_empty({ cost: RECYCLE_COST }), 'error')
-
-      return
-    }
-
-    setSelection(autoSelection)
-  }, [cards, groups, setSelection])
+    setSelection(buildAutoSelection(cards))
+  }, [cards, setSelection])
 
   const handleRecycle = useCallback(() => {
     const items = selectionToItems(selection, cards)
