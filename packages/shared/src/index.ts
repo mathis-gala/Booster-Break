@@ -127,6 +127,30 @@ export interface OpenPackResponse {
   cards: OpenedPackCard[]
 }
 
+/**
+ * Number of same-rarity cards consumed to craft one new card through recycling.
+ */
+export const RECYCLE_COST = 5
+
+export interface RecycleCardItem {
+  cardId: string
+  finish: CardFinish
+  quantity: number
+}
+
+export interface RecycleCardsRequest {
+  items: RecycleCardItem[]
+  locale?: SupportedLocale
+}
+
+export interface RecycleCardsResponse {
+  /** Total number of cards consumed across every rarity tier. */
+  recycledCount: number
+  /** Number of new cards crafted (one per {@link RECYCLE_COST} consumed). */
+  rewardCount: number
+  awardedCards: PokemonCardSummary[]
+}
+
 export type TradeAuctionStatus = 'active' | 'accepted' | 'cancelled' | 'expired'
 
 export type TradeOfferStatus = 'pending' | 'accepted' | 'rejected' | 'cancelled'

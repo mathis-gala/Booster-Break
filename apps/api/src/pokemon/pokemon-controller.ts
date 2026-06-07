@@ -16,6 +16,7 @@ import {
   collectionQuerySchema,
   localeQuerySchema,
   openPackBodySchema,
+  recycleCardsBodySchema,
 } from './pokemon-controller-schemas'
 
 interface PokemonControllerOptions {
@@ -195,16 +196,38 @@ export const createPokemonController = ({
         body: openPackBodySchema,
       },
     )
+    .post(
+      '/cards/recycle',
+      async (context) => {
+        const { currentUser, body, locale, status } = getAuthenticatedContext(context)
+        const result = await pokemonService.recycleCards(currentUser, {
+          ...body,
+          locale: resolveLocaleOverride(body.locale, locale),
+        })
+
+        if (!isPokemonServiceError(result)) {
+          return result
+        }
+
+        return status(toPokemonErrorStatus(result.error), result)
+      },
+      {
+        body: recycleCardsBodySchema,
+      },
+    )
 
   return new Elysia({ prefix: '/pokemon' }).use(publicRoutes).use(authenticatedPokemonRoutes)
 }
 
-const toPokemonErrorStatus = (error: string): 401 | 404 | 409 => {
+const toPokemonErrorStatus = (error: string): 400 | 401 | 404 | 409 => {
   switch (error) {
     case 'unauthenticated':
       return 401
+    case 'recycle_invalid':
+      return 400
     case 'pack_cooldown':
     case 'pokemon_sets_not_synced':
+    case 'recycle_nothing':
       return 409
     default:
       return 404

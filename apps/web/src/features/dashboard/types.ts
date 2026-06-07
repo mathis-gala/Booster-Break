@@ -1,6 +1,13 @@
 import type { LucideIcon } from 'lucide-react'
 
-export type DashboardTab = 'packs' | 'sandbox' | 'collection' | 'boards' | 'trade' | 'leaders'
+export type DashboardTab =
+  | 'packs'
+  | 'sandbox'
+  | 'collection'
+  | 'recycle'
+  | 'boards'
+  | 'trade'
+  | 'leaders'
 
 export interface NavItem {
   id: DashboardTab

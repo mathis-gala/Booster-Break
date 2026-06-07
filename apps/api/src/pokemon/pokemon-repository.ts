@@ -360,6 +360,132 @@ export class PokemonRepository {
     return { openingId, newCardIds: [...newCardIds] }
   }
 
+  async listRecycleRewardCandidates(locale: SupportedLocale = 'fr'): Promise<PokemonCardSummary[]> {
+    const cards = await this.db.pokemonCard.findMany({
+      where: {
+        rarity: {
+          not: null,
+        },
+      },
+    })
+
+    return cards.map((card) => toCardSummary(card, undefined, locale))
+  }
+
+  async listOwnedRecycleRows(
+    userId: string,
+    cardIds: string[],
+  ): Promise<Array<{ cardId: string; finish: string; quantity: number; rarity: string | null }>> {
+    if (cardIds.length === 0) {
+      return []
+    }
+
+    const rows = await this.db.userCard.findMany({
+      where: {
+        userId,
+        cardId: {
+          in: cardIds,
+        },
+        quantity: {
+          gt: 0,
+        },
+      },
+      include: {
+        card: {
+          select: {
+            rarity: true,
+          },
+        },
+      },
+    })
+
+    return rows.map((row) => ({
+      cardId: row.cardId,
+      finish: row.finish,
+      quantity: row.quantity,
+      rarity: row.card.rarity,
+    }))
+  }
+
+  async recycleCards(
+    userId: string,
+    consumed: Array<{ cardId: string; finish: string; quantity: number }>,
+    rewards: PokemonCardSummary[],
+  ): Promise<void> {
+    const now = new Date()
+
+    await this.db.$transaction(async (tx) => {
+      for (const item of consumed) {
+        await tx.userCard.update({
+          where: {
+            userId_cardId_finish: {
+              userId,
+              cardId: item.cardId,
+              finish: item.finish,
+            },
+          },
+          data: {
+            quantity: {
+              decrement: item.quantity,
+            },
+            updatedAt: now,
+          },
+        })
+      }
+
+      await tx.userCard.deleteMany({
+        where: {
+          userId,
+          quantity: {
+            lte: 0,
+          },
+        },
+      })
+
+      for (const card of rewards) {
+        await tx.userCard.upsert({
+          where: {
+            userId_cardId_finish: {
+              userId,
+              cardId: card.id,
+              finish: card.finish ?? 'normal',
+            },
+          },
+          create: {
+            userId,
+            cardId: card.id,
+            finish: card.finish ?? 'normal',
+            quantity: 1,
+            firstCollectedAt: now,
+            updatedAt: now,
+          },
+          update: {
+            quantity: {
+              increment: 1,
+            },
+            updatedAt: now,
+          },
+        })
+      }
+    })
+  }
+
+  async getLatestPackOpening(userId: string): Promise<{ openedAt: Date } | undefined> {
+    const opening = await this.db.packOpening.findFirst({
+      where: {
+        userId,
+      },
+      orderBy: {
+        openedAt: 'desc',
+      },
+      select: {
+        openedAt: true,
+      },
+    })
+
+    return opening ?? undefined
+  }
+
   async getBoosterCooldownAnchor(userId: string): Promise<Date | null> {
     const user = await this.db.user.findUnique({
       where: { id: userId },

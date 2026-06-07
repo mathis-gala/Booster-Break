@@ -5,6 +5,7 @@ import {
   BookOpenIcon,
   GalleryHorizontalEndIcon,
   MenuIcon,
+  RecycleIcon,
   SparklesIcon,
   PackageOpenIcon,
   TrophyIcon,
@@ -152,6 +153,7 @@ const navItems: NavItem[] = [
   { id: 'packs', icon: PackageOpenIcon },
   { id: 'sandbox', icon: SparklesIcon },
   { id: 'collection', icon: BookOpenIcon },
+  { id: 'recycle', icon: RecycleIcon },
   { id: 'boards', icon: GalleryHorizontalEndIcon, disabled: true },
   { id: 'trade', icon: ArrowRightLeftIcon },
   { id: 'leaders', icon: TrophyIcon },
@@ -165,6 +167,8 @@ const getNavLabel = (tab: DashboardTab): string => {
       return m.nav_sandbox()
     case 'collection':
       return m.nav_collection()
+    case 'recycle':
+      return m.nav_recycle()
     case 'boards':
       return m.nav_boards()
     case 'trade':

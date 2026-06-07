@@ -6,10 +6,12 @@ import type {
   PackOpenStatusResponse,
   PokemonCardSummary,
   PokemonSetSummary,
+  RecycleCardsRequest,
+  RecycleCardsResponse,
   SupportedLocale,
   UserCollectionResponse,
 } from '@tcg-collection/shared'
-import { DEFAULT_LOCALE } from '@tcg-collection/shared'
+import { DEFAULT_LOCALE, getRarityRank, RECYCLE_COST } from '@tcg-collection/shared'
 import { AuthService } from '../auth/auth-service'
 import type { AuthUser } from '../auth/types'
 import { PokemonRepository } from './pokemon-repository'
@@ -20,6 +22,7 @@ import {
 } from './pokemon-config'
 import { drawPokemonPackCards } from './pack-draft'
 import { getBoosterChargeStatus, PackCooldownError } from './pack-cooldown'
+import { drawRecycleRewards } from './recycle-draft'
 import { PokemonCatalogSyncService } from './pokemon-catalog-sync-service'
 import { ScrydexSealedClient } from './scrydex-sealed-client'
 import { TcgDexClient } from './tcgdex-client'
@@ -36,7 +39,15 @@ export type PokemonServiceErrorCode =
   | 'pack_cooldown'
   | 'pack_unavailable'
   | 'pokemon_sets_not_synced'
+  | 'recycle_invalid'
+  | 'recycle_nothing'
   | 'unauthenticated'
+
+interface RecycleBucket {
+  rarityRank: number
+  items: Array<{ cardId: string; finish: string; quantity: number }>
+  total: number
+}
 
 export interface PokemonServiceError {
   error: PokemonServiceErrorCode
@@ -230,6 +241,89 @@ export class PokemonService {
     }
   }
 
+  async recycleCards(
+    user: AuthUser,
+    input: RecycleCardsRequest,
+  ): Promise<RecycleCardsResponse | PokemonServiceError> {
+    const locale = input.locale ?? DEFAULT_LOCALE
+    const items = mergeRecycleItems(input.items)
+
+    if (items.length === 0) {
+      return {
+        error: 'recycle_invalid',
+        message: 'Select cards to recycle.',
+      }
+    }
+
+    const cardIds = [...new Set(items.map((item) => item.cardId))]
+    const ownedRows = await this.options.pokemonRepository.listOwnedRecycleRows(user.id, cardIds)
+    const ownedByKey = new Map(ownedRows.map((row) => [`${row.cardId}:${row.finish}`, row]))
+
+    const buckets = new Map<number, RecycleBucket>()
+
+    for (const item of items) {
+      const owned = ownedByKey.get(`${item.cardId}:${item.finish}`)
+
+      if (!owned || owned.quantity < item.quantity) {
+        return {
+          error: 'recycle_invalid',
+          message: 'You do not own enough copies of a selected card.',
+        }
+      }
+
+      const rarityRank = getRarityRank(owned.rarity)
+
+      if (rarityRank >= UNKNOWN_RARITY_RANK) {
+        continue
+      }
+
+      const bucket = buckets.get(rarityRank) ?? { rarityRank, items: [], total: 0 }
+      bucket.items.push(item)
+      bucket.total += item.quantity
+      buckets.set(rarityRank, bucket)
+    }
+
+    let candidates: PokemonCardSummary[] | undefined
+    const consumed: Array<{ cardId: string; finish: string; quantity: number }> = []
+    const awardedCards: PokemonCardSummary[] = []
+
+    for (const bucket of buckets.values()) {
+      const maxReward = Math.floor(bucket.total / RECYCLE_COST)
+
+      if (maxReward <= 0) {
+        continue
+      }
+
+      if (!candidates) {
+        candidates = await this.options.pokemonRepository.listRecycleRewardCandidates(locale)
+      }
+
+      const rewards = drawRecycleRewards(bucket.rarityRank, maxReward, candidates)
+
+      if (rewards.length === 0) {
+        continue
+      }
+
+      consumed.push(...planRecycleConsumption(bucket.items, rewards.length * RECYCLE_COST))
+      awardedCards.push(...rewards)
+    }
+
+    if (awardedCards.length === 0) {
+      return {
+        error: 'recycle_nothing',
+        message: `Recycle at least ${RECYCLE_COST} cards sharing the same rarity.`,
+      }
+    }
+
+    await this.options.pokemonRepository.recycleCards(user.id, consumed, awardedCards)
+
+    return {
+      recycledCount: consumed.reduce((total, item) => total + item.quantity, 0),
+      rewardCount: awardedCards.length,
+      awardedCards,
+    }
+  }
+
   private async getPackOpenStatusForUser(userId: string): Promise<PackOpenStatusResponse> {
     const anchor = await this.options.pokemonRepository.getBoosterCooldownAnchor(userId)
     const status = getBoosterChargeStatus(anchor, new Date())
@@ -252,6 +346,52 @@ export class PokemonService {
 
     return drawPokemonPackCards(allCards)
   }
+}
+
+const UNKNOWN_RARITY_RANK = 999
+
+const mergeRecycleItems = (
+  items: RecycleCardsRequest['items'],
+): Array<{ cardId: string; finish: string; quantity: number }> => {
+  const merged = new Map<string, { cardId: string; finish: string; quantity: number }>()
+
+  for (const item of items) {
+    if (!item.cardId || item.quantity <= 0) {
+      continue
+    }
+
+    const key = `${item.cardId}:${item.finish}`
+    const existing = merged.get(key)
+
+    if (existing) {
+      existing.quantity += item.quantity
+      continue
+    }
+
+    merged.set(key, { cardId: item.cardId, finish: item.finish, quantity: item.quantity })
+  }
+
+  return [...merged.values()]
+}
+
+const planRecycleConsumption = (
+  items: Array<{ cardId: string; finish: string; quantity: number }>,
+  amount: number,
+): Array<{ cardId: string; finish: string; quantity: number }> => {
+  const consumed: Array<{ cardId: string; finish: string; quantity: number }> = []
+  let remaining = amount
+
+  for (const item of items) {
+    if (remaining <= 0) {
+      break
+    }
+
+    const take = Math.min(remaining, item.quantity)
+    consumed.push({ cardId: item.cardId, finish: item.finish, quantity: take })
+    remaining -= take
+  }
+
+  return consumed
 }
 
 export const isPokemonServiceError = <T>(
