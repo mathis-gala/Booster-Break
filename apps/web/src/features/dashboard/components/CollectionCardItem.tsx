@@ -79,9 +79,7 @@ export const CollectionCardItem = memo(function CollectionCardItem({
             {meta.length > 0 ? meta.join(' · ') : null}
           </p>
           {setName ? (
-            <p className="truncate text-[0.58rem] font-semibold text-muted-foreground">
-              {setName}
-            </p>
+            <p className="truncate text-[0.58rem] font-semibold text-muted-foreground">{setName}</p>
           ) : null}
         </div>
         <span className="rounded-md bg-sidebar px-1.5 py-0.5 text-[0.62rem] font-black text-sidebar-foreground">

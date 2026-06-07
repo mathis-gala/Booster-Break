@@ -16,10 +16,7 @@ export const useTradeAuctionsQueryOption = () => {
   })
 }
 
-export const useTradeAuctionQueryOption = (
-  auctionId: string | undefined,
-  enabled = true,
-) => {
+export const useTradeAuctionQueryOption = (auctionId: string | undefined, enabled = true) => {
   const locale = getLocale()
   const hasAuctionId = Boolean(auctionId)
   const effectiveAuctionId = auctionId ?? '__no_selection__'
@@ -35,9 +32,7 @@ export const useTradeAuctionQueryOption = (
   })
 }
 
-export const useTradeNotificationsQueryOption = (
-  enabled = true,
-) => {
+export const useTradeNotificationsQueryOption = (enabled = true) => {
   const locale = getLocale()
 
   return edenQueryOption({

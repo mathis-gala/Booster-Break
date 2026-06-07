@@ -28,9 +28,7 @@ for (const set of sets) {
   syncedSets += 1
   syncedCards += result.cards
 
-  console.log(
-    `${syncedSets}/${sets.length} synced ${set.id} (${set.name}) - ${result.cards} cards`,
-  )
+  console.log(`${syncedSets}/${sets.length} synced ${set.id} (${set.name}) - ${result.cards} cards`)
 }
 
 console.log(

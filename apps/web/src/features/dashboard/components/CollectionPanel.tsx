@@ -74,10 +74,7 @@ export function CollectionPanel({
 }: CollectionPanelProps) {
   const [selectedCard, setSelectedCard] = useState<UserCollectionCard>()
   const sortActions = getSortActions()
-  const setNameById = useMemo(
-    () => new Map(sets.map((set) => [set.id, set.name])),
-    [sets],
-  )
+  const setNameById = useMemo(() => new Map(sets.map((set) => [set.id, set.name])), [sets])
   const activeSet = sets.find((set) => set.id === selectedSetId)
   const setTriggerLabel = activeSet
     ? `${activeSet.name} (${activeSet.count})`

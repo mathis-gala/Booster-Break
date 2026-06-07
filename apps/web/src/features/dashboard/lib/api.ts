@@ -23,9 +23,7 @@ export async function logout(): Promise<void> {
   }
 }
 
-export async function openPokemonPack(
-  setId?: string,
-): Promise<OpenPackResponse> {
+export async function openPokemonPack(setId?: string): Promise<OpenPackResponse> {
   const { data, error } = await api.pokemon.packs.open.post({
     setId,
   })
@@ -37,9 +35,7 @@ export async function openPokemonPack(
   return data
 }
 
-export async function openPokemonPackSandbox(
-  setId?: string,
-): Promise<OpenPackResponse> {
+export async function openPokemonPackSandbox(setId?: string): Promise<OpenPackResponse> {
   const { data, error } = await api.pokemon.packs.sandbox.open.post({
     setId,
   })

@@ -12,12 +12,7 @@ interface WebGlCardViewerProps {
   className?: string
 }
 
-export function WebGlCardViewer({
-  frontImageUrl,
-  alt,
-  finish,
-  className,
-}: WebGlCardViewerProps) {
+export function WebGlCardViewer({ frontImageUrl, alt, finish, className }: WebGlCardViewerProps) {
   const rendererRef = useRef<CardViewerRenderer | undefined>(undefined)
   const mountTokenRef = useRef(0)
   const [fallbackReason, setFallbackReason] = useState<string>()

@@ -162,9 +162,7 @@ export const usePokemonLeaderboardQueryOption = () =>
     toError: () => new Error(m.api_unable_load_leaderboard()),
   })
 
-export const usePokemonPreviewCardsQueryOption = (
-  setId: string | undefined,
-) => {
+export const usePokemonPreviewCardsQueryOption = (setId: string | undefined) => {
   const locale = getLocale()
 
   return edenQueryOption({
@@ -177,9 +175,7 @@ export const usePokemonPreviewCardsQueryOption = (
   })
 }
 
-export const useSandboxPokemonPreviewCardsQueryOption = (
-  setId: string | undefined,
-) => {
+export const useSandboxPokemonPreviewCardsQueryOption = (setId: string | undefined) => {
   const locale = getLocale()
 
   return edenQueryOption({

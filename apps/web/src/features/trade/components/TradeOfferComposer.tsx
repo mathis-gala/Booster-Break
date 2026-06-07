@@ -12,11 +12,7 @@ interface TradeOfferComposerProps {
   onOfferCreated: () => void
 }
 
-export function TradeOfferComposer({
-  auction,
-  userId,
-  onOfferCreated,
-}: TradeOfferComposerProps) {
+export function TradeOfferComposer({ auction, userId, onOfferCreated }: TradeOfferComposerProps) {
   const {
     canOffer,
     canOfferReason,

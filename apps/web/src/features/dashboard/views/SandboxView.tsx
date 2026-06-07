@@ -136,7 +136,8 @@ export function SandboxView() {
 const compareSetsByReleaseDateDesc = (
   first: PokemonSetSummary,
   second: PokemonSetSummary,
-): number => getReleaseDateSortValue(second.releaseDate) - getReleaseDateSortValue(first.releaseDate)
+): number =>
+  getReleaseDateSortValue(second.releaseDate) - getReleaseDateSortValue(first.releaseDate)
 
 const getReleaseDateSortValue = (releaseDate: unknown): number => {
   if (typeof releaseDate === 'string') {

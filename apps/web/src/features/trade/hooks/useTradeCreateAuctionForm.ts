@@ -1,10 +1,7 @@
 import { useMemo, useState } from 'react'
 import type { FormEvent } from 'react'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
-import {
-  pokemonRarityOrder,
-  type CollectionSort,
-} from '@tcg-collection/shared'
+import { pokemonRarityOrder, type CollectionSort } from '@tcg-collection/shared'
 import type { CreateAuctionRequest, UserCollectionCard } from '@tcg-collection/shared'
 import { toast } from '@/features/toast/toast-store'
 import {
@@ -157,7 +154,8 @@ export function useTradeCreateAuctionForm({
 
   const hasSearchQuery = searchQuery.trim().length > 0
   const availableCards = useMemo(
-    () => (hasSearchQuery ? (allCardsCollection.data?.cards ?? []) : (collection.data?.cards ?? [])),
+    () =>
+      hasSearchQuery ? (allCardsCollection.data?.cards ?? []) : (collection.data?.cards ?? []),
     [allCardsCollection.data?.cards, collection.data?.cards, hasSearchQuery],
   )
 

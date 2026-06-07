@@ -83,11 +83,7 @@ export const setUniform1i = (
   }
 }
 
-const compileShader = (
-  gl: WebGLRenderingContext,
-  type: number,
-  source: string,
-): WebGLShader => {
+const compileShader = (gl: WebGLRenderingContext, type: number, source: string): WebGLShader => {
   const shader = gl.createShader(type)
 
   if (!shader) {

@@ -93,9 +93,7 @@ export const createPokemonController = ({
     .get(
       '/packs/sandbox/sets',
       async ({ locale, query }) => ({
-        sets: await pokemonSandboxService.listSets(
-          resolveLocaleOverride(query.locale, locale),
-        ),
+        sets: await pokemonSandboxService.listSets(resolveLocaleOverride(query.locale, locale)),
       }),
       {
         query: localeQuerySchema,

@@ -24,7 +24,8 @@ export function PackRevealDialog({
   onRevealCardIndexChange,
   resultLabel,
 }: PackRevealDialogProps) {
-  const [selectedPreviewCard, setSelectedPreviewCard] = useState<OpenPackResponse['cards'][number]>()
+  const [selectedPreviewCard, setSelectedPreviewCard] =
+    useState<OpenPackResponse['cards'][number]>()
   const currentRevealCard = openPackResult.cards[revealedCardIndex]
   const currentRevealImageUrl = currentRevealCard?.imageLarge ?? currentRevealCard?.imageSmall
   const revealedCards = openPackResult.cards.slice(0, maxRevealedCardIndex + 1)

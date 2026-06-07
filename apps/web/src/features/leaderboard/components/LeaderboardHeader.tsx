@@ -10,9 +10,7 @@ export function LeaderboardHeader() {
           <p className="text-xs font-black uppercase tracking-wide text-muted-foreground">
             {m.leaderboard_eyebrow()}
           </p>
-          <h1 className="mt-1 text-2xl font-black sm:text-3xl">
-            {m.leaderboard_title()}
-          </h1>
+          <h1 className="mt-1 text-2xl font-black sm:text-3xl">{m.leaderboard_title()}</h1>
           <p className="mt-2 text-sm leading-6 text-muted-foreground">
             {m.leaderboard_description()}
           </p>

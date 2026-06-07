@@ -8,16 +8,12 @@ import { useLocale } from '@/features/i18n/useLocale'
 import { useLogoutMutationOption } from '@/lib/mutations/auth'
 import { useCurrentUserQueryOption } from '@/lib/queries/auth'
 import { usePokemonLeaderboardQueryOption } from '@/lib/queries/pokemon'
-import {
-  getLeaderboardConfig,
-  type LeaderboardKind,
-} from '../lib/leaderboard-config'
+import { getLeaderboardConfig, type LeaderboardKind } from '../lib/leaderboard-config'
 
 export const useLeaderboardPage = () => {
   const { locale } = useLocale()
   const navigate = useNavigate()
-  const [activeLeaderboard, setActiveLeaderboard] =
-    useState<LeaderboardKind>('mostUniqueCards')
+  const [activeLeaderboard, setActiveLeaderboard] = useState<LeaderboardKind>('mostUniqueCards')
   const queryClient = useQueryClient()
   const auth = useQuery(useCurrentUserQueryOption())
   const logoutMutation = useMutation(useLogoutMutationOption(queryClient))

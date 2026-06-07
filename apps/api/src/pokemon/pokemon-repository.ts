@@ -174,9 +174,7 @@ export class PokemonRepository {
       options.source,
     )
     const sets = this.buildCollectionSetOptions(allRows, options.locale)
-    const rows = options.setId
-      ? allRows.filter((row) => row.card.setId === options.setId)
-      : allRows
+    const rows = options.setId ? allRows.filter((row) => row.card.setId === options.setId) : allRows
     const total = rows.length
     const totalCards = rows.reduce((count, row) => count + row.quantity, 0)
     const pageCount = Math.max(1, Math.ceil(total / options.pageSize))

@@ -38,11 +38,14 @@ type BaseEdenQueryOptionInput<TResponseData, TData, TQueryKey extends QueryKey> 
   toError?: (error: EdenError, response: Response, status: number) => Error
 }
 
-type EdenQueryOptionWithoutOptions<TResponseData, TData, TQueryKey extends QueryKey> =
-  BaseEdenQueryOptionInput<TResponseData, TData, TQueryKey> & {
-    edenOptions?: undefined
-    edenQuery: () => Promise<EdenRawResponse<TResponseData>>
-  }
+type EdenQueryOptionWithoutOptions<
+  TResponseData,
+  TData,
+  TQueryKey extends QueryKey,
+> = BaseEdenQueryOptionInput<TResponseData, TData, TQueryKey> & {
+  edenOptions?: undefined
+  edenQuery: () => Promise<EdenRawResponse<TResponseData>>
+}
 
 type EdenQueryOptionWithOptions<
   TOptions,
@@ -111,7 +114,9 @@ export function edenQueryOption<
           return mappedErrorData
         }
 
-        throw toError?.(error, result.response, result.status) ?? toDefaultError(error, result.response)
+        throw (
+          toError?.(error, result.response, result.status) ?? toDefaultError(error, result.response)
+        )
       }
 
       return await mapData(result.data)
