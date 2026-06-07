@@ -46,6 +46,11 @@ const RARE_SLOT_RULES: ChanceRule[] = [
     finish: 'holo',
     rarities: ['Ultra Rare'],
   },
+  {
+    chance: 5.0,
+    finish: 'holo',
+    rarities: ['ACE SPEC Rare', 'Ace Spec Rare', 'ACE SPEC rare'],
+  },
 ]
 
 interface ChanceRule {
