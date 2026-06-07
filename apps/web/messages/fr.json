@@ -147,6 +147,8 @@
   "recycle_unselect_all": "Tout désélectionner",
   "recycle_last_copy": "Dernière carte",
   "recycle_last_copy_hint": "Il ne t’en restera aucune.",
+  "recycle_in_trade": "En échange",
+  "recycle_in_trade_hint": "{count} exemplaire(s) réservé(s) pour un échange en cours, non recyclable(s).",
   "recycle_action": "Recycler pour {count}",
   "recycle_action_pending": "Recyclage…",
   "recycle_loading": "Chargement de ta collection…",

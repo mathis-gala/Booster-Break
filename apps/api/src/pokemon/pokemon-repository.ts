@@ -36,6 +36,18 @@ type CollectionInventoryCard = Parameters<typeof toCardSummary>[0] & {
   set: CollectionInventorySet | null
 }
 
+/**
+ * Thrown inside the recycle transaction when a card selected for recycling is no
+ * longer fully owned at write time (e.g. spent by a concurrent recycle or trade).
+ * Rolls back the transaction so nothing is consumed and no reward is granted.
+ */
+export class RecycleConflictError extends Error {
+  constructor() {
+    super('Collection changed during recycling')
+    this.name = 'RecycleConflictError'
+  }
+}
+
 type CollectionInventoryRow = {
   cardId: string
   finish: string
@@ -182,10 +194,24 @@ export class PokemonRepository {
     const page = Math.min(Math.max(options.page, 1), pageCount)
     const pagedRows = rows.slice((page - 1) * options.pageSize, page * options.pageSize)
 
+    // Only owned copies can be locked by a trade; other sources are never reserved.
+    const reservedByKey =
+      options.source === 'owned'
+        ? new Map(
+            (
+              await this.listRecycleReservedQuantities(
+                userId,
+                pagedRows.map((row) => row.cardId),
+              )
+            ).map((row) => [`${row.cardId}:${row.finish}`, row.quantity]),
+          )
+        : new Map<string, number>()
+
     return {
       cards: pagedRows.map((row) => ({
         ...toCardSummary(row.card, row.finish as CardFinish, options.locale),
         quantity: row.quantity,
+        reservedQuantity: reservedByKey.get(`${row.cardId}:${row.finish}`) ?? 0,
         firstCollectedAt: row.firstCollectedAt.toISOString(),
         updatedAt: row.updatedAt.toISOString(),
       })),
@@ -407,6 +433,66 @@ export class PokemonRepository {
     }))
   }
 
+  /**
+   * Counts, per (cardId, finish), how many owned copies the user has committed to
+   * a live trade. Trades do not escrow — the copies stay in `user_cards` until the
+   * trade settles — so recycling must treat these as unavailable, otherwise a user
+   * could recycle a card they have already promised and leave a dangling trade.
+   *
+   * Two commitments reserve a copy: an active auction the user created (one copy of
+   * the offered card) and a pending offer the user proposed (its committed cards).
+   */
+  async listRecycleReservedQuantities(
+    userId: string,
+    cardIds: string[],
+  ): Promise<Array<{ cardId: string; finish: string; quantity: number }>> {
+    if (cardIds.length === 0) {
+      return []
+    }
+
+    const [auctions, offerCards] = await Promise.all([
+      this.db.tradeAuction.findMany({
+        where: {
+          creatorId: userId,
+          status: 'active',
+          offeredCardId: { in: cardIds },
+        },
+        select: { offeredCardId: true, offeredCardFinish: true },
+      }),
+      this.db.tradeOfferCard.findMany({
+        where: {
+          cardId: { in: cardIds },
+          offer: { proposerId: userId, status: 'pending' },
+        },
+        select: { cardId: true, finish: true, quantity: true },
+      }),
+    ])
+
+    const reservedByKey = new Map<string, { cardId: string; finish: string; quantity: number }>()
+
+    const reserve = (cardId: string, finish: string, quantity: number) => {
+      const key = `${cardId}:${finish}`
+      const existing = reservedByKey.get(key)
+
+      if (existing) {
+        existing.quantity += quantity
+        return
+      }
+
+      reservedByKey.set(key, { cardId, finish, quantity })
+    }
+
+    for (const auction of auctions) {
+      reserve(auction.offeredCardId, auction.offeredCardFinish, 1)
+    }
+
+    for (const offerCard of offerCards) {
+      reserve(offerCard.cardId, offerCard.finish, offerCard.quantity)
+    }
+
+    return [...reservedByKey.values()]
+  }
+
   async recycleCards(
     userId: string,
     consumed: Array<{ cardId: string; finish: string; quantity: number }>,
@@ -431,34 +517,15 @@ export class PokemonRepository {
       }
 
       for (const item of consumed) {
-        const where = {
-          userId_cardId_finish: {
-            userId,
-            cardId: item.cardId,
-            finish: item.finish,
-          },
-        }
-        const existing = await tx.userCard.findUnique({ where })
+        // Consume atomically against the live row inside the transaction. The
+        // service validated ownership earlier with a non-transactional read, so
+        // a concurrent recycle/trade could have spent these copies in between.
+        // If any copy is no longer available we throw to roll back the whole
+        // transaction, so no reward is ever granted for cards we failed to spend.
+        const consumedCopies = await this.consumeUserCardCopies(tx, userId, item)
 
-        if (!existing) {
-          continue
-        }
-
-        // A CHECK (quantity > 0) constraint forbids decrementing to zero, so the
-        // row is deleted outright when every owned copy is consumed.
-        if (existing.quantity <= item.quantity) {
-          await tx.userCard.delete({ where })
-        } else {
-          // Keep the original updatedAt: a spent card is not "recently acquired",
-          // so it must not jump ahead of the reward in the Recent sort.
-          await tx.userCard.update({
-            where,
-            data: {
-              quantity: {
-                decrement: item.quantity,
-              },
-            },
-          })
+        if (!consumedCopies) {
+          throw new RecycleConflictError()
         }
       }
 
@@ -490,6 +557,53 @@ export class PokemonRepository {
     })
 
     return { newCardIds: [...newCardIds] }
+  }
+
+  /**
+   * Atomically removes `item.quantity` copies of a card from the user, returning
+   * false (without mutating) when fewer copies remain than requested. The two
+   * guarded writes — decrement when a surplus remains, delete when consuming the
+   * last copies — never match a row that is short, so a stale over-consume fails
+   * closed. updatedAt is deliberately left untouched: a spent card is not
+   * "recently acquired" and must not jump ahead of the reward in the Recent sort.
+   */
+  private async consumeUserCardCopies(
+    tx: Prisma.TransactionClient,
+    userId: string,
+    item: { cardId: string; finish: string; quantity: number },
+  ): Promise<boolean> {
+    const decremented = await tx.userCard.updateMany({
+      where: {
+        userId,
+        cardId: item.cardId,
+        finish: item.finish,
+        quantity: {
+          gt: item.quantity,
+        },
+      },
+      data: {
+        quantity: {
+          decrement: item.quantity,
+        },
+      },
+    })
+
+    if (decremented.count === 1) {
+      return true
+    }
+
+    // A CHECK (quantity > 0) constraint forbids decrementing to zero, so the row
+    // is deleted outright when every owned copy is consumed.
+    const deleted = await tx.userCard.deleteMany({
+      where: {
+        userId,
+        cardId: item.cardId,
+        finish: item.finish,
+        quantity: item.quantity,
+      },
+    })
+
+    return deleted.count === 1
   }
 
   async getLatestPackOpening(userId: string): Promise<{ openedAt: Date } | undefined> {

@@ -228,6 +228,7 @@ const toPokemonErrorStatus = (error: string): 400 | 401 | 404 | 409 => {
     case 'pack_cooldown':
     case 'pokemon_sets_not_synced':
     case 'recycle_nothing':
+    case 'recycle_conflict':
       return 409
     default:
       return 404

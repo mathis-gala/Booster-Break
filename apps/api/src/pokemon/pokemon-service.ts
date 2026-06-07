@@ -14,7 +14,7 @@ import type {
 import { DEFAULT_LOCALE, getRarityRank, RECYCLE_COST } from '@tcg-collection/shared'
 import { AuthService } from '../auth/auth-service'
 import type { AuthUser } from '../auth/types'
-import { PokemonRepository } from './pokemon-repository'
+import { PokemonRepository, RecycleConflictError } from './pokemon-repository'
 import {
   PACK_OPEN_COOLDOWN_SECONDS,
   POKEMON_SYNC_START_DATE,
@@ -39,6 +39,7 @@ export type PokemonServiceErrorCode =
   | 'pack_cooldown'
   | 'pack_unavailable'
   | 'pokemon_sets_not_synced'
+  | 'recycle_conflict'
   | 'recycle_invalid'
   | 'recycle_nothing'
   | 'unauthenticated'
@@ -256,18 +257,33 @@ export class PokemonService {
     }
 
     const cardIds = [...new Set(items.map((item) => item.cardId))]
-    const ownedRows = await this.options.pokemonRepository.listOwnedRecycleRows(user.id, cardIds)
+    const [ownedRows, reservedRows] = await Promise.all([
+      this.options.pokemonRepository.listOwnedRecycleRows(user.id, cardIds),
+      this.options.pokemonRepository.listRecycleReservedQuantities(user.id, cardIds),
+    ])
     const ownedByKey = new Map(ownedRows.map((row) => [`${row.cardId}:${row.finish}`, row]))
+    // Copies committed to a live trade are not recyclable: trades settle against
+    // user_cards later, so spending them here would leave a dangling trade.
+    const reservedByKey = new Map(
+      reservedRows.map((row) => [`${row.cardId}:${row.finish}`, row.quantity]),
+    )
 
     const buckets = new Map<number, RecycleBucket>()
 
     for (const item of items) {
       const owned = ownedByKey.get(`${item.cardId}:${item.finish}`)
+      const reserved = reservedByKey.get(`${item.cardId}:${item.finish}`) ?? 0
+      const available = (owned?.quantity ?? 0) - reserved
 
-      if (!owned || owned.quantity < item.quantity) {
+      if (!owned || available < item.quantity) {
+        // Distinguish "you never had enough" from "enough, but reserved for trade"
+        // so the player knows to cancel the trade rather than hunt for copies.
+        const blockedByTrade = owned !== undefined && owned.quantity >= item.quantity
         return {
           error: 'recycle_invalid',
-          message: 'You do not own enough copies of a selected card.',
+          message: blockedByTrade
+            ? 'Some selected cards are reserved for an active trade. Cancel the trade or deselect them.'
+            : 'You do not own enough copies of a selected card.',
         }
       }
 
@@ -320,11 +336,25 @@ export class PokemonService {
       }
     }
 
-    const { newCardIds } = await this.options.pokemonRepository.recycleCards(
-      user.id,
-      consumed,
-      awardedCards,
-    )
+    let newCardIds: string[]
+
+    try {
+      ;({ newCardIds } = await this.options.pokemonRepository.recycleCards(
+        user.id,
+        consumed,
+        awardedCards,
+      ))
+    } catch (error) {
+      if (error instanceof RecycleConflictError) {
+        return {
+          error: 'recycle_conflict',
+          message: 'Your collection changed while recycling. Please try again.',
+        }
+      }
+
+      throw error
+    }
+
     const newCardIdSet = new Set(newCardIds)
 
     return {

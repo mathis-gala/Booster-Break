@@ -55,6 +55,8 @@ export interface PokemonCardSummary {
 
 export interface UserCollectionCard extends PokemonCardSummary {
   quantity: number
+  /** Copies of this card committed to a live trade (active auction / pending offer). */
+  reservedQuantity: number
   firstCollectedAt: string
   updatedAt: string
 }

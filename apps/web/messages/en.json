@@ -147,6 +147,8 @@
   "recycle_unselect_all": "Unselect all",
   "recycle_last_copy": "Last copy",
   "recycle_last_copy_hint": "Recycling this leaves you with none.",
+  "recycle_in_trade": "In a trade",
+  "recycle_in_trade_hint": "{count} copy(ies) reserved for an active trade and can’t be recycled.",
   "recycle_action": "Recycle for {count}",
   "recycle_action_pending": "Recycling…",
   "recycle_loading": "Loading your collection…",

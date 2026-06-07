@@ -2,12 +2,14 @@ import { describe, expect, test } from 'bun:test'
 import type { PokemonCardSummary } from '@tcg-collection/shared'
 import { RECYCLE_COST } from '@tcg-collection/shared'
 import { isPokemonServiceError, PokemonService } from '../../src/pokemon/pokemon-service'
-import type { PokemonRepository } from '../../src/pokemon/pokemon-repository'
+import { PokemonRepository, RecycleConflictError } from '../../src/pokemon/pokemon-repository'
 import type { AuthUser } from '../../src/auth/types'
 
 const user: AuthUser = { id: 'user-1', pseudo: 'ash' }
 
 type OwnedRow = { cardId: string; finish: string; quantity: number; rarity: string | null }
+
+type ReservedRow = { cardId: string; finish: string; quantity: number }
 
 interface FakeRepoState {
   owned: OwnedRow[]
@@ -16,12 +18,20 @@ interface FakeRepoState {
     consumed: Array<{ cardId: string; finish: string; quantity: number }>
     rewards: PokemonCardSummary[]
   }>
+  // Copies committed to a live trade (active auction / pending offer).
+  reserved?: ReservedRow[]
+  // When set, the repository write fails as if a concurrent recycle/trade spent
+  // the cards between the ownership read and the transaction.
+  recycleConflict?: boolean
 }
 
 const makeService = (state: FakeRepoState) => {
   const repository = {
     async listOwnedRecycleRows(_userId: string, cardIds: string[]) {
       return state.owned.filter((row) => cardIds.includes(row.cardId))
+    },
+    async listRecycleReservedQuantities(_userId: string, cardIds: string[]) {
+      return (state.reserved ?? []).filter((row) => cardIds.includes(row.cardId))
     },
     async listRecycleRewardCandidates() {
       return state.catalog
@@ -32,6 +42,11 @@ const makeService = (state: FakeRepoState) => {
       rewards: PokemonCardSummary[],
     ) {
       state.recycleCalls.push({ consumed, rewards })
+
+      if (state.recycleConflict) {
+        throw new RecycleConflictError()
+      }
+
       const ownedIds = new Set(state.owned.map((row) => row.cardId))
 
       return {
@@ -150,5 +165,64 @@ describe('PokemonService.recycleCards', () => {
 
     expect(isPokemonServiceError(result) && result.error).toBe('recycle_nothing')
     expect(state.recycleCalls).toHaveLength(0)
+  })
+
+  test('rejects recycling a copy reserved for an active trade', async () => {
+    const state: FakeRepoState = {
+      owned: [{ cardId: 'c1', finish: 'normal', quantity: RECYCLE_COST, rarity: 'Common' }],
+      // One of the owned copies is offered in an active auction.
+      reserved: [{ cardId: 'c1', finish: 'normal', quantity: 1 }],
+      catalog,
+      recycleCalls: [],
+    }
+    const service = makeService(state)
+
+    const result = await service.recycleCards(user, {
+      items: [{ cardId: 'c1', finish: 'normal', quantity: RECYCLE_COST }],
+    })
+
+    expect(isPokemonServiceError(result) && result.error).toBe('recycle_invalid')
+    expect(isPokemonServiceError(result) && result.message).toContain('reserved')
+    expect(state.recycleCalls).toHaveLength(0)
+  })
+
+  test('recycles the unreserved surplus when only some copies are in a trade', async () => {
+    const state: FakeRepoState = {
+      owned: [{ cardId: 'c1', finish: 'normal', quantity: RECYCLE_COST + 1, rarity: 'Common' }],
+      reserved: [{ cardId: 'c1', finish: 'normal', quantity: 1 }],
+      catalog,
+      recycleCalls: [],
+    }
+    const service = makeService(state)
+
+    const result = await service.recycleCards(user, {
+      items: [{ cardId: 'c1', finish: 'normal', quantity: RECYCLE_COST }],
+    })
+
+    if (isPokemonServiceError(result)) {
+      throw new Error(`expected success, got ${result.error}`)
+    }
+
+    expect(result.recycledCount).toBe(RECYCLE_COST)
+    expect(state.recycleCalls).toHaveLength(1)
+  })
+
+  test('surfaces a clean conflict when the cards are spent mid-recycle', async () => {
+    const state: FakeRepoState = {
+      owned: [{ cardId: 'c1', finish: 'normal', quantity: RECYCLE_COST, rarity: 'Common' }],
+      catalog,
+      recycleCalls: [],
+      recycleConflict: true,
+    }
+    const service = makeService(state)
+
+    const result = await service.recycleCards(user, {
+      items: [{ cardId: 'c1', finish: 'normal', quantity: RECYCLE_COST }],
+    })
+
+    // The transaction rolled back, so the user keeps their cards and gets a
+    // retryable error rather than an unhandled 500.
+    expect(isPokemonServiceError(result) && result.error).toBe('recycle_conflict')
+    expect(state.recycleCalls).toHaveLength(1)
   })
 })

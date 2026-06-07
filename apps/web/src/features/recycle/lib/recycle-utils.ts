@@ -20,6 +20,13 @@ export const recycleKey = (card: { id: string; finish?: CardFinish }): string =>
 
 const cardFinish = (card: UserCollectionCard): CardFinish => card.finish ?? 'normal'
 
+/**
+ * Copies that may be recycled: owned quantity minus the copies reserved for a live
+ * trade. The backend rejects recycling reserved copies, so the UI never offers them.
+ */
+export const recyclableQuantity = (card: UserCollectionCard): number =>
+  Math.max(0, card.quantity - (card.reservedQuantity ?? 0))
+
 /** Cards that carry a known rarity, grouped by rarity tier (most common first). */
 export const groupCardsByRarity = (cards: UserCollectionCard[]): RecycleRarityGroup[] => {
   const groups = new Map<number, RecycleRarityGroup>()
@@ -109,7 +116,8 @@ export const buildAutoSelection = (cards: UserCollectionCard[]): RecycleSelectio
       continue
     }
 
-    const surplus = card.quantity - TCG_MAX_COPIES
+    // Keep up to TCG_MAX_COPIES playable copies, and never queue a reserved copy.
+    const surplus = Math.min(card.quantity - TCG_MAX_COPIES, recyclableQuantity(card))
 
     if (surplus > 0) {
       selection[recycleKey(card)] = surplus
