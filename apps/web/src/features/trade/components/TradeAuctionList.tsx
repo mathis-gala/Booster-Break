@@ -7,12 +7,14 @@ import { cn } from '@/lib/utils'
 import { m } from '@/paraglide/messages'
 import { FoilCardImage } from '@/features/dashboard/components/FoilCardImage'
 import { describeAuctionRemaining } from '../lib/trade-utils'
+import { TradeNotOwnedBadge } from './TradeNotOwnedBadge'
 
 interface TradeAuctionListProps {
   auctions: TradeAuctionResponse[]
   selectedAuctionId?: string
   locale: SupportedLocale
   currentUserId?: string
+  ownedCardIds?: ReadonlySet<string>
   onSelectAuction: (auctionId: string) => void
   getRemainingMs: (expiresAt: string) => number
   onCancelAuction: (auctionId: string) => void
@@ -27,6 +29,7 @@ export function TradeAuctionList({
   selectedAuctionId,
   locale,
   currentUserId,
+  ownedCardIds,
   onSelectAuction,
   getRemainingMs,
   onCancelAuction,
@@ -61,6 +64,7 @@ export function TradeAuctionList({
           const isSelected = auction.id === selectedAuctionId
           const isOwnAuction = currentUserId !== undefined && auction.creatorId === currentUserId
           const remainingMs = getRemainingMs(auction.expiresAt)
+          const isNotOwned = ownedCardIds ? !ownedCardIds.has(auction.offeredCard.id) : false
 
           return (
             <article
@@ -77,6 +81,7 @@ export function TradeAuctionList({
               aria-label={m.trade_open_auction_aria({ cardName: auction.offeredCard.name })}
             >
               <div className="relative w-full rounded-md bg-card/40 p-2">
+                {isNotOwned ? <TradeNotOwnedBadge className="absolute left-1 top-1 z-10" /> : null}
                 <button
                   type="button"
                   className="w-full cursor-pointer text-left"

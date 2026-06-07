@@ -184,6 +184,7 @@ export class PokemonRepository {
     }
   }
 
+  // Owned card ids, deduped and finish-agnostic: a card held in any finish appears once.
   async listOwnedCardIds(userId: string): Promise<string[]> {
     const where = {
       userId,

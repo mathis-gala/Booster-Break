@@ -217,6 +217,8 @@
   "trade_auction_selected": "Sélectionnée",
   "trade_auction_open": "Ouvrir",
   "trade_open_auction_aria": "Ouvrir l’enchère de {cardName}",
+  "trade_card_not_owned": "Non possédée",
+  "trade_filter_only_not_owned": "Non possédées uniquement",
   "trade_cancel": "Annuler",
   "trade_cancel_auction_title": "Annuler l'enchère",
   "trade_cancel_auction_message": "Veux-tu annuler l'enchère de « {cardName} » ?",

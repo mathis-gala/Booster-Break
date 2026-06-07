@@ -217,6 +217,8 @@
   "trade_auction_selected": "Selected",
   "trade_auction_open": "Open",
   "trade_open_auction_aria": "Open auction for {cardName}",
+  "trade_card_not_owned": "Not owned",
+  "trade_filter_only_not_owned": "Only not owned",
   "trade_cancel": "Cancel",
   "trade_cancel_auction_title": "Cancel auction",
   "trade_cancel_auction_message": "Do you want to cancel the auction for \"{cardName}\"?",
