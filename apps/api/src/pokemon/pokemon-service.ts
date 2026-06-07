@@ -320,12 +320,20 @@ export class PokemonService {
       }
     }
 
-    await this.options.pokemonRepository.recycleCards(user.id, consumed, awardedCards)
+    const { newCardIds } = await this.options.pokemonRepository.recycleCards(
+      user.id,
+      consumed,
+      awardedCards,
+    )
+    const newCardIdSet = new Set(newCardIds)
 
     return {
       recycledCount: consumed.reduce((total, item) => total + item.quantity, 0),
       rewardCount: awardedCards.length,
-      awardedCards,
+      awardedCards: awardedCards.map((card) => ({
+        ...card,
+        isNew: newCardIdSet.has(card.id),
+      })),
     }
   }
 

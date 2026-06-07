@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useState } from 'react'
-import type { CardFinish, PokemonCardSummary } from '@tcg-collection/shared'
+import { SparklesIcon } from 'lucide-react'
+import type { AwardedCard, CardFinish } from '@tcg-collection/shared'
 
 import { formatRarity } from '@/features/i18n/rarity-labels'
 import { FoilCardImage } from '@/features/dashboard/components/FoilCardImage'
@@ -15,7 +16,7 @@ export interface RecycleConsumedCard {
 interface RecycleAnimationOverlayProps {
   /** Cards behind each reward — one batch per reward (see buildRecycleBatches). */
   batches: RecycleConsumedCard[][]
-  rewards: PokemonCardSummary[] | null
+  rewards: AwardedCard[] | null
   /** Maps a card's setId to its display name (the extension). */
   setNameById?: Record<string, string>
   onClose: () => void
@@ -92,7 +93,7 @@ function RecycleStep({
   onClose,
 }: {
   consumed: RecycleConsumedCard[]
-  reward: PokemonCardSummary | null
+  reward: AwardedCard | null
   index: number
   total: number
   isLast: boolean
@@ -198,7 +199,7 @@ function RewardReveal({
   onAdvance,
   onClose,
 }: {
-  card: PokemonCardSummary
+  card: AwardedCard
   index: number
   total: number
   isLast: boolean
@@ -218,18 +219,26 @@ function RewardReveal({
           aria-hidden="true"
         />
 
-        <article className="relative flex w-[min(38rem,92vw,44vh)] flex-col items-center motion-safe:animate-[recycle-reveal-pop_650ms_cubic-bezier(0.34,1.56,0.64,1)_both]">
-          {imageUrl ? (
-            <WebGlCardViewer
-              key={`${imageUrl}-${card.finish ?? 'normal'}`}
-              frontImageUrl={imageUrl}
-              alt={card.name}
-              finish={card.finish}
-              className="rounded-2xl drop-shadow-2xl"
-            />
-          ) : (
-            <div className="aspect-63/88 w-full rounded-2xl bg-muted" aria-hidden="true" />
-          )}
+        <article className="relative flex w-[min(44rem,94vw,52vh)] flex-col items-center motion-safe:animate-[recycle-reveal-pop_650ms_cubic-bezier(0.34,1.56,0.64,1)_both]">
+          <div className="relative w-full">
+            {imageUrl ? (
+              <WebGlCardViewer
+                key={`${imageUrl}-${card.finish ?? 'normal'}`}
+                frontImageUrl={imageUrl}
+                alt={card.name}
+                finish={card.finish}
+                className="rounded-2xl drop-shadow-2xl"
+              />
+            ) : (
+              <div className="aspect-63/88 w-full rounded-2xl bg-muted" aria-hidden="true" />
+            )}
+            {card.isNew ? (
+              <span className="new-card-badge-pulse absolute bottom-3 left-1/2 z-10 flex -translate-x-1/2 items-center gap-1.5 whitespace-nowrap rounded-full bg-amber-400 px-4 py-1.5 text-xs font-black uppercase tracking-wide text-amber-950 shadow-[0_8px_20px_-6px_rgba(245,158,11,0.55)] sm:text-sm">
+                <SparklesIcon className="size-3.5 shrink-0 sm:size-4" aria-hidden="true" />
+                {m.packs_card_new()}
+              </span>
+            ) : null}
+          </div>
           <p className="mt-3 max-w-full truncate text-lg font-black text-white">{card.name}</p>
           <p className="max-w-full truncate text-sm font-semibold text-white/70">{meta}</p>
         </article>

@@ -1,6 +1,6 @@
 import { useCallback, useMemo, useState } from 'react'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
-import type { PokemonCardSummary, UserCollectionCard } from '@tcg-collection/shared'
+import type { AwardedCard, UserCollectionCard } from '@tcg-collection/shared'
 import { RECYCLE_COST } from '@tcg-collection/shared'
 
 import { usePokemonSetsQueryOption } from '@/lib/queries/pokemon'
@@ -23,7 +23,7 @@ import {
 
 export interface RecycleAnimationState {
   batches: RecycleConsumedCard[][]
-  rewards: PokemonCardSummary[] | null
+  rewards: AwardedCard[] | null
 }
 
 /**

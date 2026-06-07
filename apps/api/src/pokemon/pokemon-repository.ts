@@ -411,10 +411,25 @@ export class PokemonRepository {
     userId: string,
     consumed: Array<{ cardId: string; finish: string; quantity: number }>,
     rewards: PokemonCardSummary[],
-  ): Promise<void> {
+  ): Promise<{ newCardIds: string[] }> {
     const now = new Date()
+    const newCardIds = new Set<string>()
 
     await this.db.$transaction(async (tx) => {
+      // Capture ownership before consuming or awarding, so a reward counts as
+      // "new" based on what the user held when they started recycling.
+      const previouslyOwned = await this.listOwnedCardIdsForCards(
+        tx,
+        userId,
+        rewards.map((card) => card.id),
+      )
+
+      for (const card of rewards) {
+        if (!previouslyOwned.has(card.id)) {
+          newCardIds.add(card.id)
+        }
+      }
+
       for (const item of consumed) {
         const where = {
           userId_cardId_finish: {
@@ -473,6 +488,8 @@ export class PokemonRepository {
         })
       }
     })
+
+    return { newCardIds: [...newCardIds] }
   }
 
   async getLatestPackOpening(userId: string): Promise<{ openedAt: Date } | undefined> {

@@ -143,12 +143,17 @@ export interface RecycleCardsRequest {
   locale?: SupportedLocale
 }
 
+export interface AwardedCard extends PokemonCardSummary {
+  /** True when the user did not already own this card before recycling. */
+  isNew: boolean
+}
+
 export interface RecycleCardsResponse {
   /** Total number of cards consumed across every rarity tier. */
   recycledCount: number
   /** Number of new cards crafted (one per {@link RECYCLE_COST} consumed). */
   rewardCount: number
-  awardedCards: PokemonCardSummary[]
+  awardedCards: AwardedCard[]
 }
 
 export type TradeAuctionStatus = 'active' | 'accepted' | 'cancelled' | 'expired'
