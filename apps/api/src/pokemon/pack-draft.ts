@@ -17,9 +17,8 @@ const UNCOMMON_RARITIES = ['Uncommon']
 const RARE_RARITIES = ['Rare']
 const REVERSE_FOIL_RARITIES = [...COMMON_RARITIES, ...UNCOMMON_RARITIES, ...RARE_RARITIES]
 
-// In Prismatic Evolutions (sv08.5) the ACE SPEC Rare replaces the first reverse
-// holo slot ~1 in 21 packs (~4.76%, TCGplayer 1,200-pack sample) and is additive:
-// the rare slot still yields its Double/Ultra Rare independently.
+// In Prismatic Evolutions (sv08.5) the ACE SPEC Rare replaces the first reverse holo
+// slot ~4.76% of the time (TCGplayer sample) and is additive: the rare slot still yields its own.
 const FIRST_FOIL_SLOT_RULES: ChanceRule[] = [
   {
     chance: 4.76,
