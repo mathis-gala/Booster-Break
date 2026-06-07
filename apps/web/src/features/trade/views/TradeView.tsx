@@ -110,9 +110,7 @@ export function TradeView() {
   const selectedAuctionSetCardsQuery = useQuery(
     usePokemonPreviewCardsQueryOption(selectedAuction?.offeredCard.setId),
   )
-  // Set of owned *card ids* (finish-agnostic): the /collection/owned-ids endpoint
-  // selects cardId from userCard + giftedUserCard and dedupes, so a card present in
-  // any finish (normal/holo/reverse_holo) appears exactly once.
+  // Finish-agnostic set of owned card ids (see listOwnedCardIds).
   const ownedCardIds = useMemo(
     () => (ownedCardIdsQuery.data ? new Set(ownedCardIdsQuery.data) : undefined),
     [ownedCardIdsQuery.data],
@@ -120,9 +118,7 @@ export function TradeView() {
 
   const canFilterOnlyNotOwned = Boolean(currentUserId)
   const isOnlyNotOwnedActive = showOnlyNotOwned && Boolean(ownedCardIds)
-  // "Only not owned" filters by card id, NOT by finish/print: an auction is hidden as
-  // soon as the user owns any finish of the offered card. The auction's
-  // offeredCardFinish is deliberately not compared.
+  // Hide an auction as soon as the user owns any finish of the offered card.
   const visibleAuctions =
     isOnlyNotOwnedActive && ownedCardIds
       ? auctionsFromList.filter((auction) => !ownedCardIds.has(auction.offeredCard.id))

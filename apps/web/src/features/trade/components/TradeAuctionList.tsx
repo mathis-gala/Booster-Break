@@ -64,10 +64,6 @@ export function TradeAuctionList({
           const isSelected = auction.id === selectedAuctionId
           const isOwnAuction = currentUserId !== undefined && auction.creatorId === currentUserId
           const remainingMs = getRemainingMs(auction.expiresAt)
-          // Ownership is card-level, NOT per finish/print: owning any finish
-          // (normal/holo/reverse_holo) of this card counts as owned, even when the
-          // auction offers a different finish. offeredCardFinish is intentionally
-          // ignored here because ownedCardIds is a set of card ids only.
           const isNotOwned = ownedCardIds ? !ownedCardIds.has(auction.offeredCard.id) : false
 
           return (
