@@ -50,9 +50,7 @@ export function SandboxView() {
       (sets.data ?? [])
         .filter((set) => Boolean(set.boosterImageUrl))
         .slice()
-        .sort((first, second) =>
-          second.releaseDate.localeCompare(first.releaseDate),
-        ) as SandboxSet[],
+        .sort(compareSetsByReleaseDateDesc) as SandboxSet[],
     [sets.data],
   )
 
@@ -133,4 +131,21 @@ export function SandboxView() {
       ) : null}
     </div>
   )
+}
+
+const compareSetsByReleaseDateDesc = (
+  first: PokemonSetSummary,
+  second: PokemonSetSummary,
+): number => getReleaseDateSortValue(second.releaseDate) - getReleaseDateSortValue(first.releaseDate)
+
+const getReleaseDateSortValue = (releaseDate: unknown): number => {
+  if (typeof releaseDate === 'string') {
+    return Date.parse(releaseDate) || 0
+  }
+
+  if (releaseDate instanceof Date) {
+    return releaseDate.getTime()
+  }
+
+  return 0
 }
