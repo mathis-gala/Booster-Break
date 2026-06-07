@@ -5,6 +5,7 @@ interface CollectionPageKeyParams {
   pageSize: number
   sort: CollectionSort
   source?: CollectionSource
+  setId?: string
   locale: SupportedLocale
 }
 
@@ -25,8 +26,12 @@ export const pokemonQueryKeys = {
   collection: {
     all: ['pokemon', 'collection'] as const,
     page: (params: CollectionPageKeyParams) => ['pokemon', 'collection', params] as const,
-    allCards: (locale: SupportedLocale, sort: CollectionSort, source?: CollectionSource) =>
-      ['pokemon', 'collection', 'all', locale, sort, source ?? 'all'] as const,
+    allCards: (
+      locale: SupportedLocale,
+      sort: CollectionSort,
+      source?: CollectionSource,
+      setId?: string,
+    ) => ['pokemon', 'collection', 'all', locale, sort, source ?? 'all', setId ?? 'all'] as const,
     ownedIds: () => ['pokemon', 'collection', 'owned-ids'] as const,
     packCount: (locale: SupportedLocale) =>
       ['pokemon', 'collection', 'pack-count', locale] as const,

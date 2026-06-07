@@ -111,6 +111,8 @@
   "collection_title": "Private collection",
   "collection_summary": "{totalCards} cards across {total} unique pulls.",
   "collection_search_label": "Search",
+  "collection_filter_set_label": "Set",
+  "collection_filter_all_sets": "All sets",
   "collection_empty": "Open a booster pack to start your collection.",
   "sort_recent": "Recent",
   "sort_quantity": "Quantity",

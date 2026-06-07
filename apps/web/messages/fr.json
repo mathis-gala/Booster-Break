@@ -111,6 +111,8 @@
   "collection_title": "Collection privée",
   "collection_summary": "{totalCards} cartes sur {total} tirages uniques.",
   "collection_search_label": "Rechercher",
+  "collection_filter_set_label": "Extension",
+  "collection_filter_all_sets": "Toutes les extensions",
   "collection_empty": "Ouvre un booster pour commencer ta collection.",
   "sort_recent": "Récent",
   "sort_quantity": "Quantité",

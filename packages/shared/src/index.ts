@@ -70,10 +70,17 @@ export interface CollectionPagination {
   pageCount: number
 }
 
+export interface CollectionSetOption {
+  id: string
+  name: string
+  count: number
+}
+
 export interface UserCollectionResponse {
   cards: UserCollectionCard[]
   pagination: CollectionPagination
   sort: CollectionSort
+  sets: CollectionSetOption[]
 }
 
 export interface OwnedCardIdsResponse {

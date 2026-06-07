@@ -1,7 +1,19 @@
-import { useState } from 'react'
-import type { CollectionSort, UserCollectionCard } from '@tcg-collection/shared'
+import { useMemo, useState } from 'react'
+import { ChevronDownIcon, SearchIcon } from 'lucide-react'
+import type {
+  CollectionSetOption,
+  CollectionSort,
+  UserCollectionCard,
+} from '@tcg-collection/shared'
 
 import { Button } from '@/components/ui/button'
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuRadioGroup,
+  DropdownMenuRadioItem,
+  DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu'
 import { m } from '@/paraglide/messages'
 import { CardImageDialog } from './CardImageDialog'
 import { CollectionCardItem } from './CollectionCardItem'
@@ -16,8 +28,11 @@ interface CollectionPanelProps {
   totalCards: number
   sort: CollectionSort
   searchQuery: string
+  sets: CollectionSetOption[]
+  selectedSetId?: string
   onSortChange: (sort: CollectionSort) => void
   onSearchChange: (query: string) => void
+  onSetChange: (setId: string | undefined) => void
   onPageChange: (page: number) => void
 }
 
@@ -50,12 +65,23 @@ export function CollectionPanel({
   totalCards,
   sort,
   searchQuery,
+  sets,
+  selectedSetId,
   onSortChange,
   onSearchChange,
+  onSetChange,
   onPageChange,
 }: CollectionPanelProps) {
   const [selectedCard, setSelectedCard] = useState<UserCollectionCard>()
   const sortActions = getSortActions()
+  const setNameById = useMemo(
+    () => new Map(sets.map((set) => [set.id, set.name])),
+    [sets],
+  )
+  const activeSet = sets.find((set) => set.id === selectedSetId)
+  const setTriggerLabel = activeSet
+    ? `${activeSet.name} (${activeSet.count})`
+    : m.collection_filter_all_sets()
 
   return (
     <>
@@ -67,26 +93,72 @@ export function CollectionPanel({
         }
       >
         <div className="space-y-4">
-          <div className="flex flex-wrap items-start justify-between gap-3">
+          <div className="flex flex-wrap items-start gap-x-8 gap-y-4 sm:justify-between">
             <div>
               <h2 className="text-lg font-black">{m.collection_title()}</h2>
               <p className="text-sm text-muted-foreground">
                 {m.collection_summary({ totalCards, total })}
               </p>
             </div>
-            <div className="flex w-full min-w-[14rem] flex-wrap items-center justify-end gap-2 sm:w-auto">
-              <label className="mt-0 flex flex-1 min-w-[10rem] items-center gap-2 sm:w-auto">
-                <span className="shrink-0 text-xs font-black uppercase tracking-wide text-muted-foreground">
-                  {m.collection_search_label()}
-                </span>
-                <input
-                  value={searchQuery}
-                  onChange={(event) => onSearchChange(event.target.value)}
-                  className="w-full rounded-md border bg-background px-2 py-2 text-sm placeholder:text-xs sm:w-auto"
-                  placeholder={m.trade_search_by_pokemon_placeholder()}
-                  aria-label={m.trade_search_by_pokemon_aria()}
-                />
-              </label>
+            <div className="flex w-full flex-col gap-3 sm:w-auto sm:flex-row sm:flex-wrap sm:items-center sm:justify-start sm:gap-4">
+              <div className="flex w-full flex-col gap-2 sm:h-9 sm:w-auto sm:flex-row sm:items-center sm:overflow-hidden sm:rounded-md sm:border sm:bg-background sm:transition-colors sm:focus-within:border-foreground sm:focus-within:ring-2 sm:focus-within:ring-foreground/15">
+                <div className="flex h-9 w-full items-center gap-2 rounded-md border bg-background px-2.5 transition-colors focus-within:border-foreground focus-within:ring-2 focus-within:ring-foreground/15 sm:h-full sm:w-auto sm:flex-none sm:rounded-none sm:border-0 sm:px-0 sm:pl-2.5 sm:focus-within:ring-0">
+                  <SearchIcon
+                    aria-hidden="true"
+                    className="size-4 shrink-0 text-muted-foreground"
+                  />
+                  <input
+                    value={searchQuery}
+                    onChange={(event) => onSearchChange(event.target.value)}
+                    className="min-w-0 flex-1 bg-transparent text-sm placeholder:text-xs focus:outline-none sm:w-28"
+                    placeholder={m.trade_search_by_pokemon_placeholder()}
+                    aria-label={m.trade_search_by_pokemon_aria()}
+                  />
+                </div>
+                <div aria-hidden="true" className="hidden h-5 w-px shrink-0 bg-border sm:block" />
+                <DropdownMenu modal={false}>
+                  <DropdownMenuTrigger
+                    aria-label={m.collection_filter_set_label()}
+                    className="flex h-9 w-full min-w-0 cursor-pointer items-center justify-between gap-2 rounded-md border bg-background px-2.5 text-sm font-medium transition-colors hover:bg-muted focus-visible:border-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-foreground/15 sm:h-full sm:w-48 sm:flex-none sm:rounded-l-none sm:rounded-r-md sm:border-0 sm:focus-visible:ring-0"
+                  >
+                    <span className="truncate">{setTriggerLabel}</span>
+                    <ChevronDownIcon
+                      aria-hidden="true"
+                      className="size-4 shrink-0 text-muted-foreground"
+                    />
+                  </DropdownMenuTrigger>
+                  <DropdownMenuContent
+                    align="start"
+                    sideOffset={6}
+                    className="max-h-72 w-auto min-w-(--anchor-width) max-w-64"
+                  >
+                    <DropdownMenuRadioGroup
+                      value={selectedSetId ?? ''}
+                      onValueChange={(value) => onSetChange(value || undefined)}
+                    >
+                      <DropdownMenuRadioItem
+                        value=""
+                        closeOnClick
+                        label={m.collection_filter_all_sets()}
+                        className="cursor-pointer focus:bg-muted focus:text-foreground"
+                      >
+                        {m.collection_filter_all_sets()}
+                      </DropdownMenuRadioItem>
+                      {sets.map((set) => (
+                        <DropdownMenuRadioItem
+                          key={set.id}
+                          value={set.id}
+                          closeOnClick
+                          label={`${set.name} (${set.count})`}
+                          className="cursor-pointer focus:bg-muted focus:text-foreground"
+                        >
+                          {set.name} ({set.count})
+                        </DropdownMenuRadioItem>
+                      ))}
+                    </DropdownMenuRadioGroup>
+                  </DropdownMenuContent>
+                </DropdownMenu>
+              </div>
               <div className="flex flex-wrap gap-2">
                 {sortActions.map((action) => (
                   <Button
@@ -115,6 +187,7 @@ export function CollectionPanel({
               <CollectionCardItem
                 key={`${card.id}-${card.finish ?? 'normal'}`}
                 card={card}
+                setName={setNameById.get(card.setId)}
                 onSelect={() => setSelectedCard(card)}
                 className="focus-visible:ring-2 focus-visible:ring-ring"
               />
