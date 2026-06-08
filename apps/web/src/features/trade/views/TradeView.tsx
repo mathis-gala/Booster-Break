@@ -482,6 +482,7 @@ export function TradeView() {
                 <TradeOffersPanel
                   auction={selectedAuction}
                   userId={currentUserId}
+                  ownedCardIds={ownedCardIds}
                   onCancelOffer={(offerId) => cancelOfferMutation.mutate(offerId)}
                   onAcceptOffer={(offerId) => {
                     if (!selectedAuctionId) {
@@ -582,6 +583,7 @@ export function TradeView() {
       {isTradeAcceptedNotificationOpen && acceptedOffer && acceptedAuction ? (
         <TradeNotificationModal
           notification={buildAcceptedOfferNotification(acceptedAuction, acceptedOffer)}
+          ownedCardIds={ownedCardIds}
           onClose={closeAcceptTradeNotification}
         />
       ) : null}

@@ -1,4 +1,4 @@
-import { useSyncExternalStore } from 'react'
+import { useMemo, useSyncExternalStore } from 'react'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { toast } from '@/features/toast/toast-store'
 import { m } from '@/paraglide/messages'
@@ -12,6 +12,7 @@ import type {
 import { refreshTradeMarketQueries } from '../hooks/useTradeQueries'
 import { useTradeNotificationViewedMutationOption } from '@/lib/mutations/trade'
 import { useCurrentUserQueryOption } from '@/lib/queries/auth'
+import { useOwnedCardIdsQueryOption } from '@/lib/queries/pokemon'
 import { useTradeNotificationsQueryOption } from '@/lib/queries/trade'
 import { tradeQueryKeys } from '../lib/query-keys'
 import { TradeNotificationModal } from './TradeNotificationModal'
@@ -69,6 +70,11 @@ export function TradeNotificationManager() {
 
   const notifications = isAuthenticated ? (notificationsQuery.data?.notifications ?? []) : []
   const activeNotification = notifications[0]
+  const ownedCardIdsQuery = useQuery(useOwnedCardIdsQueryOption(Boolean(activeNotification)))
+  const ownedCardIds = useMemo(
+    () => (ownedCardIdsQuery.data ? new Set(ownedCardIdsQuery.data) : undefined),
+    [ownedCardIdsQuery.data],
+  )
 
   if (!activeNotification) {
     return null
@@ -100,6 +106,7 @@ export function TradeNotificationManager() {
   return (
     <TradeNotificationModal
       notification={activeNotification}
+      ownedCardIds={ownedCardIds}
       onClose={() => closeNotification(activeNotification)}
     />
   )
