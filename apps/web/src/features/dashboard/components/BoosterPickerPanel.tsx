@@ -16,6 +16,8 @@ interface BoosterPickerPanelProps {
   loadingLabel?: string
   emptyLabel?: string
   showCollectionCount?: boolean
+  ownedSetPullCounts?: ReadonlyMap<string, number>
+  hideSetCardTitle?: boolean
 }
 
 export function BoosterPickerPanel({
@@ -30,6 +32,8 @@ export function BoosterPickerPanel({
   loadingLabel,
   emptyLabel,
   showCollectionCount = true,
+  ownedSetPullCounts,
+  hideSetCardTitle = false,
 }: BoosterPickerPanelProps) {
   return (
     <div className="flex flex-col justify-between gap-5 rounded-lg bg-background p-5">
@@ -60,6 +64,8 @@ export function BoosterPickerPanel({
           setsIsPending={setsIsPending}
           loadingLabel={loadingLabel}
           emptyLabel={emptyLabel}
+          ownedSetPullCounts={ownedSetPullCounts}
+          hideSetCardTitle={hideSetCardTitle}
           onPreviewSet={onPreviewSet}
           onSelectSet={onSelectSet}
         />
@@ -74,6 +80,8 @@ interface BoosterChoiceGridProps {
   setsIsPending: boolean
   loadingLabel?: string
   emptyLabel?: string
+  ownedSetPullCounts?: ReadonlyMap<string, number>
+  hideSetCardTitle: boolean
   onPreviewSet: (setId: string) => void
   onSelectSet: (setId: string) => void
 }
@@ -84,6 +92,8 @@ function BoosterChoiceGrid({
   setsIsPending,
   loadingLabel,
   emptyLabel,
+  ownedSetPullCounts,
+  hideSetCardTitle,
   onPreviewSet,
   onSelectSet,
 }: BoosterChoiceGridProps) {
@@ -99,6 +109,8 @@ function BoosterChoiceGrid({
               key={set.id}
               isActive={activeSetId === set.id}
               set={set}
+              ownedSetPullCount={ownedSetPullCounts?.get(set.id) ?? 0}
+              hideSetTitle={hideSetCardTitle}
               onPreviewSet={onPreviewSet}
               onSelectSet={onSelectSet}
             />
@@ -121,13 +133,28 @@ function BoosterChoiceGrid({
 interface BoosterChoiceCardProps {
   isActive: boolean
   set: PokemonSetSummary
+  ownedSetPullCount: number
+  hideSetTitle: boolean
   onPreviewSet: (setId: string) => void
   onSelectSet: (setId: string) => void
 }
 
-function BoosterChoiceCard({ isActive, set, onPreviewSet, onSelectSet }: BoosterChoiceCardProps) {
+function BoosterChoiceCard({
+  isActive,
+  set,
+  ownedSetPullCount,
+  hideSetTitle,
+  onPreviewSet,
+  onSelectSet,
+}: BoosterChoiceCardProps) {
   const selectSet = () => onSelectSet(set.id)
   const previewImageUrl = set.logoUrl ?? set.symbolUrl ?? set.boosterImageUrl
+  const imageFrameClassName = hideSetTitle
+    ? 'pointer-events-none relative z-10 flex h-20 items-center justify-center overflow-hidden rounded-md bg-background'
+    : 'pointer-events-none relative z-10 flex h-16 items-center justify-center overflow-hidden rounded-md bg-background'
+  const imageClassName = hideSetTitle
+    ? 'max-h-14 max-w-[90%] object-contain'
+    : 'max-h-11 max-w-[86%] object-contain'
 
   return (
     <div
@@ -145,9 +172,9 @@ function BoosterChoiceCard({ isActive, set, onPreviewSet, onSelectSet }: Booster
       }}
     >
       <span className="sr-only">{m.packs_select_aria({ name: set.name })}</span>
-      <div className="pointer-events-none relative z-10 flex h-16 items-center justify-center overflow-hidden rounded-md bg-background">
+      <div className={imageFrameClassName}>
         {previewImageUrl ? (
-          <img src={previewImageUrl} alt="" className="max-h-11 max-w-[86%] object-contain" />
+          <img src={previewImageUrl} alt="" className={imageClassName} />
         ) : (
           <span className="text-xs font-black text-muted-foreground">
             {m.packs_pokemon_fallback()}
@@ -155,9 +182,15 @@ function BoosterChoiceCard({ isActive, set, onPreviewSet, onSelectSet }: Booster
         )}
       </div>
       <div className="relative z-10 mt-3 flex items-center justify-between gap-2">
-        <p className="pointer-events-none line-clamp-2 min-w-0 text-sm font-black leading-5">
-          {set.name}
-        </p>
+        {hideSetTitle ? (
+          <p className="pointer-events-none line-clamp-2 min-w-0 text-sm font-black leading-5 text-muted-foreground tabular-nums">
+            {m.packs_owned_pulls({ owned: ownedSetPullCount, total: set.total })}
+          </p>
+        ) : (
+          <p className="pointer-events-none line-clamp-2 min-w-0 text-sm font-black leading-5">
+            {set.name}
+          </p>
+        )}
         <div className="relative shrink-0">
           <button
             className={buttonVariants({
