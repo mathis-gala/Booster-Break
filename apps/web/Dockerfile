@@ -19,6 +19,7 @@ ENV VITE_BASE_PATH=/
 ENV VITE_API_ORIGIN=
 ENV VITE_LOCAL_API_ORIGIN=
 
+RUN bun --cwd apps/api prisma:generate
 RUN bun --cwd apps/web build
 
 FROM nginx:1.29-alpine AS runtime
