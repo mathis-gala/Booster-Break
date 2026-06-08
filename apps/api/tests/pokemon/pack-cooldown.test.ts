@@ -1,6 +1,6 @@
 import { describe, expect, test } from 'bun:test'
 
-import { consumeBoosterCharge, getBoosterChargeStatus } from './pack-cooldown'
+import { consumeBoosterCharge, getBoosterChargeStatus } from '../../src/pokemon/pack-cooldown'
 
 const HOUR = 60 * 60
 const BASE = 2 * HOUR
