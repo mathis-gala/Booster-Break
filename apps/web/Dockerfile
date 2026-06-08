@@ -12,6 +12,7 @@ RUN bun install --frozen-lockfile
 FROM deps AS build
 
 COPY packages/shared packages/shared
+COPY apps/api apps/api
 COPY apps/web apps/web
 
 ENV VITE_BASE_PATH=/
