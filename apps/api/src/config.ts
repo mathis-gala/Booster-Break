@@ -9,6 +9,7 @@ export interface ApiConfig {
   secureCookies: boolean
   magicLinkAdminSecret?: string
   magicLinkTtlDays: number
+  devAuthEnabled: boolean
   slackClientId?: string
   slackClientSecret?: string
   slackRedirectUri: string
@@ -21,6 +22,7 @@ export const getConfig = (): ApiConfig => {
   const webAppUrl = Bun.env.WEB_APP_URL ?? Bun.env.WEB_ORIGIN ?? 'http://127.0.0.1:5173'
   const webOrigin = toOrigin(Bun.env.WEB_ORIGIN ?? webAppUrl)
   const secureCookies = Bun.env.SECURE_COOKIES === 'true' || apiOrigin.startsWith('https://')
+  const devAuthEnabled = Bun.env.DEV_AUTH_ENABLED ? Bun.env.DEV_AUTH_ENABLED === 'true' : false
 
   return {
     port: Number(Bun.env.PORT ?? 3100),
@@ -35,6 +37,7 @@ export const getConfig = (): ApiConfig => {
     magicLinkTtlDays: Number.isFinite(Number(Bun.env.MAGIC_LINK_TTL_DAYS))
       ? Math.max(1, Number(Bun.env.MAGIC_LINK_TTL_DAYS))
       : 30,
+    devAuthEnabled,
     slackClientId: Bun.env.SLACK_CLIENT_ID,
     slackClientSecret: Bun.env.SLACK_CLIENT_SECRET,
     slackRedirectUri: Bun.env.SLACK_REDIRECT_URI ?? `${apiOrigin}/auth/slack/callback`,

@@ -108,6 +108,7 @@ if (import.meta.main) {
   console.log(`Web origin ${config.webOrigin}`)
   console.log(`Web app URL ${config.webAppUrl}`)
   console.log(`Slack redirect ${config.slackRedirectUri}`)
+  console.log(`Development auth ${config.devAuthEnabled ? 'enabled' : 'disabled'}`)
 }
 
 export type App = typeof app
