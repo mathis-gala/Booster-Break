@@ -5,7 +5,11 @@ import type { PokemonCardSummary, PokemonSetSummary } from '@tcg-collection/shar
 import { Button } from '@/components/ui/button'
 import { cn } from '@/lib/utils'
 import { formatRarity } from '@/features/i18n/rarity-labels'
-import { groupCardsByRarity, getRarityChanceLabel } from '../lib/pack-rarity'
+import {
+  buildRarityChanceLookup,
+  groupCardsByRarity,
+  getRarityChanceLabel,
+} from '../lib/pack-rarity'
 import { m } from '@/paraglide/messages'
 import { CardImageDialog } from './CardImageDialog'
 
@@ -29,6 +33,7 @@ export function BoosterPreviewDialog({
   const [selectedPreviewCard, setSelectedPreviewCard] = useState<PokemonCardSummary>()
   const [highlightOwned, setHighlightOwned] = useState(false)
   const previewCardsByRarity = useMemo(() => groupCardsByRarity(cards), [cards])
+  const rarityChanceLookup = useMemo(() => buildRarityChanceLookup(cards), [cards])
   const canHighlightOwned = Boolean(ownedCardIds) && cards.length > 0
   const ownedCount = useMemo(
     () => (ownedCardIds ? cards.filter((card) => ownedCardIds.has(card.id)).length : 0),
@@ -103,7 +108,7 @@ export function BoosterPreviewDialog({
                     {formatRarity(rarity)}
                     {showRarityChanceLabels ? (
                       <span className="ml-2 text-xs font-black text-muted-foreground">
-                        {getRarityChanceLabel(rarity, cards)}
+                        {getRarityChanceLabel(rarity, rarityChanceLookup)}
                       </span>
                     ) : null}
                   </h4>

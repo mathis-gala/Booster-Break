@@ -1,5 +1,10 @@
-import type { PokemonCardSummary } from '@tcg-collection/shared'
-import { getPackRarityChance, pokemonRarityOrder } from '@tcg-collection/shared'
+import type { PackRarityChance, PokemonCardSummary } from '@tcg-collection/shared'
+import {
+  PACK_SLOT_COUNTS,
+  getPackRarityChances,
+  normalizeRarity,
+  pokemonRarityOrder,
+} from '@tcg-collection/shared'
 import { m } from '@/paraglide/messages'
 
 const rarityOrder: readonly string[] = pokemonRarityOrder
@@ -38,16 +43,27 @@ const getNormalizedPreviewRarity = (rarity: string | undefined): string => {
   return rarity && rarity !== 'None' ? rarity : 'Other'
 }
 
-export const getRarityChanceLabel = (rarity: string, cards: PokemonCardSummary[]): string => {
+// Builds a normalized-rarity -> per-pack chance (%) lookup from the set's cards.
+// Compute this ONCE (memoized) and pass it to getRarityChanceLabel per rarity group.
+export const buildRarityChanceLookup = (cards: PokemonCardSummary[]): Map<string, number> => {
+  const chances: PackRarityChance[] = getPackRarityChances(cards)
+
+  return new Map(chances.map((entry) => [normalizeRarity(entry.rarity), entry.chancePerPack]))
+}
+
+export const getRarityChanceLabel = (
+  rarity: string,
+  chanceByRarity: Map<string, number>,
+): string => {
   if (rarity === 'Common') {
-    return m.packs_slots_per_pack({ count: 4 })
+    return m.packs_slots_per_pack({ count: PACK_SLOT_COUNTS.common })
   }
 
   if (rarity === 'Uncommon') {
-    return m.packs_slots_per_pack({ count: 3 })
+    return m.packs_slots_per_pack({ count: PACK_SLOT_COUNTS.uncommon })
   }
 
-  const packChance = getPackRarityChance(rarity, cards)
+  const packChance = chanceByRarity.get(normalizeRarity(rarity)) ?? 0
 
   return m.packs_rate_per_pack({ rate: `${formatChance(packChance)}%` })
 }

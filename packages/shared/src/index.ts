@@ -395,11 +395,21 @@ export type TradeErrorCode =
   | 'notification_not_found'
   | 'notification_not_owned'
 
+export type { PackChanceRule, PackRarityChance, PackSlot, PackSlotFallback } from './pokemon-rarity'
 export {
+  COMMON_RARITIES,
+  FIRST_FOIL_SLOT_RULES,
+  PACK_CARD_COUNT,
+  PACK_SLOTS,
+  PACK_SLOT_COUNTS,
+  RARE_RARITIES,
+  RARE_SLOT_RULES,
+  REVERSE_FOIL_RARITIES,
+  SECOND_FOIL_SLOT_RULES,
+  UNCOMMON_RARITIES,
   getFinishRank,
-  getPackRarityChance,
+  getPackRarityChances,
   getRarityRank,
-  getRarityWeight,
   normalizeRarity,
   isRareOrBetter,
   pokemonRarityOrder,
