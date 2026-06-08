@@ -128,10 +128,6 @@ export type TradeOfferWithAuctionPayload = Prisma.TradeOfferGetPayload<{
   include: typeof tradeOfferWithAuctionAndCardsInclude
 }>
 
-export type TradeNotificationEntityPayload = Prisma.TradeNotificationGetPayload<{
-  select: typeof tradeNotificationSelect
-}>
-
 export type TradeAuctionWithOffersPayload = Prisma.TradeAuctionGetPayload<{
   include: typeof tradeAuctionCardInclude & typeof tradeAuctionWithOffersInclude
 }>

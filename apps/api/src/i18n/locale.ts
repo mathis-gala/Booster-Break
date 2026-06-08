@@ -1,4 +1,4 @@
-import { DEFAULT_LOCALE, supportedLocales, type SupportedLocale } from '@tcg-collection/shared'
+import { DEFAULT_LOCALE, supportedLocaleValues, type SupportedLocale } from '@tcg-collection/shared'
 import { Elysia } from 'elysia'
 
 export const localePlugin = new Elysia({ name: 'locale' })
@@ -13,5 +13,5 @@ export const resolveLocaleOverride = (
 ): SupportedLocale => preferredLocale ?? locale
 
 const isSupportedLocale = (locale: string | undefined): locale is SupportedLocale => {
-  return supportedLocales.includes(locale as SupportedLocale)
+  return supportedLocaleValues.includes(locale as SupportedLocale)
 }

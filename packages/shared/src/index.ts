@@ -2,7 +2,6 @@ import { normalizeRarity } from './pokemon-rarity'
 
 export const supportedLocaleValues = ['fr', 'en'] as const
 export type SupportedLocale = (typeof supportedLocaleValues)[number]
-export const supportedLocales = supportedLocaleValues
 export const DEFAULT_LOCALE: SupportedLocale = 'fr'
 
 export interface HealthResponse {

@@ -1,5 +1,4 @@
 import { treaty } from '@elysiajs/eden'
-import type { Treaty } from '@elysiajs/eden'
 import type { App } from '../../../api/src/index'
 
 import { toast } from '@/features/toast/toast-store'
@@ -24,8 +23,6 @@ export const api = treaty<App>(activeApiOrigin || '/api', {
     'x-locale': getLocale(),
   }),
 })
-
-export type Eden = Treaty.Create<App>
 
 async function fetchWithFallback(input: RequestInfo | URL, init?: RequestInit): Promise<Response> {
   const requestPath = getRequestPath(input)

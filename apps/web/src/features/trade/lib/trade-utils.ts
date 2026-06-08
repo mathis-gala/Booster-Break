@@ -8,8 +8,6 @@ import type {
 import { matchesTradeConstraints } from '@tcg-collection/shared'
 import { DEFAULT_LOCALE } from '@tcg-collection/shared'
 import { m } from '@/paraglide/messages'
-import { formatCardFinish } from '@/features/dashboard/lib/card-format'
-import { formatRarity } from '@/features/i18n/rarity-labels'
 
 export const MAX_ACTIVE_AUCTIONS_PER_USER = 3
 export const MAX_PENDING_OFFERS_PER_AUCTION_BY_USER = 5
@@ -122,41 +120,6 @@ export const describeAuctionRemaining = (
   return parts.join(' ')
 }
 
-export const summarizeTradeRequirements = (requirements: AuctionRequirements = {}): string => {
-  const { setIds, rarities, types, finishes } = requirements
-  const tokens = [
-    ...(setIds?.map((setId) => `${m.trade_requirement_set_label()}: ${setId}`) ?? []),
-    ...(rarities?.map(
-      (rarity) => `${m.trade_requirement_rarity_label()}: ${formatRarity(rarity)}`,
-    ) ?? []),
-    ...(types?.map((type) => `${m.trade_requirement_type_label()}: ${formatTradeType(type)}`) ??
-      []),
-    ...(finishes?.map(
-      (finish) => `${m.trade_requirement_finish_label()}: ${formatCardFinish(finish)}`,
-    ) ?? []),
-  ]
-
-  return tokens.length > 0 ? tokens.join(', ') : m.trade_any_card()
-}
-
-export const summarizeTradeFilters = (filters: AuctionFilters = {}): string => {
-  const { excludedSetIds, excludedRarities, excludedTypes, excludedFinishes } = filters
-
-  const tokens = [
-    ...(excludedSetIds?.map((setId) => `${m.trade_filter_set_label()}: ${setId}`) ?? []),
-    ...(excludedRarities?.map(
-      (rarity) => `${m.trade_filter_rarity_label()}: ${formatRarity(rarity)}`,
-    ) ?? []),
-    ...(excludedTypes?.map((type) => `${m.trade_filter_type_label()}: ${formatTradeType(type)}`) ??
-      []),
-    ...(excludedFinishes?.map(
-      (finish) => `${m.trade_filter_finish_label()}: ${formatCardFinish(finish)}`,
-    ) ?? []),
-  ]
-
-  return tokens.length > 0 ? tokens.join(', ') : m.trade_no_restriction()
-}
-
 export const offerCardKey = (cardId: string, finish: CardFinish | null | undefined): string => {
   return `${cardId}:${finish ?? 'normal'}`
 }
@@ -181,6 +144,3 @@ export const cardMatchesAuctionFilters = (
     requirements,
     filters,
   )
-
-export { formatCardFinish }
-export { formatRarity }

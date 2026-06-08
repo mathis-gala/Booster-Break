@@ -118,5 +118,3 @@ export function TradeBadge({ children, kind = 'default', value = '', className }
     </span>
   )
 }
-
-export type { TradeBadgeKind }
