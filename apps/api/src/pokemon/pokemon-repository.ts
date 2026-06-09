@@ -35,6 +35,18 @@ type CollectionInventoryCard = Parameters<typeof toCardSummary>[0] & {
   set: CollectionInventorySet | null
 }
 
+export type PokemonRepositoryError = 'pack_open_cooldown'
+
+export class PokemonRepositoryErrorException extends Error {
+  constructor(
+    public readonly code: PokemonRepositoryError,
+    message?: string,
+  ) {
+    super(message)
+    this.name = 'PokemonRepositoryErrorException'
+  }
+}
+
 type CollectionInventoryRow = {
   cardId: string
   finish: string
@@ -281,12 +293,35 @@ export class PokemonRepository {
     userId: string,
     setId: string,
     cards: PokemonCardSummary[],
+    cooldownSeconds: number,
   ): Promise<{ openingId: string; newCardIds: string[] }> {
     const openingId = crypto.randomUUID()
     const openedAt = new Date()
     const newCardIds = new Set<string>()
 
     await this.db.$transaction(async (tx) => {
+      await tx.$executeRaw`SELECT pg_advisory_xact_lock(hashtext(${`pack-opening:${userId}`}))`
+
+      const latestOpening = await tx.packOpening.findFirst({
+        where: {
+          userId,
+        },
+        orderBy: {
+          openedAt: 'desc',
+        },
+        select: {
+          openedAt: true,
+        },
+      })
+
+      if (latestOpening) {
+        const nextOpenAt = new Date(latestOpening.openedAt.getTime() + cooldownSeconds * 1000)
+
+        if (nextOpenAt > openedAt) {
+          throw new PokemonRepositoryErrorException('pack_open_cooldown')
+        }
+      }
+
       await tx.packOpening.create({
         data: {
           id: openingId,
