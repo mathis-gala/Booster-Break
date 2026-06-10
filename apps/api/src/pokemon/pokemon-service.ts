@@ -22,6 +22,7 @@ import { drawPokemonPackCards } from './pack-draft'
 import { PokemonCatalogSyncService } from './pokemon-catalog-sync-service'
 import { ScrydexSealedClient } from './scrydex-sealed-client'
 import { TcgDexClient } from './tcgdex-client'
+import { PokemonRepositoryErrorException } from './pokemon-repository'
 
 export interface PokemonServiceOptions {
   authService: AuthService
@@ -204,17 +205,32 @@ export class PokemonService {
       }
     }
 
-    const { openingId, newCardIds } = await this.options.pokemonRepository.recordPackOpening(
-      user.id,
-      set.id,
-      cards,
-    )
-    const newCardIdSet = new Set(newCardIds)
+    try {
+      const { openingId, newCardIds } = await this.options.pokemonRepository.recordPackOpening(
+        user.id,
+        set.id,
+        cards,
+        PACK_OPEN_COOLDOWN_SECONDS,
+      )
 
-    return {
-      openingId,
-      set,
-      cards: cards.map((card) => ({ ...card, isNew: newCardIdSet.has(card.id) })),
+      const newCardIdSet = new Set(newCardIds)
+
+      return {
+        openingId,
+        set,
+        cards: cards.map((card) => ({ ...card, isNew: newCardIdSet.has(card.id) })),
+      }
+    } catch (error) {
+      if (error instanceof PokemonRepositoryErrorException) {
+        const updatedPackOpenStatus = await this.getPackOpenStatusForUser(user.id)
+
+        return {
+          error: 'pack_cooldown',
+          message: `Next booster available in ${updatedPackOpenStatus.cooldownSeconds}s.`,
+        }
+      }
+
+      throw error
     }
   }
 
