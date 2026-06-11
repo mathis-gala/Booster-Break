@@ -288,8 +288,6 @@ export class PokemonRepository {
     const newCardIds = new Set<string>()
 
     await this.db.$transaction(async (tx) => {
-      // Lock the user row before reading the anchor so two concurrent opens can't both pass the
-      // cooldown gate and over-spend charges; the service's pre-check is racy on its own.
       const lockedRows = await tx.$queryRaw<{ booster_cooldown_anchor: Date | null }[]>`
         SELECT "booster_cooldown_anchor" FROM "users" WHERE "id" = ${userId} FOR UPDATE
       `

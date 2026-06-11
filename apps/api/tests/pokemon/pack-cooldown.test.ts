@@ -22,7 +22,6 @@ describe('getBoosterChargeStatus', () => {
     expect(getBoosterChargeStatus(anchor, at(1), BASE, 3).availableBoosters).toBe(0)
     expect(getBoosterChargeStatus(anchor, at(2), BASE, 3).availableBoosters).toBe(1)
     expect(getBoosterChargeStatus(anchor, at(6), BASE, 3).availableBoosters).toBe(3)
-    // 5 charges accrued but capped at 3 + 1.
     expect(getBoosterChargeStatus(anchor, at(10), BASE, 3).availableBoosters).toBe(4)
     expect(getBoosterChargeStatus(anchor, at(20), BASE, 3).availableBoosters).toBe(4)
   })
@@ -50,7 +49,6 @@ describe('consumeBoosterCharge', () => {
   })
 
   test('opening after a long wait leaves the banked extras available', () => {
-    // Waited 8h with cap of 3 extra → 4 charges. Open three back-to-back, then cooldown returns.
     let anchor = at(0)
     const now = at(8)
 
@@ -69,7 +67,6 @@ describe('consumeBoosterCharge', () => {
   })
 
   test('surplus beyond the cap is discarded, not banked', () => {
-    // Waited 100h but cap is 3 extra (4 charges). Only 4 quick opens, then full cooldown.
     let anchor = at(0)
     const now = at(100)
 
@@ -84,7 +81,6 @@ describe('consumeBoosterCharge', () => {
   })
 
   test('maxOverload of 1 reproduces the original "one extra booster" behaviour', () => {
-    // 2h base, waited 6h: open the ready one plus exactly one banked extra, then reset to base.
     let anchor = at(0)
     const now = at(6)
 

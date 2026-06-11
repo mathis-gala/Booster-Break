@@ -215,7 +215,6 @@ export class PokemonService {
         cards,
       ))
     } catch (error) {
-      // Lost the race for the last charge between the pre-check and the locked write.
       if (error instanceof PackCooldownError) {
         return { error: 'pack_cooldown', message: error.message }
       }
