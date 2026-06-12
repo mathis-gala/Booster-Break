@@ -30,6 +30,7 @@ interface PackStageProps {
   onPreviewSet: (setId: string) => void
   onClosePreview: () => void
   collectionCount: number
+  ownedSetPullCounts?: ReadonlyMap<string, number>
   previewOwnedCardIds?: ReadonlySet<string>
 }
 
@@ -52,6 +53,7 @@ export function PackStage({
   onPreviewSet,
   onClosePreview,
   collectionCount,
+  ownedSetPullCounts,
   previewOwnedCardIds,
 }: PackStageProps) {
   const [selectedSetId, setSelectedSetId] = useState<string>()
@@ -90,6 +92,8 @@ export function PackStage({
           setsIsPending={setsIsPending}
           onPreviewSet={onPreviewSet}
           onSelectSet={setSelectedSetId}
+          ownedSetPullCounts={ownedSetPullCounts}
+          hideSetCardTitle
         />
       </div>
 

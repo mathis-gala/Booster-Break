@@ -1,8 +1,10 @@
-import { useState, type MouseEvent } from 'react'
-import { LogOutIcon, UserIcon } from 'lucide-react'
+import { useId, useState, type FormEvent, type MouseEvent } from 'react'
+import { useMutation, useQueryClient } from '@tanstack/react-query'
+import { LogInIcon, LogOutIcon, UserIcon } from 'lucide-react'
 import type { AuthMeResponse } from '@tcg-collection/shared'
 
 import { toast } from '@/features/toast/toast-store'
+import { useDevLoginMutationOption } from '@/lib/mutations/auth'
 import { cn } from '@/lib/utils'
 import { m } from '@/paraglide/messages'
 import { fetchHealth, getApiUrl } from '../lib/api'
@@ -58,6 +60,10 @@ export function AuthNavCard({
   }
 
   if (!auth?.authenticated) {
+    if (isDevelopmentAuthVisible) {
+      return <DevelopmentAuthForm className={className} />
+    }
+
     return (
       <a
         href={getApiUrl('/auth/slack/start')}
@@ -98,7 +104,7 @@ export function AuthNavCard({
         <div className="min-w-0">
           <p className="truncate text-sm font-black">{auth.user.displayName ?? auth.user.pseudo}</p>
           <p className="truncate text-xs font-medium text-sidebar-foreground/70">
-            {m.auth_slack_player()}
+            {m.auth_player()}
           </p>
         </div>
       </div>
@@ -115,3 +121,64 @@ export function AuthNavCard({
     </div>
   )
 }
+
+function DevelopmentAuthForm({ className }: { className?: string }) {
+  const [devPseudo, setDevPseudo] = useState('')
+  const devPseudoInputId = useId()
+  const queryClient = useQueryClient()
+  const devLoginMutation = useMutation(useDevLoginMutationOption(queryClient))
+
+  const handleDevLoginSubmit = (event: FormEvent<HTMLFormElement>) => {
+    event.preventDefault()
+
+    const pseudo = devPseudo.trim()
+
+    if (!pseudo || devLoginMutation.isPending) {
+      return
+    }
+
+    devLoginMutation.mutate(pseudo, {
+      onError: () => {
+        toast.show(m.auth_dev_login_failed())
+      },
+      onSuccess: () => {
+        setDevPseudo('')
+      },
+    })
+  }
+
+  return (
+    <form
+      className={cn(
+        'grid gap-2 rounded-lg border border-sidebar-accent/24 bg-sidebar-accent/10 p-2.5',
+        className,
+      )}
+      onSubmit={handleDevLoginSubmit}
+    >
+      <label htmlFor={devPseudoInputId} className="text-xs font-black text-sidebar-foreground">
+        {m.auth_dev_pseudo_label()}
+      </label>
+      <input
+        id={devPseudoInputId}
+        type="text"
+        value={devPseudo}
+        placeholder={m.auth_dev_pseudo_placeholder()}
+        autoComplete="nickname"
+        autoCapitalize="none"
+        className="h-9 min-w-0 rounded-lg border border-sidebar-accent/24 bg-sidebar px-2.5 text-sm font-semibold text-sidebar-foreground outline-none placeholder:text-sidebar-foreground/45 focus-visible:ring-2 focus-visible:ring-sidebar-ring"
+        disabled={devLoginMutation.isPending}
+        onChange={(event) => setDevPseudo(event.target.value)}
+      />
+      <button
+        type="submit"
+        className="flex h-9 w-full cursor-pointer items-center justify-center gap-2 rounded-lg bg-sidebar-accent px-3 text-sm font-black text-sidebar-accent-foreground transition-colors hover:bg-sidebar-accent/90 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sidebar-ring disabled:cursor-not-allowed disabled:opacity-60"
+        disabled={!devPseudo.trim() || devLoginMutation.isPending}
+      >
+        <LogInIcon className="size-4" aria-hidden="true" />
+        {devLoginMutation.isPending ? m.auth_dev_logging_in() : m.auth_dev_login()}
+      </button>
+    </form>
+  )
+}
+
+const isDevelopmentAuthVisible = import.meta.env.DEV

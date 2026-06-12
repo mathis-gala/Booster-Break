@@ -141,7 +141,7 @@ ghcr.io/mathis-gala/booster-break/web:sha-<commit>
 ghcr.io/mathis-gala/booster-break/api:sha-<commit>
 ```
 
-## Slack Auth
+## Auth
 
 The API uses Slack OAuth for sign-in. Sessions are stored in HTTP-only cookies through Prisma.
 
@@ -153,6 +153,11 @@ It also supports server-admin generated magic links for custom users:
 Magic links are one-time, expire by policy (default: 30 days), and create the same authenticated
 session cookie format as Slack sign-in.
 
+For local development, the Vite UI shows a pseudo-only sign-in form. It calls
+`POST /auth/dev/login`, which creates or reuses a custom user and sets the same session cookie.
+This route is enabled automatically only for loopback HTTP API/web origins. Set
+`DEV_AUTH_ENABLED=false` to disable it.
+
 Auth endpoints:
 
 - `GET /auth/me`
@@ -161,6 +166,7 @@ Auth endpoints:
 - `POST /auth/logout`
 - `POST /auth/magic/generate`
 - `GET /auth/magic/callback`
+- `POST /auth/dev/login` (local development only)
 
 Enable magic links by setting `MAGIC_LINK_ADMIN_SECRET` in the API environment.
 

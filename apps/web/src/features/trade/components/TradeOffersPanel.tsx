@@ -5,10 +5,12 @@ import { m } from '@/paraglide/messages'
 import { ConfirmationDialog } from '@/components/ConfirmationDialog'
 import { CardImageDialog } from '@/features/dashboard/components/CardImageDialog'
 import { FoilCardImage } from '@/features/dashboard/components/FoilCardImage'
+import { TradeNotOwnedBadge } from './TradeNotOwnedBadge'
 
 interface TradeOffersPanelProps {
   auction: TradeAuctionResponse
   userId?: string
+  ownedCardIds?: ReadonlySet<string>
   onCancelOffer: (offerId: string) => void
   onAcceptOffer: (offerId: string) => void
   isBusy: boolean
@@ -17,6 +19,7 @@ interface TradeOffersPanelProps {
 export function TradeOffersPanel({
   auction,
   userId,
+  ownedCardIds,
   onCancelOffer,
   onAcceptOffer,
   isBusy,
@@ -87,32 +90,41 @@ export function TradeOffersPanel({
 
     return (
       <div className="mt-2 flex w-full flex-wrap items-center justify-center gap-3">
-        {offer.cards.map((card) => (
-          <button
-            type="button"
-            key={`${offer.id}-${card.card.id}-${card.finish}`}
-            className="inline-flex w-48 shrink-0 flex-col items-center gap-1 rounded-lg border bg-card px-3 py-3 text-center transition hover:border-sidebar/60"
-            onClick={() => {
-              setSelectedOfferCard(card)
-            }}
-          >
-            {card.card.imageSmall ? (
-              <FoilCardImage
-                src={card.card.imageSmall}
-                alt={card.card.name}
-                finish={card.finish}
-                className="aspect-63/88 w-32 rounded-md"
-              />
-            ) : (
-              <div className="aspect-63/88 w-32 rounded-md bg-muted" aria-hidden="true" />
-            )}
-            <p className="mt-1 max-w-full truncate text-sm font-black">{card.card.name}</p>
-            <p className="text-sm font-black text-muted-foreground">x{card.quantity}</p>
-            <p className="text-sm text-muted-foreground">
-              {card.card.supertype ?? m.trade_other_type()}
-            </p>
-          </button>
-        ))}
+        {offer.cards.map((card) => {
+          const isNotOwned = ownedCardIds ? !ownedCardIds.has(card.card.id) : false
+
+          return (
+            <button
+              type="button"
+              key={`${offer.id}-${card.card.id}-${card.finish}`}
+              className="inline-flex w-48 shrink-0 flex-col items-center gap-1 rounded-lg border bg-card px-3 py-3 text-center transition hover:border-sidebar/60"
+              onClick={() => {
+                setSelectedOfferCard(card)
+              }}
+            >
+              <div className="relative w-32">
+                {isNotOwned ? (
+                  <TradeNotOwnedBadge size="compact" className="absolute -left-2 -top-2 z-10" />
+                ) : null}
+                {card.card.imageSmall ? (
+                  <FoilCardImage
+                    src={card.card.imageSmall}
+                    alt={card.card.name}
+                    finish={card.finish}
+                    className="aspect-63/88 w-32 rounded-md"
+                  />
+                ) : (
+                  <div className="aspect-63/88 w-32 rounded-md bg-muted" aria-hidden="true" />
+                )}
+              </div>
+              <p className="mt-1 max-w-full truncate text-sm font-black">{card.card.name}</p>
+              <p className="text-sm font-black text-muted-foreground">x{card.quantity}</p>
+              <p className="text-sm text-muted-foreground">
+                {card.card.supertype ?? m.trade_other_type()}
+              </p>
+            </button>
+          )
+        })}
       </div>
     )
   }

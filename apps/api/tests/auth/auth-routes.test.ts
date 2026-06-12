@@ -18,6 +18,7 @@ const config: ApiConfig = {
   slackRedirectUri: 'http://127.0.0.1:3100/auth/slack/callback',
   magicLinkAdminSecret: 'unit-magic-secret',
   magicLinkTtlDays: 30,
+  devAuthEnabled: false,
 }
 
 describe('auth routes', () => {
@@ -302,5 +303,70 @@ describe('auth routes', () => {
 
     expect(callback.status).toBe(302)
     expect(callback.headers.get('location')).toBe(`${config.webAppUrl}?magic-link-error=invalid`)
+  })
+
+  test('creates a local development session without Slack OAuth', async () => {
+    const store = new MemoryAuthStore()
+    const app = new Elysia().use(
+      createAuthController({
+        config: {
+          ...config,
+          devAuthEnabled: true,
+        },
+        store,
+      }),
+    )
+    const response = await app.handle(
+      new Request('http://localhost/auth/dev/login', {
+        method: 'POST',
+        headers: {
+          'content-type': 'application/json',
+        },
+        body: JSON.stringify({
+          pseudo: 'Local Player',
+        }),
+      }),
+    )
+    const body = await response.json()
+    const setCookie = response.headers.get('set-cookie')
+
+    expect(response.status).toBe(200)
+    expect(setCookie).toContain(`${config.sessionCookieName}=`)
+    expect(body.authenticated).toBe(true)
+    expect(body.user.pseudo).toBe('local player')
+    expect(body.user.displayName).toBe('Local Player')
+
+    const sessionId = setCookie?.split(';')[0].split('=')[1]
+    const me = await app.handle(
+      new Request('http://localhost/auth/me', {
+        headers: {
+          Cookie: `${config.sessionCookieName}=${sessionId}`,
+        },
+      }),
+    )
+    const meBody = await me.json()
+
+    expect(me.status).toBe(200)
+    expect(meBody.authenticated).toBe(true)
+    expect(meBody.user.id).toBe(body.user.id)
+  })
+
+  test('does not allow local development sign-in when disabled', async () => {
+    const app = new Elysia().use(createAuthController({ config, store: new MemoryAuthStore() }))
+    const response = await app.handle(
+      new Request('http://localhost/auth/dev/login', {
+        method: 'POST',
+        headers: {
+          'content-type': 'application/json',
+        },
+        body: JSON.stringify({
+          pseudo: 'Local Player',
+        }),
+      }),
+    )
+    const body = await response.json()
+
+    expect(response.status).toBe(404)
+    expect(body.error).toBe('dev_auth_disabled')
   })
 })

@@ -36,6 +36,10 @@ export function PacksView() {
     }),
   )
   const collection = useQuery(usePokemonCollectionCountQueryOption())
+  const ownedSetPullCounts = useMemo(
+    () => new Map((collection.data?.sets ?? []).map((set) => [set.id, set.count])),
+    [collection.data?.sets],
+  )
   const previewCards = useQuery(usePokemonPreviewCardsQueryOption(previewSetId))
   const previewSet = sets.data?.find((set) => set.id === previewSetId)
   const currentUser = useQuery(useCurrentUserQueryOption())
@@ -70,6 +74,7 @@ export function PacksView() {
         onPreviewSet={setPreviewSetId}
         onClosePreview={() => setPreviewSetId(undefined)}
         collectionCount={collection.data?.pagination.totalCards ?? 0}
+        ownedSetPullCounts={ownedSetPullCounts}
         previewOwnedCardIds={ownedCardIds}
       />
     </div>
