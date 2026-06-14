@@ -1,8 +1,9 @@
 import { describe, expect, test } from 'bun:test'
 import type { PokemonCardSummary } from '@tcg-collection/shared'
 import { getRarityRank, RECYCLE_COST } from '@tcg-collection/shared'
-import { isPokemonServiceError, PokemonService } from '../../src/pokemon/pokemon-service'
-import { PokemonRepository, RecycleConflictError } from '../../src/pokemon/pokemon-repository'
+import { isPokemonServiceError } from '../../src/pokemon/pokemon-service-error'
+import { RecycleService } from '../../src/pokemon/recycle-service'
+import { RecycleConflictError, type RecycleRepository } from '../../src/pokemon/recycle-repository'
 import type { AuthUser } from '../../src/auth/types'
 
 const user: AuthUser = { id: 'user-1', pseudo: 'ash' }
@@ -18,12 +19,8 @@ interface FakeRepoState {
     consumed: Array<{ cardId: string; finish: string; quantity: number }>
     rewards: PokemonCardSummary[]
   }>
-  // Copies committed to a live trade (active auction / pending offer).
   reserved?: ReservedRow[]
-  // Minimum rarity rank the service asked the catalog query to fetch.
   candidateMinRank?: number
-  // When set, the repository write fails as if a concurrent recycle/trade spent
-  // the cards between the ownership read and the transaction.
   recycleConflict?: boolean
 }
 
@@ -56,15 +53,9 @@ const makeService = (state: FakeRepoState) => {
         newCardIds: rewards.filter((reward) => !ownedIds.has(reward.id)).map((reward) => reward.id),
       }
     },
-  } as unknown as PokemonRepository
+  } as unknown as RecycleRepository
 
-  return new PokemonService({
-    authService: {} as never,
-    localizedPokemonClients: {} as never,
-    pokemonClient: {} as never,
-    pokemonRepository: repository,
-    sealedClient: {} as never,
-  })
+  return new RecycleService({ recycleRepository: repository })
 }
 
 const card = (id: string, rarity: string): PokemonCardSummary => ({
@@ -83,7 +74,7 @@ const catalog = [
   card('r1', 'Rare'),
 ]
 
-describe('PokemonService.recycleCards', () => {
+describe('RecycleService.recycle', () => {
   test('crafts one card from a full batch of the same rarity', async () => {
     const state: FakeRepoState = {
       owned: [{ cardId: 'c1', finish: 'normal', quantity: RECYCLE_COST, rarity: 'Common' }],
@@ -92,7 +83,7 @@ describe('PokemonService.recycleCards', () => {
     }
     const service = makeService(state)
 
-    const result = await service.recycleCards(user, {
+    const result = await service.recycle(user, {
       items: [{ cardId: 'c1', finish: 'normal', quantity: RECYCLE_COST }],
     })
 
@@ -121,7 +112,7 @@ describe('PokemonService.recycleCards', () => {
     }
     const service = makeService(state)
 
-    const result = await service.recycleCards(user, {
+    const result = await service.recycle(user, {
       items: [
         { cardId: 'c1', finish: 'normal', quantity: RECYCLE_COST },
         { cardId: 'u1', finish: 'normal', quantity: RECYCLE_COST },
@@ -134,8 +125,6 @@ describe('PokemonService.recycleCards', () => {
 
     expect(result.rewardCount).toBe(2)
     expect(result.recycledCount).toBe(RECYCLE_COST * 2)
-    // Candidates are fetched once, floored at the lowest recycled tier (Common = 10),
-    // so the Uncommon bucket reuses the same superset instead of a second query.
     expect(state.candidateMinRank).toBe(getRarityRank('Common'))
   })
 
@@ -147,7 +136,7 @@ describe('PokemonService.recycleCards', () => {
     }
     const service = makeService(state)
 
-    const result = await service.recycleCards(user, {
+    const result = await service.recycle(user, {
       items: [{ cardId: 'c1', finish: 'normal', quantity: 2 }],
     })
 
@@ -155,8 +144,6 @@ describe('PokemonService.recycleCards', () => {
     expect(state.recycleCalls).toHaveLength(0)
   })
 
-  // Only meaningful when a batch needs more than one card; with RECYCLE_COST=1
-  // every valid selection already yields a reward.
   test.skipIf(RECYCLE_COST < 2)('rejects when fewer than a full batch is selected', async () => {
     const state: FakeRepoState = {
       owned: [{ cardId: 'c1', finish: 'normal', quantity: RECYCLE_COST - 1, rarity: 'Common' }],
@@ -165,7 +152,7 @@ describe('PokemonService.recycleCards', () => {
     }
     const service = makeService(state)
 
-    const result = await service.recycleCards(user, {
+    const result = await service.recycle(user, {
       items: [{ cardId: 'c1', finish: 'normal', quantity: RECYCLE_COST - 1 }],
     })
 
@@ -176,14 +163,13 @@ describe('PokemonService.recycleCards', () => {
   test('rejects recycling a copy reserved for an active trade', async () => {
     const state: FakeRepoState = {
       owned: [{ cardId: 'c1', finish: 'normal', quantity: RECYCLE_COST, rarity: 'Common' }],
-      // One of the owned copies is offered in an active auction.
       reserved: [{ cardId: 'c1', finish: 'normal', quantity: 1 }],
       catalog,
       recycleCalls: [],
     }
     const service = makeService(state)
 
-    const result = await service.recycleCards(user, {
+    const result = await service.recycle(user, {
       items: [{ cardId: 'c1', finish: 'normal', quantity: RECYCLE_COST }],
     })
 
@@ -201,7 +187,7 @@ describe('PokemonService.recycleCards', () => {
     }
     const service = makeService(state)
 
-    const result = await service.recycleCards(user, {
+    const result = await service.recycle(user, {
       items: [{ cardId: 'c1', finish: 'normal', quantity: RECYCLE_COST }],
     })
 
@@ -222,12 +208,10 @@ describe('PokemonService.recycleCards', () => {
     }
     const service = makeService(state)
 
-    const result = await service.recycleCards(user, {
+    const result = await service.recycle(user, {
       items: [{ cardId: 'c1', finish: 'normal', quantity: RECYCLE_COST }],
     })
 
-    // The transaction rolled back, so the user keeps their cards and gets a
-    // retryable error rather than an unhandled 500.
     expect(isPokemonServiceError(result) && result.error).toBe('recycle_conflict')
     expect(state.recycleCalls).toHaveLength(1)
   })

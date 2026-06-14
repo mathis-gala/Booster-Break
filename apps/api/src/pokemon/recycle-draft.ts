@@ -1,12 +1,6 @@
 import type { CardFinish, PokemonCardSummary } from '@tcg-collection/shared'
-import { getRarityRank } from '@tcg-collection/shared'
+import { getRarityRank, UNKNOWN_RARITY_RANK } from '@tcg-collection/shared'
 
-const UNKNOWN_RARITY_RANK = 999
-
-/**
- * Probability multiplier per rarity tier above the recycled rarity. Rewards are
- * always at least the same rarity, with a quickly decaying chance of a higher tier.
- */
 const TIER_UPGRADE_DECAY = 0.22
 
 export interface RecycleRarityGroup {
@@ -14,10 +8,6 @@ export interface RecycleRarityGroup {
   rewardCount: number
 }
 
-/**
- * Draws `count` rewards for cards recycled at `rarityRank`, each pulled at a rank
- * >= the recycled rarity and weighted so the same tier is by far the most likely.
- */
 export const drawRecycleRewards = (
   rarityRank: number,
   count: number,

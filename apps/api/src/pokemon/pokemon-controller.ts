@@ -9,6 +9,7 @@ import { localePlugin, resolveLocaleOverride } from '../i18n/locale'
 import { PokemonRepository } from './pokemon-repository'
 import { PokemonSandboxService } from './pokemon-sandbox-service'
 import { isPokemonServiceError, PokemonService } from './pokemon-service'
+import { RecycleService } from './recycle-service'
 import { ScrydexSealedClient } from './scrydex-sealed-client'
 import { TcgDexClient } from './tcgdex-client'
 import {
@@ -29,6 +30,7 @@ interface PokemonControllerOptions {
   sealedClient: ScrydexSealedClient
   sandboxService?: PokemonSandboxService
   service?: PokemonService
+  recycleService: RecycleService
 }
 
 export const createPokemonController = ({
@@ -41,6 +43,7 @@ export const createPokemonController = ({
   sealedClient,
   sandboxService,
   service,
+  recycleService,
 }: PokemonControllerOptions) => {
   const resolvedAuthService =
     authService ??
@@ -200,7 +203,7 @@ export const createPokemonController = ({
       '/cards/recycle',
       async (context) => {
         const { currentUser, body, locale, status } = getAuthenticatedContext(context)
-        const result = await pokemonService.recycleCards(currentUser, {
+        const result = await recycleService.recycle(currentUser, {
           ...body,
           locale: resolveLocaleOverride(body.locale, locale),
         })
@@ -243,7 +246,10 @@ const mustProvideAuthStore = (store: AuthStore | undefined): AuthStore => {
   return store
 }
 
-const getAuthenticatedContext = <TContext>(
-  context: TContext,
-): TContext & { currentUser: AuthUser; locale: SupportedLocale } =>
-  context as TContext & { currentUser: AuthUser; locale: SupportedLocale }
+type AuthenticatedContext<TContext> = TContext & {
+  currentUser: AuthUser
+  locale: SupportedLocale
+}
+
+const getAuthenticatedContext = <TContext>(context: TContext): AuthenticatedContext<TContext> =>
+  context as AuthenticatedContext<TContext>

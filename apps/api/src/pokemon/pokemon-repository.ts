@@ -8,8 +8,7 @@ import type {
   SupportedLocale,
   UserCollectionResponse,
 } from '@tcg-collection/shared'
-import { getFinishRank, getRaritiesAtOrAboveRank, getRarityRank } from '@tcg-collection/shared'
-import type { Prisma } from '@prisma/client'
+import { getFinishRank, getRarityRank } from '@tcg-collection/shared'
 import type { AppPrisma } from '../db/prisma'
 import {
   getLocalizedCardName,
@@ -21,6 +20,8 @@ import {
   toSetSummary,
   toSetWrite,
 } from './pokemon-mappers'
+import { listReservedCardQuantities } from './trade-reservations'
+import { listOwnedCardIdsForCards } from './user-card-ownership'
 import { SYNCED_BOOSTER_LIMIT } from './pokemon-config'
 import { consumeBoosterCharge, getBoosterChargeStatus, PackCooldownError } from './pack-cooldown'
 import type { Set as TcgDexSet } from '@tcgdex/sdk'
@@ -34,17 +35,6 @@ type CollectionInventorySet = {
 
 type CollectionInventoryCard = Parameters<typeof toCardSummary>[0] & {
   set: CollectionInventorySet | null
-}
-
-/**
- * Thrown inside the recycle transaction when a selected card is no longer fully
- * owned at write time (e.g. spent by a concurrent recycle/trade), rolling it back.
- */
-export class RecycleConflictError extends Error {
-  constructor() {
-    super('Collection changed during recycling')
-    this.name = 'RecycleConflictError'
-  }
 }
 
 type CollectionInventoryRow = {
@@ -193,12 +183,12 @@ export class PokemonRepository {
     const page = Math.min(Math.max(options.page, 1), pageCount)
     const pagedRows = rows.slice((page - 1) * options.pageSize, page * options.pageSize)
 
-    // Only owned copies can be locked by a trade; other sources are never reserved.
     const reservedByKey =
       options.source === 'owned'
         ? new Map(
             (
-              await this.listRecycleReservedQuantities(
+              await listReservedCardQuantities(
+                this.db,
                 userId,
                 pagedRows.map((row) => row.cardId),
               )
@@ -250,7 +240,6 @@ export class PokemonRepository {
     return [...sets.values()].sort((first, second) => first.name.localeCompare(second.name))
   }
 
-  // Owned card ids, deduped and finish-agnostic: a card held in any finish appears once.
   async listOwnedCardIds(userId: string): Promise<string[]> {
     const where = {
       userId,
@@ -281,26 +270,6 @@ export class PokemonRepository {
     }
 
     return [...cardIds]
-  }
-
-  // Ownership is finish-agnostic (by cardId), matching getOwnedCardIds.
-  private async listOwnedCardIdsForCards(
-    tx: Prisma.TransactionClient,
-    userId: string,
-    cardIds: string[],
-  ): Promise<Set<string>> {
-    const where = {
-      userId,
-      cardId: { in: cardIds },
-      quantity: { gt: 0 },
-    }
-
-    const [ownedRows, giftedRows] = await Promise.all([
-      tx.userCard.findMany({ where, select: { cardId: true } }),
-      tx.giftedUserCard.findMany({ where, select: { cardId: true } }),
-    ])
-
-    return new Set([...ownedRows, ...giftedRows].map((row) => row.cardId))
   }
 
   async recordPackOpening(
@@ -336,7 +305,7 @@ export class PokemonRepository {
         },
       })
 
-      const previouslyOwned = await this.listOwnedCardIdsForCards(
+      const previouslyOwned = await listOwnedCardIdsForCards(
         tx,
         userId,
         cards.map((card) => card.id),
@@ -383,238 +352,6 @@ export class PokemonRepository {
     })
 
     return { openingId, newCardIds: [...newCardIds] }
-  }
-
-  async listRecycleRewardCandidates(
-    minRarityRank: number,
-    locale: SupportedLocale = 'fr',
-  ): Promise<PokemonCardSummary[]> {
-    // Rewards only draw at or above the recycled rarity, so fetch just those
-    // rarities, not the whole catalog (unknown rarities are dropped too).
-    const cards = await this.db.pokemonCard.findMany({
-      where: {
-        rarity: {
-          in: getRaritiesAtOrAboveRank(minRarityRank),
-        },
-      },
-      select: {
-        id: true,
-        setId: true,
-        localId: true,
-        name: true,
-        nameEn: true,
-        nameFr: true,
-        rarity: true,
-        category: true,
-        rawJson: true,
-        imageSmall: true,
-        imageLarge: true,
-      },
-    })
-
-    return cards.map((card) => toCardSummary(card, undefined, locale))
-  }
-
-  async listOwnedRecycleRows(
-    userId: string,
-    cardIds: string[],
-  ): Promise<Array<{ cardId: string; finish: string; quantity: number; rarity: string | null }>> {
-    if (cardIds.length === 0) {
-      return []
-    }
-
-    const rows = await this.db.userCard.findMany({
-      where: {
-        userId,
-        cardId: {
-          in: cardIds,
-        },
-        quantity: {
-          gt: 0,
-        },
-      },
-      include: {
-        card: {
-          select: {
-            rarity: true,
-          },
-        },
-      },
-    })
-
-    return rows.map((row) => ({
-      cardId: row.cardId,
-      finish: row.finish,
-      quantity: row.quantity,
-      rarity: row.card.rarity,
-    }))
-  }
-
-  /**
-   * Counts, per (cardId, finish), owned copies the user has committed to a live
-   * trade. Trades don't escrow (copies stay in `user_cards` until settlement), so
-   * recycling must treat these as unavailable. A copy is reserved by an active
-   * auction the user created or a pending offer they proposed.
-   */
-  async listRecycleReservedQuantities(
-    userId: string,
-    cardIds: string[],
-  ): Promise<Array<{ cardId: string; finish: string; quantity: number }>> {
-    if (cardIds.length === 0) {
-      return []
-    }
-
-    const [auctions, offerCards] = await Promise.all([
-      this.db.tradeAuction.findMany({
-        where: {
-          creatorId: userId,
-          status: 'active',
-          offeredCardId: { in: cardIds },
-        },
-        select: { offeredCardId: true, offeredCardFinish: true },
-      }),
-      this.db.tradeOfferCard.findMany({
-        where: {
-          cardId: { in: cardIds },
-          offer: { proposerId: userId, status: 'pending' },
-        },
-        select: { cardId: true, finish: true, quantity: true },
-      }),
-    ])
-
-    const reservedByKey = new Map<string, { cardId: string; finish: string; quantity: number }>()
-
-    const reserve = (cardId: string, finish: string, quantity: number) => {
-      const key = `${cardId}:${finish}`
-      const existing = reservedByKey.get(key)
-
-      if (existing) {
-        existing.quantity += quantity
-        return
-      }
-
-      reservedByKey.set(key, { cardId, finish, quantity })
-    }
-
-    for (const auction of auctions) {
-      reserve(auction.offeredCardId, auction.offeredCardFinish, 1)
-    }
-
-    for (const offerCard of offerCards) {
-      reserve(offerCard.cardId, offerCard.finish, offerCard.quantity)
-    }
-
-    return [...reservedByKey.values()]
-  }
-
-  async recycleCards(
-    userId: string,
-    consumed: Array<{ cardId: string; finish: string; quantity: number }>,
-    rewards: PokemonCardSummary[],
-  ): Promise<{ newCardIds: string[] }> {
-    const now = new Date()
-    const newCardIds = new Set<string>()
-
-    await this.db.$transaction(async (tx) => {
-      // Capture ownership before consuming or awarding, so a reward counts as
-      // "new" based on what the user held when they started recycling.
-      const previouslyOwned = await this.listOwnedCardIdsForCards(
-        tx,
-        userId,
-        rewards.map((card) => card.id),
-      )
-
-      for (const card of rewards) {
-        if (!previouslyOwned.has(card.id)) {
-          newCardIds.add(card.id)
-        }
-      }
-
-      for (const item of consumed) {
-        // Consume atomically against the live row: ownership was validated earlier
-        // with a non-transactional read, so a concurrent recycle/trade may have
-        // spent these copies. If any is gone we throw to roll back the whole tx.
-        const consumedCopies = await this.consumeUserCardCopies(tx, userId, item)
-
-        if (!consumedCopies) {
-          throw new RecycleConflictError()
-        }
-      }
-
-      for (const card of rewards) {
-        await tx.userCard.upsert({
-          where: {
-            userId_cardId_finish: {
-              userId,
-              cardId: card.id,
-              finish: card.finish ?? 'normal',
-            },
-          },
-          create: {
-            userId,
-            cardId: card.id,
-            finish: card.finish ?? 'normal',
-            quantity: 1,
-            firstCollectedAt: now,
-            updatedAt: now,
-          },
-          update: {
-            quantity: {
-              increment: 1,
-            },
-            updatedAt: now,
-          },
-        })
-      }
-    })
-
-    return { newCardIds: [...newCardIds] }
-  }
-
-  /**
-   * Atomically removes `item.quantity` copies, returning false (without mutating)
-   * when fewer remain than requested — the two guarded writes (decrement on
-   * surplus, delete on last copies) never match a short row, so a stale
-   * over-consume fails closed. updatedAt is left untouched so a spent card isn't
-   * treated as "recently acquired" and bumped ahead of the reward in Recent sort.
-   */
-  private async consumeUserCardCopies(
-    tx: Prisma.TransactionClient,
-    userId: string,
-    item: { cardId: string; finish: string; quantity: number },
-  ): Promise<boolean> {
-    const decremented = await tx.userCard.updateMany({
-      where: {
-        userId,
-        cardId: item.cardId,
-        finish: item.finish,
-        quantity: {
-          gt: item.quantity,
-        },
-      },
-      data: {
-        quantity: {
-          decrement: item.quantity,
-        },
-      },
-    })
-
-    if (decremented.count === 1) {
-      return true
-    }
-
-    // A CHECK (quantity > 0) constraint forbids decrementing to zero, so the row
-    // is deleted outright when every owned copy is consumed.
-    const deleted = await tx.userCard.deleteMany({
-      where: {
-        userId,
-        cardId: item.cardId,
-        finish: item.finish,
-        quantity: item.quantity,
-      },
-    })
-
-    return deleted.count === 1
   }
 
   async getLatestPackOpening(userId: string): Promise<{ openedAt: Date } | undefined> {
