@@ -4,9 +4,7 @@ import { api } from '@/lib/api-client'
 import type { EdenError } from '@/lib/queries/eden-query-option'
 import { m } from '@/paraglide/messages'
 
-export async function recycleCards(
-  input: RecycleCardsRequest,
-): Promise<RecycleCardsResponse> {
+export async function recycleCards(input: RecycleCardsRequest): Promise<RecycleCardsResponse> {
   const { data, error } = await api.pokemon.cards.recycle.post(input)
 
   if (error || !data) {
