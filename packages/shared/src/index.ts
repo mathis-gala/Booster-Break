@@ -55,7 +55,6 @@ export interface PokemonCardSummary {
 
 export interface UserCollectionCard extends PokemonCardSummary {
   quantity: number
-  /** Copies of this card committed to a live trade (active auction / pending offer). */
   reservedQuantity: number
   firstCollectedAt: string
   updatedAt: string
@@ -129,9 +128,6 @@ export interface OpenPackResponse {
   cards: OpenedPackCard[]
 }
 
-/**
- * Number of same-rarity cards consumed to craft one new card through recycling.
- */
 export const RECYCLE_COST = 5
 
 export interface RecycleCardItem {
@@ -146,14 +142,11 @@ export interface RecycleCardsRequest {
 }
 
 export interface AwardedCard extends PokemonCardSummary {
-  /** True when the user did not already own this card before recycling. */
   isNew: boolean
 }
 
 export interface RecycleCardsResponse {
-  /** Total number of cards consumed across every rarity tier. */
   recycledCount: number
-  /** Number of new cards crafted (one per {@link RECYCLE_COST} consumed). */
   rewardCount: number
   awardedCards: AwardedCard[]
 }
@@ -436,4 +429,5 @@ export {
   normalizeRarity,
   isRareOrBetter,
   pokemonRarityOrder,
+  UNKNOWN_RARITY_RANK,
 } from './pokemon-rarity'
