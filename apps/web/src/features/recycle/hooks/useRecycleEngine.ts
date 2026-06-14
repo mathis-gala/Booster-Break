@@ -25,11 +25,17 @@ export interface RecycleAnimationState {
   rewards: AwardedCard[] | null
 }
 
-/**
- * All recycle state and actions for a set of owned cards. `cards` must be the
- * full owned collection (selection/totals are global). `selection` is owned by
- * the caller so it survives the browse/recycle toggle (which unmounts the panel).
- */
+const preloadRewardImages = (rewards: AwardedCard[]) => {
+  for (const card of rewards) {
+    const url = card.imageLarge ?? card.imageSmall
+
+    if (url) {
+      const image = new Image()
+      image.src = url
+    }
+  }
+}
+
 export function useRecycleEngine(
   cards: UserCollectionCard[],
   selection: RecycleSelection,
@@ -43,7 +49,6 @@ export function useRecycleEngine(
   const selectedCount = totalSelectedCount(selection)
   const autoSurplus = useMemo(() => recyclableSurplusCount(cards), [cards])
 
-  // Full-group reward yield per rarity rank, independent of paging or search.
   const rewardByRank = useMemo(() => {
     const map = new Map<number, number>()
 
@@ -68,6 +73,7 @@ export function useRecycleEngine(
     useRecyclePokemonCardsMutationOption(queryClient, {
       onSuccess: (result) => {
         setSelection({})
+        preloadRewardImages(result.awardedCards)
         setAnimation((current) =>
           current
             ? { ...current, rewards: result.awardedCards }
@@ -81,24 +87,25 @@ export function useRecycleEngine(
     }),
   )
 
-  const updateSelection = useCallback((key: string, quantity: number) => {
-    setSelection((current) => {
-      const next = { ...current }
+  const updateSelection = useCallback(
+    (key: string, quantity: number) => {
+      setSelection((current) => {
+        const next = { ...current }
 
-      if (quantity <= 0) {
-        delete next[key]
-      } else {
-        next[key] = quantity
-      }
+        if (quantity <= 0) {
+          delete next[key]
+        } else {
+          next[key] = quantity
+        }
 
-      return next
-    })
-  }, [setSelection])
+        return next
+      })
+    },
+    [setSelection],
+  )
 
   const clearSelection = useCallback(() => setSelection({}), [setSelection])
 
-  // Selects every surplus copy (beyond the kept playable set), even when a rarity
-  // can't yet craft a full batch — the user can see what's surplus and top it up.
   const handleAuto = useCallback(() => {
     setSelection(buildAutoSelection(cards))
   }, [cards, setSelection])

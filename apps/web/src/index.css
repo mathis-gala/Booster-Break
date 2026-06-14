@@ -245,15 +245,38 @@ body,
   }
 }
 
-@keyframes recycle-orb-pulse {
+@keyframes recycle-merge {
   0%,
+  46.43% {
+    transform: var(--recycle-fan);
+    opacity: 1;
+  }
   100% {
-    opacity: 0.5;
+    transform: translate(-50%, -50%) scale(0.16);
+    opacity: 0;
+  }
+}
+
+@keyframes recycle-orb-rise {
+  0%,
+  46.43% {
+    opacity: 0;
     transform: translate(-50%, -50%) scale(0.85);
   }
-  50% {
+  73% {
     opacity: 1;
     transform: translate(-50%, -50%) scale(1.18);
+  }
+  100% {
+    opacity: 0.85;
+    transform: translate(-50%, -50%) scale(1);
+  }
+}
+
+@keyframes recycle-phase-driver {
+  from,
+  to {
+    opacity: 0;
   }
 }
 
