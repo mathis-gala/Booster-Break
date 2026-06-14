@@ -9,11 +9,11 @@ export const createProjectionMatrix = (
   far: number,
 ): Mat4 => toMat4(mat4.perspective(mat4.create(), fieldOfView, aspect, near, far))
 
-export const createViewMatrix = (): Mat4 =>
+export const createViewMatrix = (cameraDistance = 7.2): Mat4 =>
   toMat4(
     mat4.lookAt(
       mat4.create(),
-      vec3.fromValues(0, 0, 7.2),
+      vec3.fromValues(0, 0, cameraDistance),
       vec3.fromValues(0, 0, 0),
       vec3.fromValues(0, 1, 0),
     ),

@@ -7,6 +7,7 @@ import type {
 } from '@tcg-collection/shared'
 
 import { BoosterPickerPanel } from './BoosterPickerPanel'
+import { BoosterOpeningOverlay } from './BoosterOpeningOverlay'
 import { BoosterPreviewDialog } from './BoosterPreviewDialog'
 import { PackBoosterStage } from './PackBoosterStage'
 import { PackRevealDialog } from './PackRevealDialog'
@@ -19,6 +20,8 @@ interface PackStageProps {
   openPackResult?: OpenPackResponse
   packOpenStatus?: PackOpenStatusResponse
   packOpenStatusIsPending: boolean
+  isTearOpen: boolean
+  onTearComplete: () => void
   isRevealOpen: boolean
   onCloseReveal: () => void
   revealedCardIndex: number
@@ -42,6 +45,8 @@ export function PackStage({
   openPackResult,
   packOpenStatus,
   packOpenStatusIsPending,
+  isTearOpen,
+  onTearComplete,
   isRevealOpen,
   onCloseReveal,
   revealedCardIndex,
@@ -96,6 +101,14 @@ export function PackStage({
           hideSetCardTitle
         />
       </div>
+
+      {openPackResult && isTearOpen && openPackResult.set.boosterImageUrl ? (
+        <BoosterOpeningOverlay
+          boosterImageUrl={openPackResult.set.boosterImageUrl}
+          setName={openPackResult.set.name}
+          onComplete={onTearComplete}
+        />
+      ) : null}
 
       {openPackResult && isRevealOpen ? (
         <PackRevealDialog
