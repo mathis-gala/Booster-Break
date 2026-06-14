@@ -29,32 +29,27 @@ interface CollectionPanelProps {
   totalCards: number
   sort: CollectionSort
   searchQuery: string
-  /** Sets available for the filter dropdown. Omit to hide set filtering (e.g. recycle mode). */
   sets?: CollectionSetOption[]
   selectedSetId?: string
   onSortChange: (sort: CollectionSort) => void
   onSearchChange: (query: string) => void
-  /** Handler for the set filter dropdown. Omit to hide it (e.g. recycle mode). */
   onSetChange?: (setId: string | undefined) => void
   onPageChange: (page: number) => void
-  /** Drop the rarity sort option (e.g. recycle mode groups by rarity already). */
   hideRaritySort?: boolean
-  /** Optional content rendered between the controls and the card grid. */
   toolbar?: ReactNode
-  /** Override how each card is rendered (e.g. recycle selection tiles). */
   renderCard?: (card: UserCollectionCard) => ReactNode
-  /** Override the entire populated card area (e.g. recycle rarity sections). */
   renderGrid?: (cards: UserCollectionCard[]) => ReactNode
-  /** Override the panel heading (defaults to the collection title). */
   title?: ReactNode
-  /** Override the panel sub-heading (defaults to the collection summary). */
   subtitle?: ReactNode
 }
 
-const getSortActions = (
-  hideRaritySort: boolean,
-): Array<{ label: string; value: CollectionSort }> => {
-  const actions: Array<{ label: string; value: CollectionSort }> = [
+interface SortAction {
+  label: string
+  value: CollectionSort
+}
+
+const getSortActions = (hideRaritySort: boolean): SortAction[] => {
+  const actions: SortAction[] = [
     { label: m.sort_recent(), value: 'recent' },
     { label: m.sort_quantity(), value: 'quantity' },
     { label: m.sort_name(), value: 'name' },
