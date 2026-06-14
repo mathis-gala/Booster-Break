@@ -13,7 +13,6 @@ interface RecycleRaritySectionsProps {
   segments: RecyclePageSegment[]
   selection: RecycleSelection
   onChange: (key: string, quantity: number) => void
-  /** Full-group reward yield for a rarity rank (independent of the page/search). */
   rewardForRank: (rarityRank: number) => number
 }
 

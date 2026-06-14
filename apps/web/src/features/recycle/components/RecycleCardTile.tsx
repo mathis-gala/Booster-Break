@@ -20,7 +20,6 @@ export const RecycleCardTile = memo(function RecycleCardTile({
   onChange,
 }: RecycleCardTileProps) {
   const reserved = card.reservedQuantity ?? 0
-  // Reserved copies are locked in a live trade, so only the surplus is recyclable.
   const recyclable = recyclableQuantity(card)
   const inTrade = reserved > 0
   const isSelected = selected > 0

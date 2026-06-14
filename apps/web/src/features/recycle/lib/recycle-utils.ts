@@ -1,12 +1,8 @@
 import type { CardFinish, RecycleCardItem, UserCollectionCard } from '@tcg-collection/shared'
-import { getRarityRank, RECYCLE_COST } from '@tcg-collection/shared'
+import { getRarityRank, RECYCLE_COST, UNKNOWN_RARITY_RANK } from '@tcg-collection/shared'
 
-const UNKNOWN_RARITY_RANK = 999
-
-/** Maximum playable copies of a card in TCG decks; surplus beyond this is auto-recyclable. */
 export const TCG_MAX_COPIES = 4
 
-/** Selection state: how many copies of each `${cardId}:${finish}` are queued for recycling. */
 export type RecycleSelection = Record<string, number>
 
 export interface RecycleRarityGroup {
@@ -20,14 +16,9 @@ export const recycleKey = (card: { id: string; finish?: CardFinish }): string =>
 
 const cardFinish = (card: UserCollectionCard): CardFinish => card.finish ?? 'normal'
 
-/**
- * Copies that may be recycled: owned quantity minus the copies reserved for a live
- * trade. The backend rejects recycling reserved copies, so the UI never offers them.
- */
 export const recyclableQuantity = (card: UserCollectionCard): number =>
   Math.max(0, card.quantity - (card.reservedQuantity ?? 0))
 
-/** Cards that carry a known rarity, grouped by rarity tier (most common first). */
 export const groupCardsByRarity = (cards: UserCollectionCard[]): RecycleRarityGroup[] => {
   const groups = new Map<number, RecycleRarityGroup>()
 
@@ -50,18 +41,16 @@ export const groupCardsByRarity = (cards: UserCollectionCard[]): RecycleRarityGr
   return [...groups.values()].sort((first, second) => first.rarityRank - second.rarityRank)
 }
 
-export const getSelectedQuantity = (selection: RecycleSelection, card: UserCollectionCard): number =>
-  selection[recycleKey(card)] ?? 0
+export const getSelectedQuantity = (
+  selection: RecycleSelection,
+  card: UserCollectionCard,
+): number => selection[recycleKey(card)] ?? 0
 
 export interface RecyclePageSegment {
   group: RecycleRarityGroup
   cards: UserCollectionCard[]
 }
 
-/**
- * Flattens rarity groups, takes one page, then re-splits it into rarity segments
- * so headers reappear across page boundaries. Only the rendered slice is limited.
- */
 export const paginateRarityGroups = (
   groups: RecycleRarityGroup[],
   page: number,
@@ -86,18 +75,11 @@ export const paginateRarityGroups = (
   return { segments, pageCount, currentPage }
 }
 
-/** Total copies selected within a single rarity group. */
-export const selectedInGroup = (
-  selection: RecycleSelection,
-  group: RecycleRarityGroup,
-): number =>
+export const selectedInGroup = (selection: RecycleSelection, group: RecycleRarityGroup): number =>
   group.cards.reduce((total, card) => total + getSelectedQuantity(selection, card), 0)
 
-/** New cards a rarity group's current selection would craft (one per {@link RECYCLE_COST}). */
-export const groupRewardCount = (
-  selection: RecycleSelection,
-  group: RecycleRarityGroup,
-): number => Math.floor(selectedInGroup(selection, group) / RECYCLE_COST)
+export const groupRewardCount = (selection: RecycleSelection, group: RecycleRarityGroup): number =>
+  Math.floor(selectedInGroup(selection, group) / RECYCLE_COST)
 
 export const totalRewardCount = (
   selection: RecycleSelection,
@@ -107,7 +89,6 @@ export const totalRewardCount = (
 export const totalSelectedCount = (selection: RecycleSelection): number =>
   Object.values(selection).reduce((total, quantity) => total + quantity, 0)
 
-/** Selects every copy beyond {@link TCG_MAX_COPIES} across the collection. */
 export const buildAutoSelection = (cards: UserCollectionCard[]): RecycleSelection => {
   const selection: RecycleSelection = {}
 
@@ -116,7 +97,6 @@ export const buildAutoSelection = (cards: UserCollectionCard[]): RecycleSelectio
       continue
     }
 
-    // Keep up to TCG_MAX_COPIES playable copies, and never queue a reserved copy.
     const surplus = Math.min(card.quantity - TCG_MAX_COPIES, recyclableQuantity(card))
 
     if (surplus > 0) {
@@ -127,7 +107,6 @@ export const buildAutoSelection = (cards: UserCollectionCard[]): RecycleSelectio
   return selection
 }
 
-/** Total surplus copies (beyond {@link TCG_MAX_COPIES}, excluding reserved) the auto-selection would queue. */
 export const recyclableSurplusCount = (cards: UserCollectionCard[]): number => {
   return totalSelectedCount(buildAutoSelection(cards))
 }
@@ -138,17 +117,11 @@ export interface RecyclePreviewCard {
   finish?: CardFinish
 }
 
-/**
- * Splits the selection into {@link RECYCLE_COST}-card batches that each craft one
- * reward, ordered like the server's rewards so batch `i` shows the cards behind
- * reward `i`.
- */
 export const buildRecycleBatches = (
   selection: RecycleSelection,
   cards: UserCollectionCard[],
 ): RecyclePreviewCard[][] => {
   const byKey = new Map(cards.map((card) => [recycleKey(card), card]))
-  // Expand the selection into individual copies, bucketed by rarity (first-seen order).
   const copiesByRarity = new Map<number, RecyclePreviewCard[]>()
 
   for (const [key, quantity] of Object.entries(selection)) {
@@ -174,7 +147,6 @@ export const buildRecycleBatches = (
   }
 
   const batches: RecyclePreviewCard[][] = []
-  // Lowest rarity first: Common batches animate, then Uncommon, then Rare, etc.
   const ascendingRanks = [...copiesByRarity.keys()].sort((first, second) => first - second)
 
   for (const rank of ascendingRanks) {

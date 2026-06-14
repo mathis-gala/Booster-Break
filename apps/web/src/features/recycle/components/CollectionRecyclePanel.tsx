@@ -32,13 +32,6 @@ interface CollectionRecyclePanelProps {
   onSelectionChange: Dispatch<SetStateAction<RecycleSelection>>
 }
 
-/**
- * Recycle mode inside the Collection panel: same chrome, cards grouped into
- * rarity sections. Selection/totals stay global across pages and search.
- *
- * Search/sort/page/selection are owned by the parent so they persist when the
- * user toggles between browse and recycle (this panel unmounts on toggle).
- */
 export function CollectionRecyclePanel({
   page,
   sort,
