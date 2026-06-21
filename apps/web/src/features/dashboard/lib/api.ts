@@ -1,4 +1,4 @@
-import type { HealthResponse, OpenPackResponse } from '@tcg-collection/shared'
+import type { AuthMeResponse, HealthResponse, OpenPackResponse } from '@tcg-collection/shared'
 import { api, getApiUrl } from '@/lib/api-client'
 import type { EdenError } from '@/lib/queries/eden-query-option'
 import { m } from '@/paraglide/messages'
@@ -21,6 +21,18 @@ export async function logout(): Promise<void> {
   if (error && status !== 204) {
     throw new Error(m.api_unable_logout())
   }
+}
+
+export async function devLogin(pseudo: string): Promise<AuthMeResponse> {
+  const { data, error } = await api.auth.dev.login.post({
+    pseudo,
+  })
+
+  if (error || !data) {
+    throw new Error(toApiErrorMessage(toApiErrorPayload(error), m.auth_dev_login_failed()))
+  }
+
+  return data
 }
 
 export async function openPokemonPack(setId?: string): Promise<OpenPackResponse> {

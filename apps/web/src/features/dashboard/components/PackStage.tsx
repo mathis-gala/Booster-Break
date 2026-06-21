@@ -7,6 +7,7 @@ import type {
 } from '@tcg-collection/shared'
 
 import { BoosterPickerPanel } from './BoosterPickerPanel'
+import { BoosterOpeningOverlay } from './BoosterOpeningOverlay'
 import { BoosterPreviewDialog } from './BoosterPreviewDialog'
 import { PackBoosterStage } from './PackBoosterStage'
 import { PackRevealDialog } from './PackRevealDialog'
@@ -19,6 +20,8 @@ interface PackStageProps {
   openPackResult?: OpenPackResponse
   packOpenStatus?: PackOpenStatusResponse
   packOpenStatusIsPending: boolean
+  isTearOpen: boolean
+  onTearComplete: () => void
   isRevealOpen: boolean
   onCloseReveal: () => void
   revealedCardIndex: number
@@ -30,6 +33,7 @@ interface PackStageProps {
   onPreviewSet: (setId: string) => void
   onClosePreview: () => void
   collectionCount: number
+  ownedSetPullCounts?: ReadonlyMap<string, number>
   previewOwnedCardIds?: ReadonlySet<string>
 }
 
@@ -41,6 +45,8 @@ export function PackStage({
   openPackResult,
   packOpenStatus,
   packOpenStatusIsPending,
+  isTearOpen,
+  onTearComplete,
   isRevealOpen,
   onCloseReveal,
   revealedCardIndex,
@@ -52,6 +58,7 @@ export function PackStage({
   onPreviewSet,
   onClosePreview,
   collectionCount,
+  ownedSetPullCounts,
   previewOwnedCardIds,
 }: PackStageProps) {
   const [selectedSetId, setSelectedSetId] = useState<string>()
@@ -90,8 +97,18 @@ export function PackStage({
           setsIsPending={setsIsPending}
           onPreviewSet={onPreviewSet}
           onSelectSet={setSelectedSetId}
+          ownedSetPullCounts={ownedSetPullCounts}
+          hideSetCardTitle
         />
       </div>
+
+      {openPackResult && isTearOpen && openPackResult.set.boosterImageUrl ? (
+        <BoosterOpeningOverlay
+          boosterImageUrl={openPackResult.set.boosterImageUrl}
+          setName={openPackResult.set.name}
+          onComplete={onTearComplete}
+        />
+      ) : null}
 
       {openPackResult && isRevealOpen ? (
         <PackRevealDialog

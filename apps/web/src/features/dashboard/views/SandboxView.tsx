@@ -1,8 +1,9 @@
-import { useMemo, useState } from 'react'
+import { useCallback, useMemo, useState } from 'react'
 import { useMutation, useQuery } from '@tanstack/react-query'
 import type { PokemonSetSummary } from '@tcg-collection/shared'
 
 import { BoosterPickerPanel } from '../components/BoosterPickerPanel'
+import { BoosterOpeningOverlay } from '../components/BoosterOpeningOverlay'
 import { PackBoosterStage } from '../components/PackBoosterStage'
 import { PackRevealDialog } from '../components/PackRevealDialog'
 import { BoosterPreviewDialog } from '../components/BoosterPreviewDialog'
@@ -22,6 +23,7 @@ type SandboxSet = PokemonSetSummary & { boosterImageUrl: string }
 
 export function SandboxView() {
   useLocale()
+  const [isTearOpen, setIsTearOpen] = useState(false)
   const [isRevealOpen, setIsRevealOpen] = useState(false)
   const [isPreparingReveal, setIsPreparingReveal] = useState(false)
   const [revealedCardIndex, setRevealedCardIndex] = useState(0)
@@ -38,7 +40,8 @@ export function SandboxView() {
       onPrepared: () => {
         setRevealedCardIndex(0)
         setMaxRevealedCardIndex(0)
-        setIsRevealOpen(true)
+        setIsRevealOpen(false)
+        setIsTearOpen(true)
         setCooldownUntil(new Date(Date.now() + SANDBOX_OPEN_COOLDOWN_MS).toISOString())
       },
     }),
@@ -55,6 +58,11 @@ export function SandboxView() {
   )
 
   const previewSet = sets.data?.find((set) => set.id === previewSetId)
+
+  const handleTearComplete = useCallback(() => {
+    setIsTearOpen(false)
+    setIsRevealOpen(true)
+  }, [])
 
   const activeSetId =
     activeSetIdOverride && boosterSets.some((set) => set.id === activeSetIdOverride)
@@ -105,6 +113,14 @@ export function SandboxView() {
           />
         </div>
       </section>
+
+      {openPack.data && isTearOpen && openPack.data.set.boosterImageUrl ? (
+        <BoosterOpeningOverlay
+          boosterImageUrl={openPack.data.set.boosterImageUrl}
+          setName={openPack.data.set.name}
+          onComplete={handleTearComplete}
+        />
+      ) : null}
 
       {openPack.data && isRevealOpen ? (
         <PackRevealDialog

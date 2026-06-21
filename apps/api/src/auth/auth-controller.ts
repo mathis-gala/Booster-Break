@@ -129,6 +129,37 @@ export const createAuthController = ({ config, service, store }: AuthControllerO
         query: magicLinkCallbackQuerySchema,
       },
     )
+    .post(
+      '/dev/login',
+      async ({ body, set, status }) => {
+        if (!config.devAuthEnabled) {
+          return status(404, {
+            error: 'dev_auth_disabled',
+            message: 'Local development sign-in is not enabled for this API origin.',
+          })
+        }
+
+        const result = await authService.loginForDevelopment(body)
+
+        if (isAuthServiceError(result)) {
+          return status(400, result)
+        }
+
+        set.headers['Set-Cookie'] = serializeCookie(config.sessionCookieName, result.sessionId, {
+          maxAge: result.maxAge,
+          sameSite: config.sessionCookieSameSite,
+          secure: config.secureCookies,
+        })
+
+        return {
+          authenticated: true,
+          user: result.user,
+        }
+      },
+      {
+        body: devLoginBodySchema,
+      },
+    )
     .post('/logout', async ({ headers }) => {
       await authService.logout(headers.cookie)
 
@@ -251,6 +282,12 @@ const magicLinkGenerateBodySchema = z.object({
 
 const magicLinkCallbackQuerySchema = z.object({
   token: z.string().optional(),
+})
+
+const devLoginBodySchema = z.object({
+  pseudo: z.string().trim().min(1),
+  displayName: z.string().trim().optional(),
+  avatarUrl: z.string().trim().url().optional(),
 })
 
 const isMagicAdminRequestAuthorized = (

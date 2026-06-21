@@ -50,6 +50,10 @@ export function PackBoosterStage({
     labels: resolvedLabels,
   })
 
+  const handleOpenPack = () => {
+    onOpenPack(activeSet?.id)
+  }
+
   return (
     <div className="relative isolate flex min-h-[34rem] flex-col items-center justify-center overflow-hidden rounded-lg border bg-[radial-gradient(circle_at_50%_42%,oklch(0.95_0.035_252_/_72%),transparent_34%),linear-gradient(135deg,oklch(0.91_0.065_252),oklch(0.985_0.004_250)_46%,oklch(0.94_0.012_250))] p-5">
       <div className="flex min-h-0 w-full flex-1 items-center justify-center">
@@ -58,6 +62,8 @@ export function PackBoosterStage({
             <img
               src={activeSet.boosterImageUrl}
               alt=""
+              crossOrigin="anonymous"
+              draggable={false}
               className="size-full object-contain drop-shadow-2xl transition-transform duration-300 hover:-translate-y-1"
             />
           </div>
@@ -77,7 +83,7 @@ export function PackBoosterStage({
         <Button
           className="h-12 min-w-44"
           disabled={isDisabled}
-          onClick={() => onOpenPack(activeSet?.id)}
+          onClick={handleOpenPack}
           aria-label={resolvedLabels.openAriaLabel({
             name: activeSet?.name ?? m.packs_pokemon_fallback(),
           })}

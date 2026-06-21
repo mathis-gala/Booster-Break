@@ -8,18 +8,21 @@ import type {
 import { Button } from '@/components/ui/button'
 import { FoilCardImage } from '@/features/dashboard/components/FoilCardImage'
 import { m } from '@/paraglide/messages'
+import { TradeNotOwnedBadge } from './TradeNotOwnedBadge'
 
 interface TradeNotificationModalProps {
   notification: TradeNotificationResponse
+  ownedCardIds?: ReadonlySet<string>
   onClose: () => void
 }
 
 interface NotificationCardListProps {
   title: string
   cards: TradeNotificationCardPayload[] | undefined
+  ownedCardIds?: ReadonlySet<string>
 }
 
-const NotificationCardList = ({ title, cards }: NotificationCardListProps) => {
+const NotificationCardList = ({ title, cards, ownedCardIds }: NotificationCardListProps) => {
   if (!cards || cards.length === 0) {
     return null
   }
@@ -28,27 +31,36 @@ const NotificationCardList = ({ title, cards }: NotificationCardListProps) => {
     <div className="mt-2 rounded-md border border-border/60 bg-card/40 p-2">
       <p className="text-xs uppercase tracking-wide text-muted-foreground">{title}</p>
       <div className="mt-2 flex flex-wrap justify-center gap-2">
-        {cards.map((card) => (
-          <article
-            key={`${card.cardId}-${card.finish}-${card.quantity}`}
-            className="inline-flex w-40 min-w-0 flex-col items-center gap-1 rounded-lg border bg-card p-2 text-center"
-          >
-            {card.imageSmall ? (
-              <FoilCardImage
-                src={card.imageSmall}
-                alt={card.name}
-                finish={card.finish}
-                className="aspect-63/88 w-28 rounded-md"
-              />
-            ) : (
-              <div className="aspect-63/88 w-28 rounded-md bg-muted" aria-hidden="true" />
-            )}
-            <p className="w-full min-w-0 break-words text-xs font-black leading-tight">
-              {card.name}
-            </p>
-            <p className="text-xs text-muted-foreground">x{card.quantity}</p>
-          </article>
-        ))}
+        {cards.map((card) => {
+          const isNotOwned = ownedCardIds ? !ownedCardIds.has(card.cardId) : false
+
+          return (
+            <article
+              key={`${card.cardId}-${card.finish}-${card.quantity}`}
+              className="inline-flex w-40 min-w-0 flex-col items-center gap-1 rounded-lg border bg-card p-2 text-center"
+            >
+              <div className="relative w-28">
+                {isNotOwned ? (
+                  <TradeNotOwnedBadge size="compact" className="absolute -left-2 -top-2 z-10" />
+                ) : null}
+                {card.imageSmall ? (
+                  <FoilCardImage
+                    src={card.imageSmall}
+                    alt={card.name}
+                    finish={card.finish}
+                    className="aspect-63/88 w-28 rounded-md"
+                  />
+                ) : (
+                  <div className="aspect-63/88 w-28 rounded-md bg-muted" aria-hidden="true" />
+                )}
+              </div>
+              <p className="w-full min-w-0 break-words text-xs font-black leading-tight">
+                {card.name}
+              </p>
+              <p className="text-xs text-muted-foreground">x{card.quantity}</p>
+            </article>
+          )
+        })}
       </div>
     </div>
   )
@@ -140,6 +152,7 @@ const assertUnreachable = (value: never): never => {
 
 const renderTradeOfferAcceptedNotification = (
   notification: Extract<TradeNotificationResponse, { type: 'trade_offer_accepted' }>,
+  ownedCardIds: ReadonlySet<string> | undefined,
   onClose: () => void,
 ) => {
   const isAuctionCreatorNotification = notification.payload.recipientRole === 'auction_creator'
@@ -181,7 +194,11 @@ const renderTradeOfferAcceptedNotification = (
       {isAuctionCreatorNotification || hasCreatorName ? (
         <NotificationAvatar name={actorName} avatarUrl={actorAvatarUrl} label={actorLabel} />
       ) : null}
-      <NotificationCardList title={m.trade_notification_received_cards()} cards={receivedCards} />
+      <NotificationCardList
+        title={m.trade_notification_received_cards()}
+        cards={receivedCards}
+        ownedCardIds={ownedCardIds}
+      />
       <NotificationCardList
         title={
           givenCards.length === 1
@@ -189,6 +206,7 @@ const renderTradeOfferAcceptedNotification = (
             : m.trade_notification_given_cards()
         }
         cards={givenCards}
+        ownedCardIds={ownedCardIds}
       />
     </ModalShell>
   )
@@ -196,6 +214,7 @@ const renderTradeOfferAcceptedNotification = (
 
 const renderTradeOfferReceivedNotification = (
   notification: Extract<TradeNotificationResponse, { type: 'trade_offer_received' }>,
+  ownedCardIds: ReadonlySet<string> | undefined,
   onClose: () => void,
 ) => {
   const proposerName =
@@ -215,21 +234,27 @@ const renderTradeOfferReceivedNotification = (
       <NotificationCardList
         title={m.trade_notification_offer_cards()}
         cards={notification.payload.offeredCards}
+        ownedCardIds={ownedCardIds}
       />
       <NotificationCardList
         title={m.trade_notification_given_card()}
         cards={[notification.payload.offeredCard]}
+        ownedCardIds={ownedCardIds}
       />
     </ModalShell>
   )
 }
 
-export function TradeNotificationModal({ notification, onClose }: TradeNotificationModalProps) {
+export function TradeNotificationModal({
+  notification,
+  ownedCardIds,
+  onClose,
+}: TradeNotificationModalProps) {
   switch (notification.type) {
     case 'trade_offer_accepted':
-      return renderTradeOfferAcceptedNotification(notification, onClose)
+      return renderTradeOfferAcceptedNotification(notification, ownedCardIds, onClose)
     case 'trade_offer_received':
-      return renderTradeOfferReceivedNotification(notification, onClose)
+      return renderTradeOfferReceivedNotification(notification, ownedCardIds, onClose)
     default:
       return assertUnreachable(notification)
   }

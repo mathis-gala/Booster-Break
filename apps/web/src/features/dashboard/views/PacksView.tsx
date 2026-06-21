@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react'
+import { useCallback, useMemo, useState } from 'react'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 
 import { PackStage } from '../components/PackStage'
@@ -16,6 +16,7 @@ import {
 
 export function PacksView() {
   useLocale()
+  const [isTearOpen, setIsTearOpen] = useState(false)
   const [isRevealOpen, setIsRevealOpen] = useState(false)
   const [isPreparingReveal, setIsPreparingReveal] = useState(false)
   const [revealedCardIndex, setRevealedCardIndex] = useState(0)
@@ -31,11 +32,16 @@ export function PacksView() {
       onPrepared: () => {
         setRevealedCardIndex(0)
         setMaxRevealedCardIndex(0)
-        setIsRevealOpen(true)
+        setIsRevealOpen(false)
+        setIsTearOpen(true)
       },
     }),
   )
   const collection = useQuery(usePokemonCollectionCountQueryOption())
+  const ownedSetPullCounts = useMemo(
+    () => new Map((collection.data?.sets ?? []).map((set) => [set.id, set.count])),
+    [collection.data?.sets],
+  )
   const previewCards = useQuery(usePokemonPreviewCardsQueryOption(previewSetId))
   const previewSet = sets.data?.find((set) => set.id === previewSetId)
   const currentUser = useQuery(useCurrentUserQueryOption())
@@ -45,6 +51,11 @@ export function PacksView() {
     () => (ownedCardIdsQuery.data ? new Set(ownedCardIdsQuery.data) : undefined),
     [ownedCardIdsQuery.data],
   )
+
+  const handleTearComplete = useCallback(() => {
+    setIsTearOpen(false)
+    setIsRevealOpen(true)
+  }, [])
 
   return (
     <div className="w-full max-w-6xl">
@@ -56,6 +67,8 @@ export function PacksView() {
         openPackResult={openPack.data}
         packOpenStatus={packOpenStatus}
         packOpenStatusIsPending={packStatusQuery.isPending}
+        isTearOpen={isTearOpen}
+        onTearComplete={handleTearComplete}
         isRevealOpen={isRevealOpen}
         onCloseReveal={() => setIsRevealOpen(false)}
         revealedCardIndex={revealedCardIndex}
@@ -70,6 +83,7 @@ export function PacksView() {
         onPreviewSet={setPreviewSetId}
         onClosePreview={() => setPreviewSetId(undefined)}
         collectionCount={collection.data?.pagination.totalCards ?? 0}
+        ownedSetPullCounts={ownedSetPullCounts}
         previewOwnedCardIds={ownedCardIds}
       />
     </div>

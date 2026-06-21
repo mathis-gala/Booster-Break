@@ -39,6 +39,7 @@ export type AuthServiceErrorCode =
   | 'slack_auth_failed'
   | 'magic_link_generation_failed'
   | 'magic_link_invalid'
+  | 'dev_auth_failed'
   | 'unauthenticated'
 
 export interface AuthServiceError {
@@ -186,6 +187,38 @@ export class AuthService {
       user,
       sessionId: session.id,
       maxAge: sessionCookieMaxAge,
+    }
+  }
+
+  async loginForDevelopment(input: CustomUserInput): Promise<AuthSessionResult | AuthServiceError> {
+    try {
+      const pseudo = normalizePseudo(input.pseudo)
+
+      if (!pseudo) {
+        return {
+          error: 'dev_auth_failed',
+          message: 'A non-empty pseudo is required to sign in.',
+        }
+      }
+
+      const user = await this.options.store.upsertCustomUser({
+        pseudo,
+        displayName: input.displayName?.trim() || input.pseudo.trim(),
+        avatarUrl: input.avatarUrl,
+      })
+      const session = await this.options.store.createSession(user.id)
+
+      return {
+        authenticated: true,
+        user,
+        sessionId: session.id,
+        maxAge: sessionCookieMaxAge,
+      }
+    } catch {
+      return {
+        error: 'dev_auth_failed',
+        message: 'Local development sign-in failed. Please try again.',
+      }
     }
   }
 
