@@ -15,7 +15,6 @@ model User {
   slackTeamId  String?       @map("slack_team_id")
   createdAt    DateTime      @default(now()) @map("created_at")
   updatedAt    DateTime      @updatedAt @map("updated_at")
-  boosterCooldownAnchor DateTime? @map("booster_cooldown_anchor")
   sessions     Session[]
   cards        UserCard[]
   giftedCards  GiftedUserCard[]
