@@ -51,12 +51,20 @@ export function getBoosterChargeStatus(
   const canOpen = availableBoosters >= 1
 
   if (canOpen) {
+    const nextOpenAt =
+      availableBoosters < maxCharges
+        ? new Date(anchor.getTime() + (availableBoosters + 1) * baseCooldownSeconds * 1000)
+        : null
+    const cooldownSeconds = nextOpenAt
+      ? Math.max(0, Math.ceil((nextOpenAt.getTime() - now.getTime()) / 1000))
+      : 0
+
     return {
       availableBoosters,
       canOpen: true,
-      cooldownSeconds: 0,
+      cooldownSeconds,
       cooldownDurationSeconds: baseCooldownSeconds,
-      nextOpenAt: null,
+      nextOpenAt,
     }
   }
 

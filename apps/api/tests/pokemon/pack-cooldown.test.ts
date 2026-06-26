@@ -34,6 +34,24 @@ describe('getBoosterChargeStatus', () => {
     expect(status.nextOpenAt?.toISOString()).toBe(at(2).toISOString())
   })
 
+  test('reports the next banked charge while one is already available', () => {
+    const anchor = at(0)
+    const status = getBoosterChargeStatus(anchor, at(3), BASE, 3)
+
+    expect(status.canOpen).toBe(true)
+    expect(status.availableBoosters).toBe(1)
+    expect(status.nextOpenAt?.toISOString()).toBe(at(4).toISOString())
+  })
+
+  test('stops reporting a next charge once the cap is reached', () => {
+    const anchor = at(0)
+    const status = getBoosterChargeStatus(anchor, at(20), BASE, 3)
+
+    expect(status.canOpen).toBe(true)
+    expect(status.availableBoosters).toBe(4)
+    expect(status.nextOpenAt).toBeNull()
+  })
+
   test('a zero base cooldown disables the cooldown entirely', () => {
     const status = getBoosterChargeStatus(at(0), at(0), 0, 3)
 

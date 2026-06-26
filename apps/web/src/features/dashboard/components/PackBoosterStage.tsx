@@ -1,8 +1,9 @@
-import { PackageOpenIcon } from 'lucide-react'
+import { PackageOpenIcon, TimerIcon } from 'lucide-react'
 import type { PackOpenStatusResponse, PokemonSetSummary } from '@tcg-collection/shared'
 
 import { Button } from '@/components/ui/button'
 import { m } from '@/paraglide/messages'
+import { formatRemaining } from '../time'
 import {
   getOpenButtonLabel,
   getPackStatusText,
@@ -36,6 +37,17 @@ export function PackBoosterStage({
     !packOpenStatus.canOpen &&
     packOpenStatus.cooldownSeconds > 0
   const isUnauthenticated = packOpenStatus?.authenticated === false
+  const availableBoosters =
+    packOpenStatus?.authenticated === true ? (packOpenStatus.availableBoosters ?? 0) : 0
+  const showMultipleReady =
+    !packOpenStatusIsPending &&
+    packOpenStatus?.authenticated === true &&
+    packOpenStatus.canOpen &&
+    availableBoosters > 1
+  const nextChargeSeconds =
+    packOpenStatus?.authenticated === true && packOpenStatus.canOpen && packOpenStatus.nextOpenAt
+      ? packOpenStatus.cooldownSeconds
+      : 0
   const isDisabled =
     isOpening ||
     boosterCount === 0 ||
@@ -70,15 +82,28 @@ export function PackBoosterStage({
         ) : null}
       </div>
       <div className="mt-4 grid w-full justify-items-center gap-2 md:mt-2">
-        <div className="rounded-full border bg-card/88 px-3 py-1.5 text-center text-xs font-black text-muted-foreground shadow-sm">
-          {getPackStatusText({
-            activeSet,
-            isCooldownActive,
-            isUnauthenticated,
-            packOpenStatus,
-            packOpenStatusIsPending,
-            labels: resolvedLabels,
-          })}
+        <div className="flex flex-col items-center gap-1 rounded-2xl border bg-card/88 px-3 py-1.5 text-center shadow-sm">
+          <span className="text-xs font-black text-muted-foreground">
+            {showMultipleReady
+              ? m.packs_selected_ready_plural({
+                  name: activeSet?.name ?? m.packs_pokemon_fallback(),
+                  count: availableBoosters,
+                })
+              : getPackStatusText({
+                  activeSet,
+                  isCooldownActive,
+                  isUnauthenticated,
+                  packOpenStatus,
+                  packOpenStatusIsPending,
+                  labels: resolvedLabels,
+                })}
+          </span>
+          {nextChargeSeconds > 0 ? (
+            <span className="inline-flex items-center gap-1.5 text-xs font-black text-muted-foreground">
+              <TimerIcon className="size-3.5" aria-hidden="true" />
+              {m.packs_next_stack_in({ time: formatRemaining(nextChargeSeconds * 1000) })}
+            </span>
+          ) : null}
         </div>
         <Button
           className="h-12 min-w-44"

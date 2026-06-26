@@ -193,7 +193,15 @@ export const usePackOpenStatusQueryOption = () =>
     edenQuery: api.pokemon.packs.status.get,
     queryKey: pokemonQueryKeys.packStatus(),
     mapData: (data) => data,
-    refetchInterval: false,
+    refetchInterval: (query) => {
+      const data = query.state.data
+      if (!data || data.authenticated !== true || !data.nextOpenAt) {
+        return false
+      }
+
+      const msUntilNextCharge = new Date(data.nextOpenAt).getTime() - Date.now()
+      return Math.max(1_000, msUntilNextCharge + 1_000)
+    },
     toError: () => new Error(m.api_unable_load_pack_status()),
   })
 

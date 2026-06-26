@@ -25,7 +25,7 @@ export function PacksView() {
   const queryClient = useQueryClient()
   const sets = useQuery(usePokemonSetsQueryOption())
   const packStatusQuery = useQuery(usePackOpenStatusQueryOption())
-  const packOpenStatus = usePackOpenStatusClock(packStatusQuery.data)
+  const packOpenStatus = usePackOpenStatusClock(packStatusQuery.data, packStatusQuery.dataUpdatedAt)
   const openPack = useMutation(
     useOpenPokemonPackMutationOption(queryClient, {
       onPreparingChange: setIsPreparingReveal,

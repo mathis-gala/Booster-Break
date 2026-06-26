@@ -89,6 +89,8 @@
   "packs_sign_in_timer": "Connecte-toi pour ouvrir un booster à la fois.",
   "sandbox_sign_in_timer": "Ouverture limitée par le minuteur local.",
   "packs_selected_ready": "{name} sélectionné. Un booster peut être ouvert maintenant.",
+  "packs_selected_ready_plural": "{name} sélectionné. {count} boosters peuvent être ouverts maintenant.",
+  "packs_next_stack_in": "+1 booster dans {time}",
   "sandbox_selected_ready": "{name} sélectionné. Un tirage de démonstration peut être ouvert maintenant.",
   "packs_open_aria": "Ouvrir le booster {name}",
   "sandbox_open_aria": "Ouvrir le booster de démonstration {name}",
