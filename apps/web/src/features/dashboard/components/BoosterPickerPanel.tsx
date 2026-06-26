@@ -1,4 +1,4 @@
-import { CheckIcon, EyeIcon, LoaderCircleIcon, PackageOpenIcon } from 'lucide-react'
+import { CheckIcon, EyeIcon, LoaderCircleIcon, PackageOpenIcon, StarIcon } from 'lucide-react'
 import type { PokemonSetSummary } from '@tcg-collection/shared'
 
 import { buttonVariants } from '@/components/ui/button'
@@ -148,6 +148,7 @@ function BoosterChoiceCard({
   onSelectSet,
 }: BoosterChoiceCardProps) {
   const selectSet = () => onSelectSet(set.id)
+  const isComplete = set.total > 0 && ownedSetPullCount >= set.total
   const previewImageUrl = set.logoUrl ?? set.symbolUrl ?? set.boosterImageUrl
   const imageFrameClassName = hideSetTitle
     ? 'pointer-events-none relative z-10 flex h-20 items-center justify-center overflow-hidden rounded-md bg-background'
@@ -212,6 +213,15 @@ function BoosterChoiceCard({
           </span>
         </div>
       </div>
+      {isComplete ? (
+        <>
+          <span className="sr-only">{m.packs_set_complete_aria({ name: set.name })}</span>
+          <StarIcon
+            className="absolute left-2 top-2 z-20 size-5 fill-amber-400 text-amber-400 drop-shadow-sm"
+            aria-hidden="true"
+          />
+        </>
+      ) : null}
       {isActive ? (
         <span className="absolute right-2 top-2 z-20 flex size-5 items-center justify-center rounded-full bg-sidebar text-sidebar-foreground">
           <CheckIcon className="size-3" aria-hidden="true" />

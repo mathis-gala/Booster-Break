@@ -95,6 +95,7 @@
   "packs_select_aria": "Sélectionner {name}",
   "sandbox_open": "Ouvrir",
   "packs_owned_pulls": "{owned}/{total}",
+  "packs_set_complete_aria": "{name} complété : toutes les cartes obtenues",
   "packs_view_cards": "Voir les cartes du booster",
   "packs_view_cards_aria": "Voir les cartes de {name}",
   "packs_pulls_title": "Tirages {set}",
