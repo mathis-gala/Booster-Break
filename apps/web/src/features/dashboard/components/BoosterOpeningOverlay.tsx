@@ -1,6 +1,7 @@
 import { useCallback, useState } from 'react'
 import { ScissorsIcon } from 'lucide-react'
 
+import { cn } from '@/lib/utils'
 import { m } from '@/paraglide/messages'
 import { InteractiveBooster } from './InteractiveBooster'
 
@@ -8,12 +9,14 @@ interface BoosterOpeningOverlayProps {
   boosterImageUrl: string
   setName: string
   onComplete: () => void
+  isGodPack?: boolean
 }
 
 export function BoosterOpeningOverlay({
   boosterImageUrl,
   setName,
   onComplete,
+  isGodPack = false,
 }: BoosterOpeningOverlayProps) {
   const [progress, setProgress] = useState(0)
   const hintOpacity = Math.max(0, 1 - progress * 2.4)
@@ -32,11 +35,22 @@ export function BoosterOpeningOverlay({
       autoFocus
     >
       <div
-        className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_50%_42%,oklch(0.72_0.16_255_/_28%),transparent_55%)]"
+        className={cn(
+          'pointer-events-none absolute inset-0',
+          isGodPack
+            ? 'bg-[radial-gradient(circle_at_50%_42%,oklch(0.82_0.15_80/32%),transparent_55%)]'
+            : 'bg-[radial-gradient(circle_at_50%_42%,oklch(0.72_0.16_255/28%),transparent_55%)]',
+        )}
         aria-hidden="true"
       />
 
       <div className="relative flex flex-col items-center">
+        {isGodPack ? (
+          <div
+            aria-hidden="true"
+            className="god-pack-booster-glow pointer-events-none absolute left-1/2 top-1/2 size-[78vh] max-w-[140vw] rounded-full bg-[radial-gradient(circle,rgb(245_158_11/0.5),transparent_62%)]"
+          />
+        ) : null}
         <div className="relative aspect-[2.32/4.2] h-[min(84vh,44rem)] max-w-full">
           <InteractiveBooster
             imageUrl={boosterImageUrl}

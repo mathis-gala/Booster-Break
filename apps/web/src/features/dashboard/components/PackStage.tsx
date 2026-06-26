@@ -107,6 +107,7 @@ export function PackStage({
           boosterImageUrl={openPackResult.set.boosterImageUrl}
           setName={openPackResult.set.name}
           onComplete={onTearComplete}
+          isGodPack={openPackResult.isGodPack}
         />
       ) : null}
 
