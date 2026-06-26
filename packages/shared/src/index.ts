@@ -74,6 +74,7 @@ export interface CollectionSetOption {
   id: string
   name: string
   count: number
+  distinctCount: number
 }
 
 export interface UserCollectionResponse {
