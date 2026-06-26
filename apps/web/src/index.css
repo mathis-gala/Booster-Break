@@ -210,30 +210,6 @@ body,
   }
 }
 
-@keyframes god-pack-booster-glow {
-  0%,
-  100% {
-    opacity: 0.5;
-    transform: translate(-50%, -50%) scale(0.94);
-  }
-  50% {
-    opacity: 0.85;
-    transform: translate(-50%, -50%) scale(1.06);
-  }
-}
-
-.god-pack-booster-glow {
-  animation: god-pack-booster-glow 2.6s ease-in-out infinite;
-}
-
-@media (prefers-reduced-motion: reduce) {
-  .god-pack-booster-glow {
-    animation: none;
-    opacity: 0.7;
-    transform: translate(-50%, -50%);
-  }
-}
-
 .holo-foil {
   background-image:
     linear-gradient(
