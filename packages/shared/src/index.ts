@@ -107,6 +107,7 @@ export type PackOpenStatusResponse =
       canOpen: boolean
       cooldownSeconds: number
       cooldownDurationSeconds: number
+      availableBoosters?: number
       nextOpenAt?: string
       lastOpenedAt?: string
     }
