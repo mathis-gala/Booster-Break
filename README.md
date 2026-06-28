@@ -26,7 +26,8 @@ of those APIs and any applicable intellectual property rules.
 ## Scripts
 
 ```bash
-bun install
+bun setup
+bun run dev:api
 bun run dev:web
 bun run build:web
 bun run lint
@@ -47,26 +48,42 @@ https://booster.example.com/api
 
 ## Local Environment
 
-Runtime credentials are not committed. Copy the example file and fill your own values:
+Runtime credentials are not committed. Run the setup script after cloning:
 
 ```bash
-cp apps/api/.env.example apps/api/.env.local
+bun setup
 ```
 
-For Docker Compose, `DATABASE_URL` must use the Compose service hostname:
+The setup script:
+
+- installs dependencies from `bun.lock`
+- creates `apps/api/.env.local` and `apps/web/.env.local` when they are missing
+- starts the local Postgres service from `docker-compose.dev.yml`
+- generates Prisma Client and applies existing migrations
+- runs the workspace typecheck
+
+Existing local env files are left unchanged. If you already have `apps/api/.env.local`, make sure
+host-side tools and `bun run dev:api` use the dev database exposed by `docker-compose.dev.yml`:
+
+```env
+DATABASE_URL=postgresql://booster_break:<your-password>@127.0.0.1:5232/booster_break
+```
+
+If `bun setup` reports an existing local schema without Prisma migration history and the local
+database data is disposable, reset the dev database explicitly:
+
+```bash
+bun setup --reset-db
+```
+
+Use the Compose service hostname only when the API itself runs inside Docker Compose:
 
 ```env
 DATABASE_URL=postgresql://booster_break:<your-password>@postgres:5432/booster_break
 ```
 
-For host tools connecting to the Compose database, use `127.0.0.1` instead:
-
-```env
-DATABASE_URL=postgresql://booster_break:<your-password>@127.0.0.1:5432/booster_break
-```
-
-Keep real values in `apps/api/.env.local` for local development. For a server deployment, keep a
-per-project env file next to that server's Compose file, for example:
+For a server deployment, keep a per-project env file next to that server's Compose file, for
+example:
 
 ```text
 /opt/booster-break/
@@ -80,16 +97,18 @@ See [INSTALL.md](./INSTALL.md) for the standalone setup guide.
 
 ## Docker Development
 
-Run the backend and Postgres with Docker:
+The default development flow runs Postgres in Docker and the API/web dev servers on the host:
 
 ```bash
-docker compose up -d postgres api
+bun setup
+bun run dev:api
+bun run dev:web
 ```
 
-Then run the web locally:
+Open:
 
-```bash
-bun run dev:web
+```text
+http://127.0.0.1:5173
 ```
 
 Health check:
@@ -97,6 +116,9 @@ Health check:
 ```bash
 curl http://127.0.0.1:3100/health
 ```
+
+To run both Postgres and the API in Docker instead, use `docker-compose.yml` and set
+`DATABASE_URL` to the Compose service hostname `postgres:5432`.
 
 The API image contains no secrets. Local credentials come from `apps/api/.env.local`; production
 credentials should come from the server env file or a deployment secret manager.
