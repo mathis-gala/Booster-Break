@@ -17,6 +17,49 @@ const UNCOMMON_RARITIES = ['Uncommon']
 const RARE_RARITIES = ['Rare']
 const REVERSE_FOIL_RARITIES = [...COMMON_RARITIES, ...UNCOMMON_RARITIES, ...RARE_RARITIES]
 
+const GOD_PACK_CHANCE = 0.16
+const GOD_PACK_RARITIES = [
+  'Illustration rare',
+  'Illustration Rare',
+  'Ultra Rare',
+  'ACE SPEC Rare',
+  'Ace Spec Rare',
+  'ACE SPEC rare',
+  'Special illustration rare',
+  'Special Illustration Rare',
+  'Mega Hyper Rare',
+  'Hyper rare',
+  'Hyper Rare',
+]
+
+const GOD_PACK_SLOT_RULES: ChanceRule[] = [
+  {
+    chance: 31.96,
+    finish: 'holo',
+    rarities: ['Illustration rare', 'Illustration Rare'],
+  },
+  {
+    chance: 27.38,
+    finish: 'holo',
+    rarities: ['Ultra Rare'],
+  },
+  {
+    chance: 19.83,
+    finish: 'holo',
+    rarities: ['ACE SPEC Rare', 'Ace Spec Rare', 'ACE SPEC rare'],
+  },
+  {
+    chance: 13.13,
+    finish: 'holo',
+    rarities: ['Special illustration rare', 'Special Illustration Rare'],
+  },
+  {
+    chance: 7.71,
+    finish: 'holo',
+    rarities: ['Mega Hyper Rare', 'Hyper rare', 'Hyper Rare'],
+  },
+]
+
 // In Prismatic Evolutions (sv08.5) the ACE SPEC Rare replaces the first reverse holo
 // slot ~4.76% of the time (TCGplayer sample) and is additive: the rare slot still yields its own.
 const FIRST_FOIL_SLOT_RULES: ChanceRule[] = [
@@ -64,7 +107,23 @@ interface ChanceRule {
   rarities: string[]
 }
 
-export const drawPokemonPackCards = (allCards: PokemonCardSummary[]): PokemonCardSummary[] => {
+export interface PokemonPackDrawResult {
+  cards: PokemonCardSummary[]
+  isGodPack: boolean
+}
+
+export const drawPokemonPackCards = (
+  allCards: PokemonCardSummary[],
+  options: { enableGodPack?: boolean } = {},
+): PokemonPackDrawResult => {
+  const { enableGodPack = true } = options
+
+  const godPack = enableGodPack ? drawGodPack(allCards) : undefined
+
+  if (godPack) {
+    return { cards: godPack, isGodPack: true }
+  }
+
   const selectedCards = new Set<string>()
 
   const cards = [
@@ -89,7 +148,63 @@ export const drawPokemonPackCards = (allCards: PokemonCardSummary[]): PokemonCar
     cards.push(...drawManyUnique(allCards, PACK_CARD_COUNT - cards.length, selectedCards))
   }
 
+  return { cards, isGodPack: false }
+}
+
+const drawGodPack = (allCards: PokemonCardSummary[]): PokemonCardSummary[] | undefined => {
+  const candidates = getCardsByRarity(allCards, GOD_PACK_RARITIES)
+
+  if (candidates.length < PACK_CARD_COUNT) {
+    return undefined
+  }
+
+  if (Math.random() * 100 >= GOD_PACK_CHANCE) {
+    return undefined
+  }
+
+  const selectedCards = new Set<string>()
+  const cards: PokemonCardSummary[] = []
+
+  for (let slot = 0; slot < PACK_CARD_COUNT; slot += 1) {
+    const card = drawGodPackSlot(allCards, selectedCards)
+
+    if (card) {
+      cards.push(card)
+    }
+  }
+
   return cards
+}
+
+const drawGodPackSlot = (
+  allCards: PokemonCardSummary[],
+  selectedCards: Set<string>,
+): PokemonCardSummary | undefined => {
+  const availableRules = GOD_PACK_SLOT_RULES.filter((rule) =>
+    getCardsByRarity(allCards, rule.rarities).some((card) => !selectedCards.has(card.id)),
+  )
+
+  const totalChance = availableRules.reduce((sum, rule) => sum + rule.chance, 0)
+
+  if (totalChance === 0) {
+    return undefined
+  }
+
+  let roll = Math.random() * totalChance
+
+  for (const rule of availableRules) {
+    roll -= rule.chance
+
+    if (roll <= 0) {
+      const card = drawUniqueCard(getCardsByRarity(allCards, rule.rarities), selectedCards)
+
+      if (card) {
+        return withFinish(card, rule.finish)
+      }
+    }
+  }
+
+  return undefined
 }
 
 const drawFirstFoilSlot = (

@@ -18,6 +18,7 @@ import {
   POKEMON_SYNC_START_DATE,
   SYNCED_BOOSTER_LIMIT,
 } from './pokemon-config'
+import type { PokemonPackDrawResult } from './pack-draft'
 import { drawPokemonPackCards } from './pack-draft'
 import { PokemonCatalogSyncService } from './pokemon-catalog-sync-service'
 import { ScrydexSealedClient } from './scrydex-sealed-client'
@@ -196,7 +197,7 @@ export class PokemonService {
       }
     }
 
-    const cards = await this.drawPackCards(setId, locale)
+    const { cards, isGodPack } = await this.drawPackCards(setId, locale)
 
     if (cards.length === 0) {
       return {
@@ -219,6 +220,7 @@ export class PokemonService {
         openingId,
         set,
         cards: cards.map((card) => ({ ...card, isNew: newCardIdSet.has(card.id) })),
+        isGodPack,
       }
     } catch (error) {
       if (error instanceof PokemonRepositoryErrorException) {
@@ -263,7 +265,7 @@ export class PokemonService {
   private async drawPackCards(
     setId: string,
     locale: SupportedLocale,
-  ): Promise<PokemonCardSummary[]> {
+  ): Promise<PokemonPackDrawResult> {
     const allCards = await this.options.pokemonRepository.listCards(setId, locale)
 
     return drawPokemonPackCards(allCards)
