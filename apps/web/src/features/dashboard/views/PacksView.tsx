@@ -39,7 +39,7 @@ export function PacksView() {
   )
   const collection = useQuery(usePokemonCollectionCountQueryOption())
   const ownedSetPullCounts = useMemo(
-    () => new Map((collection.data?.sets ?? []).map((set) => [set.id, set.count])),
+    () => new Map((collection.data?.sets ?? []).map((set) => [set.id, set.distinctCount])),
     [collection.data?.sets],
   )
   const previewCards = useQuery(usePokemonPreviewCardsQueryOption(previewSetId))

@@ -217,12 +217,23 @@ export class PokemonRepository {
     locale: SupportedLocale,
   ): CollectionSetOption[] {
     const sets = new Map<string, CollectionSetOption>()
+    const distinctCardIdsBySet = new Map<string, Set<string>>()
 
     for (const row of rows) {
+      let distinctCardIds = distinctCardIdsBySet.get(row.card.setId)
+
+      if (!distinctCardIds) {
+        distinctCardIds = new Set<string>()
+        distinctCardIdsBySet.set(row.card.setId, distinctCardIds)
+      }
+
+      distinctCardIds.add(row.cardId)
+
       const existing = sets.get(row.card.setId)
 
       if (existing) {
         existing.count += 1
+        existing.distinctCount = distinctCardIds.size
         continue
       }
 
@@ -230,6 +241,7 @@ export class PokemonRepository {
         id: row.card.setId,
         name: row.card.set ? getLocalizedSetName(row.card.set, locale) : row.card.setId,
         count: 1,
+        distinctCount: distinctCardIds.size,
       })
     }
 
