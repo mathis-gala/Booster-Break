@@ -52,7 +52,7 @@ let drawnCards = 0
 let newCards = 0
 
 for (let i = 0; i < count; i += 1) {
-  const cards = drawPokemonPackCards(allCards)
+  const { cards } = drawPokemonPackCards(allCards)
 
   if (cards.length === 0) {
     continue
