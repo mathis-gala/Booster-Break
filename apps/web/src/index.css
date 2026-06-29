@@ -184,6 +184,32 @@ body,
   }
 }
 
+@keyframes god-pack-aura {
+  0%,
+  100% {
+    box-shadow:
+      0 0 24px -6px rgb(251 191 36 / 0.6),
+      0 0 72px -16px rgb(245 158 11 / 0.58);
+    border-color: rgb(251 191 36 / 0.5);
+  }
+  50% {
+    box-shadow:
+      0 0 27px -5px rgb(252 211 77 / 0.66),
+      0 0 79px -14px rgb(245 158 11 / 0.64);
+    border-color: rgb(253 224 71 / 0.98);
+  }
+}
+
+.god-pack-aura {
+  animation: god-pack-aura 3.4s ease-in-out infinite;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .god-pack-aura {
+    animation: none;
+  }
+}
+
 .holo-foil {
   background-image:
     linear-gradient(

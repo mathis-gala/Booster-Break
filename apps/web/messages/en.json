@@ -98,6 +98,8 @@
   "packs_view_cards": "View booster cards",
   "packs_view_cards_aria": "View {name} cards",
   "packs_pulls_title": "{set} pulls",
+  "packs_god_pack_badge": "GOD PACK",
+  "packs_god_pack_subtitle": "Every card is a hit!",
   "packs_added_to_collection": "Added to collection",
   "packs_card_new": "NEW",
   "packs_new_cards_count": "{count} new",

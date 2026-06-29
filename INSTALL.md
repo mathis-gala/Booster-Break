@@ -5,29 +5,40 @@ provided by an env file or a deployment secret manager.
 
 ## Local Development
 
-Copy the example env file:
+Run the setup script after cloning:
 
 ```bash
-cp apps/api/.env.example apps/api/.env.local
+bun setup
 ```
 
-Choose your own values in `apps/api/.env.local`.
+The setup script installs dependencies, creates missing local env files, starts the dev Postgres
+container, generates Prisma Client, applies existing migrations, and typechecks the workspace.
+Existing local env files are left unchanged.
 
-For Docker Compose, `DATABASE_URL` must use the internal Compose service name:
+For the default host-run API, `DATABASE_URL` must use the Postgres port exposed by
+`docker-compose.dev.yml`:
+
+```env
+DATABASE_URL=postgresql://booster_break:<password>@127.0.0.1:5232/booster_break
+```
+
+If `bun setup` reports an existing local schema without Prisma migration history and the local
+database data is disposable, reset it explicitly:
+
+```bash
+bun setup --reset-db
+```
+
+Use the internal Compose service name only when the API itself runs inside Docker Compose:
 
 ```env
 DATABASE_URL=postgresql://booster_break:<password>@postgres:5432/booster_break
 ```
 
-Start the backend and database:
+Start the API and web dev servers:
 
 ```bash
-docker compose up -d postgres api
-```
-
-Start the web app:
-
-```bash
+bun run dev:api
 bun run dev:web
 ```
 
@@ -35,6 +46,12 @@ Open:
 
 ```text
 http://127.0.0.1:5173
+```
+
+Health check:
+
+```text
+http://127.0.0.1:3100/health
 ```
 
 For a local WiFi/server deployment, use the Docker/Caddy stack below instead of the Vite dev

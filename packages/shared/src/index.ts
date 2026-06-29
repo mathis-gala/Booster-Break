@@ -124,6 +124,7 @@ export interface OpenPackResponse {
   openingId: string
   set: PokemonSetSummary
   cards: OpenedPackCard[]
+  isGodPack: boolean
 }
 
 export type TradeAuctionStatus = 'active' | 'accepted' | 'cancelled' | 'expired'

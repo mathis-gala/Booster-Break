@@ -3,6 +3,7 @@ import { ArrowLeftIcon, ArrowRightIcon, SparklesIcon, XIcon } from 'lucide-react
 import type { OpenPackResponse } from '@tcg-collection/shared'
 
 import { Button } from '@/components/ui/button'
+import { cn } from '@/lib/utils'
 import { m } from '@/paraglide/messages'
 import { CardImageDialog } from './CardImageDialog'
 import { FoilCardImage } from './FoilCardImage'
@@ -32,11 +33,14 @@ export function PackRevealDialog({
   const isFirstRevealCard = revealedCardIndex === 0
   const isLastRevealCard = revealedCardIndex === openPackResult.cards.length - 1
   const newCardCount = revealedCards.filter((card) => card.isNew).length
+  const isGodPack = openPackResult.isGodPack
   const subtitle =
     resultLabel ??
-    (newCardCount > 0
-      ? m.packs_new_cards_count({ count: newCardCount })
-      : m.packs_added_to_collection())
+    (isGodPack
+      ? m.packs_god_pack_subtitle()
+      : newCardCount > 0
+        ? m.packs_new_cards_count({ count: newCardCount })
+        : m.packs_added_to_collection())
 
   return (
     <div
@@ -45,16 +49,34 @@ export function PackRevealDialog({
       aria-modal="true"
       aria-labelledby="pack-reveal-title"
     >
-      <div className="max-h-[min(96dvh,64rem)] w-[min(50rem,calc(100vw-1.5rem))] overflow-y-auto overflow-x-hidden rounded-lg border bg-background p-4 pb-6 text-foreground shadow-2xl sm:w-[min(50rem,calc(100vw-2rem))] md:p-6 md:pb-8">
+      <div
+        className={cn(
+          'max-h-[min(96dvh,64rem)] w-[min(50rem,calc(100vw-1.5rem))] overflow-y-auto overflow-x-hidden rounded-lg border bg-background p-4 pb-6 text-foreground shadow-2xl sm:w-[min(50rem,calc(100vw-2rem))] md:p-6 md:pb-8',
+          isGodPack &&
+            'god-pack-aura border-amber-400/70 bg-linear-to-b from-amber-50/80 to-background dark:from-amber-950/40',
+        )}
+      >
         <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
           <div>
-            <h3 id="pack-reveal-title" className="text-lg font-black">
-              {m.packs_pulls_title({ set: openPackResult.set.name })}
-            </h3>
-            <p className="text-sm font-semibold text-muted-foreground">{subtitle}</p>
+            <div className="flex flex-wrap items-center gap-2">
+              <h3 id="pack-reveal-title" className="text-lg font-black">
+                {m.packs_pulls_title({ set: openPackResult.set.name })}
+              </h3>
+            </div>
+            <p
+              className={cn(
+                'text-sm font-semibold text-muted-foreground',
+                isGodPack && 'text-amber-600 dark:text-amber-400',
+              )}
+            >
+              {subtitle}
+            </p>
           </div>
           <div className="flex items-center gap-2">
-            <SparklesIcon className="text-muted-foreground" aria-hidden="true" />
+            <SparklesIcon
+              className={isGodPack ? 'text-amber-400' : 'text-muted-foreground'}
+              aria-hidden="true"
+            />
             <Button
               type="button"
               variant="outline"
@@ -71,7 +93,7 @@ export function PackRevealDialog({
           <div className="grid justify-items-center gap-4">
             <div
               key={`${openPackResult.openingId}-${currentRevealCard.id}-${revealedCardIndex}`}
-              className="relative flex aspect-63/88 w-full max-w-[24rem] animate-[pack-card-reveal_720ms_cubic-bezier(0.22,1,0.36,1)_both] items-center justify-center justify-self-center will-change-transform"
+              className="relative flex aspect-63/88 w-full max-w-[24rem] animate-[pack-card-reveal_720ms_cubic-bezier(0.22,1,0.36,1)_both] items-center justify-center justify-self-center will-change-transform motion-reduce:animate-none"
             >
               {currentRevealCard.isNew ? (
                 <span className="new-card-badge-pulse absolute bottom-full left-0 right-0 z-10 mx-auto mb-1.5 flex w-fit max-w-[90%] items-center gap-1 whitespace-nowrap rounded-full bg-amber-400 px-3 py-1 text-xs font-black uppercase tracking-wide text-amber-950 shadow-[0_8px_20px_-6px_rgba(245,158,11,0.55)] animate-[new-card-badge_620ms_cubic-bezier(0.34,1.56,0.64,1)_both] sm:mb-2 sm:gap-1.5 sm:px-4 sm:py-1.5 sm:text-sm">
