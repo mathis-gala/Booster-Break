@@ -19,6 +19,12 @@ const config: ApiConfig = {
   magicLinkAdminSecret: 'unit-magic-secret',
   magicLinkTtlDays: 30,
   devAuthEnabled: false,
+  boosterRotationAvailableCount: 3,
+  boosterRotationProposalCount: 3,
+  boosterRotationCadenceUnit: 'day',
+  boosterRotationCadenceValue: 7,
+  boosterRotationTimeZone: 'Europe/Paris',
+  boosterRotationAnchorLocalDate: '2026-06-29',
 }
 
 describe('auth routes', () => {

@@ -10,9 +10,9 @@ import type {
   UserCollectionResponse,
 } from '@tcg-collection/shared'
 import { DEFAULT_LOCALE } from '@tcg-collection/shared'
-import { AuthService } from '../auth/auth-service'
+import type { AuthService } from '../auth/auth-service'
 import type { AuthUser } from '../auth/types'
-import { PokemonRepository } from './pokemon-repository'
+import type { PokemonRepository } from './pokemon-repository'
 import {
   PACK_OPEN_COOLDOWN_SECONDS,
   POKEMON_SYNC_START_DATE,
@@ -21,12 +21,15 @@ import {
 import type { PokemonPackDrawResult } from './pack-draft'
 import { drawPokemonPackCards } from './pack-draft'
 import { PokemonCatalogSyncService } from './pokemon-catalog-sync-service'
-import { ScrydexSealedClient } from './scrydex-sealed-client'
-import { TcgDexClient } from './tcgdex-client'
+import type { ScrydexSealedClient } from './scrydex-sealed-client'
+import type { TcgDexClient } from './tcgdex-client'
 import { PokemonRepositoryErrorException } from './pokemon-repository'
+import type { BoosterRotationService } from './booster-rotation-service'
+import { isBoosterRotationServiceError } from './booster-rotation-types'
 
 export interface PokemonServiceOptions {
   authService: AuthService
+  boosterRotationService?: BoosterRotationService
   localizedPokemonClients: Record<SupportedLocale, TcgDexClient>
   pokemonClient: TcgDexClient
   pokemonRepository: PokemonRepository
@@ -35,6 +38,7 @@ export interface PokemonServiceOptions {
 
 export type PokemonServiceErrorCode =
   | 'pack_cooldown'
+  | 'pack_not_in_rotation'
   | 'pack_unavailable'
   | 'pokemon_sets_not_synced'
   | 'unauthenticated'
@@ -69,6 +73,16 @@ export class PokemonService {
     await this.ensurePokemonDataSynced()
 
     return this.options.pokemonRepository.listSets(locale)
+  }
+
+  async ensurePokemonDataAvailable(locale: SupportedLocale, minimumSetCount = 1): Promise<void> {
+    const sets = await this.options.pokemonRepository.listSets(locale)
+
+    if (sets.length >= minimumSetCount) {
+      return
+    }
+
+    await this.ensurePokemonDataSynced()
   }
 
   async listCards(
@@ -170,12 +184,40 @@ export class PokemonService {
     input: { setId?: string; locale?: SupportedLocale },
   ): Promise<OpenPackResponse | PokemonServiceError> {
     const locale = input.locale ?? DEFAULT_LOCALE
-    const setId = input.setId ?? (await this.options.pokemonRepository.listSets(locale))[0]?.id
+    const rotation = this.options.boosterRotationService
+      ? await this.options.boosterRotationService.getRotation({
+          locale,
+          userId: user.id,
+        })
+      : undefined
+
+    if (rotation && isBoosterRotationServiceError(rotation)) {
+      return {
+        error:
+          rotation.error === 'pokemon_sets_not_synced'
+            ? 'pokemon_sets_not_synced'
+            : 'pack_unavailable',
+        message: rotation.message,
+      }
+    }
+
+    const activeRotationSets = rotation?.active.sets
+    const setId =
+      input.setId ??
+      activeRotationSets?.[0]?.id ??
+      (await this.options.pokemonRepository.listSets(locale))[0]?.id
 
     if (!setId) {
       return {
         error: 'pokemon_sets_not_synced',
         message: 'Sync Pokemon sets before opening a booster.',
+      }
+    }
+
+    if (activeRotationSets && !activeRotationSets.some((set) => set.id === setId)) {
+      return {
+        error: 'pack_not_in_rotation',
+        message: 'This booster is not available in the current rotation.',
       }
     }
 

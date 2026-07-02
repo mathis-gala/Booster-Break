@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react'
+import { useMemo, useState, type ReactNode } from 'react'
 import type {
   OpenPackResponse,
   PackOpenStatusResponse,
@@ -11,6 +11,7 @@ import { BoosterOpeningOverlay } from './BoosterOpeningOverlay'
 import { BoosterPreviewDialog } from './BoosterPreviewDialog'
 import { PackBoosterStage } from './PackBoosterStage'
 import { PackRevealDialog } from './PackRevealDialog'
+import { m } from '@/paraglide/messages'
 
 interface PackStageProps {
   sets: PokemonSetSummary[]
@@ -35,6 +36,7 @@ interface PackStageProps {
   collectionCount: number
   ownedSetPullCounts?: ReadonlyMap<string, number>
   previewOwnedCardIds?: ReadonlySet<string>
+  rotationVotePanel?: ReactNode
 }
 
 export function PackStage({
@@ -60,6 +62,7 @@ export function PackStage({
   collectionCount,
   ownedSetPullCounts,
   previewOwnedCardIds,
+  rotationVotePanel,
 }: PackStageProps) {
   const [selectedSetId, setSelectedSetId] = useState<string>()
   const boosterSets = useMemo(
@@ -90,16 +93,23 @@ export function PackStage({
           onOpenPack={onOpenPack}
         />
 
-        <BoosterPickerPanel
-          activeSetId={activeSetId}
-          collectionCount={collectionCount}
-          sets={boosterSets}
-          setsIsPending={setsIsPending}
-          onPreviewSet={onPreviewSet}
-          onSelectSet={setSelectedSetId}
-          ownedSetPullCounts={ownedSetPullCounts}
-          hideSetCardTitle
-        />
+        <div className="grid gap-5">
+          <BoosterPickerPanel
+            activeSetId={activeSetId}
+            collectionCount={collectionCount}
+            sets={boosterSets}
+            setsIsPending={setsIsPending}
+            onPreviewSet={onPreviewSet}
+            onSelectSet={setSelectedSetId}
+            title={m.packs_rotation_active_title()}
+            description={m.packs_rotation_active_description()}
+            loadingLabel={m.packs_rotation_loading()}
+            emptyLabel={m.packs_rotation_error()}
+            ownedSetPullCounts={ownedSetPullCounts}
+            hideSetCardTitle
+          />
+          {rotationVotePanel}
+        </div>
       </div>
 
       {openPackResult && isTearOpen && openPackResult.set.boosterImageUrl ? (

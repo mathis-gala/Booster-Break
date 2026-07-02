@@ -1,17 +1,22 @@
 import { useCallback, useMemo, useState } from 'react'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
+import type { PokemonSetSummary } from '@tcg-collection/shared'
 
+import { BoosterRotationVotePanel } from '../components/BoosterRotationVotePanel'
 import { PackStage } from '../components/PackStage'
 import { usePackOpenStatusClock } from '../hooks/usePackOpenStatusClock'
 import { useLocale } from '@/features/i18n/useLocale'
-import { useOpenPokemonPackMutationOption } from '@/lib/mutations/pokemon'
+import {
+  useOpenPokemonPackMutationOption,
+  useVotePackRotationMutationOption,
+} from '@/lib/mutations/pokemon'
 import { useCurrentUserQueryOption } from '@/lib/queries/auth'
 import {
   useOwnedCardIdsQueryOption,
   usePackOpenStatusQueryOption,
+  usePackRotationQueryOption,
   usePokemonCollectionCountQueryOption,
   usePokemonPreviewCardsQueryOption,
-  usePokemonSetsQueryOption,
 } from '@/lib/queries/pokemon'
 
 export function PacksView() {
@@ -23,7 +28,7 @@ export function PacksView() {
   const [maxRevealedCardIndex, setMaxRevealedCardIndex] = useState(0)
   const [previewSetId, setPreviewSetId] = useState<string>()
   const queryClient = useQueryClient()
-  const sets = useQuery(usePokemonSetsQueryOption())
+  const packRotation = useQuery(usePackRotationQueryOption())
   const packStatusQuery = useQuery(usePackOpenStatusQueryOption())
   const packOpenStatus = usePackOpenStatusClock(packStatusQuery.data)
   const openPack = useMutation(
@@ -37,13 +42,29 @@ export function PacksView() {
       },
     }),
   )
+  const votePackRotation = useMutation(useVotePackRotationMutationOption(queryClient))
   const collection = useQuery(usePokemonCollectionCountQueryOption())
   const ownedSetPullCounts = useMemo(
     () => new Map((collection.data?.sets ?? []).map((set) => [set.id, set.distinctCount])),
     [collection.data?.sets],
   )
   const previewCards = useQuery(usePokemonPreviewCardsQueryOption(previewSetId))
-  const previewSet = sets.data?.find((set) => set.id === previewSetId)
+  const previewSets = useMemo(() => {
+    const setsById = new Map<string, PokemonSetSummary>()
+
+    for (const set of packRotation.data?.active.sets ?? []) {
+      setsById.set(set.id, set)
+    }
+
+    for (const proposal of packRotation.data?.poll.proposals ?? []) {
+      for (const set of proposal.sets) {
+        setsById.set(set.id, set)
+      }
+    }
+
+    return setsById
+  }, [packRotation.data])
+  const previewSet = previewSetId ? previewSets.get(previewSetId) : undefined
   const currentUser = useQuery(useCurrentUserQueryOption())
   const isAuthenticated = currentUser.data?.authenticated ?? false
   const ownedCardIdsQuery = useQuery(useOwnedCardIdsQueryOption(isAuthenticated))
@@ -60,8 +81,8 @@ export function PacksView() {
   return (
     <div className="w-full max-w-6xl">
       <PackStage
-        sets={sets.data ?? []}
-        setsIsPending={sets.isPending}
+        sets={packRotation.data?.active.sets ?? []}
+        setsIsPending={packRotation.isPending}
         onOpenPack={(setId) => openPack.mutate(setId)}
         openPackIsPending={openPack.isPending || isPreparingReveal}
         openPackResult={openPack.data}
@@ -85,6 +106,17 @@ export function PacksView() {
         collectionCount={collection.data?.pagination.totalCards ?? 0}
         ownedSetPullCounts={ownedSetPullCounts}
         previewOwnedCardIds={ownedCardIds}
+        rotationVotePanel={
+          <BoosterRotationVotePanel
+            rotation={packRotation.data}
+            isAuthenticated={isAuthenticated}
+            isPending={packRotation.isPending}
+            isVoting={votePackRotation.isPending}
+            hasError={packRotation.isError}
+            onPreviewSet={setPreviewSetId}
+            onVote={(proposalId) => votePackRotation.mutate(proposalId)}
+          />
+        }
       />
     </div>
   )

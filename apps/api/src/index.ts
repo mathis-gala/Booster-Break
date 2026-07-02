@@ -10,6 +10,8 @@ import { prisma } from './db/prisma'
 import { createLeaderboardController } from './leaderboard/leaderboard-controller'
 import { LeaderboardRepository } from './leaderboard/leaderboard-repository'
 import { LeaderboardService } from './leaderboard/leaderboard-service'
+import { BoosterRotationRepository } from './pokemon/booster-rotation-repository'
+import { BoosterRotationService } from './pokemon/booster-rotation-service'
 import { createPokemonController } from './pokemon/pokemon-controller'
 import { PokemonRepository } from './pokemon/pokemon-repository'
 import { PokemonService } from './pokemon/pokemon-service'
@@ -44,8 +46,24 @@ const sealedClient = new ScrydexSealedClient({
   apiKey: config.scrydexApiKey,
   teamId: config.scrydexTeamId,
 })
-const pokemonService = new PokemonService({
+const boosterRotationRepository = new BoosterRotationRepository(prisma)
+let pokemonService: PokemonService
+const boosterRotationService = new BoosterRotationService({
+  config: {
+    availableCount: config.boosterRotationAvailableCount,
+    proposalCount: config.boosterRotationProposalCount,
+    cadenceUnit: config.boosterRotationCadenceUnit,
+    cadenceValue: config.boosterRotationCadenceValue,
+    timeZone: config.boosterRotationTimeZone,
+    anchorLocalDate: config.boosterRotationAnchorLocalDate,
+  },
+  repository: boosterRotationRepository,
+  ensurePokemonDataAvailable: (locale, minimumSetCount) =>
+    pokemonService.ensurePokemonDataAvailable(locale, minimumSetCount),
+})
+pokemonService = new PokemonService({
   authService,
+  boosterRotationService,
   localizedPokemonClients,
   pokemonClient,
   pokemonRepository,
@@ -72,6 +90,7 @@ export const app = new Elysia()
   .use(
     createPokemonController({
       authService,
+      boosterRotationService,
       config,
       localizedPokemonClients,
       pokemonClient,

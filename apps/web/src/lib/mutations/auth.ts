@@ -9,6 +9,7 @@ export const useDevLoginMutationOption = (queryClient: QueryClient) =>
     onSuccess: (auth) => {
       queryClient.setQueryData(authQueryKeys.me(), auth)
       void queryClient.invalidateQueries({ queryKey: pokemonQueryKeys.collection.all })
+      void queryClient.invalidateQueries({ queryKey: pokemonQueryKeys.packRotationAll() })
       void queryClient.invalidateQueries({ queryKey: pokemonQueryKeys.packStatus() })
       void queryClient.invalidateQueries({ queryKey: pokemonQueryKeys.leaderboard() })
     },
@@ -20,5 +21,6 @@ export const useLogoutMutationOption = (queryClient: QueryClient) =>
     onSuccess: () => {
       queryClient.setQueryData(authQueryKeys.me(), { authenticated: false })
       queryClient.removeQueries({ queryKey: pokemonQueryKeys.collection.all })
+      void queryClient.invalidateQueries({ queryKey: pokemonQueryKeys.packRotationAll() })
     },
   })

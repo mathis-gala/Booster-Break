@@ -23,6 +23,7 @@ model User {
   tradeOffers   TradeOffer[] @relation("TradeOfferProposer")
   tradeNotifications TradeNotification[] @relation("TradeUserNotifications")
   magicLoginTokens MagicLoginToken[]
+  boosterRotationVotes BoosterRotationVote[]
 
   @@map("users")
 }
@@ -68,6 +69,8 @@ model PokemonSet {
   syncedAt    String        @map("synced_at")
   cards       PokemonCard[]
   openings    PackOpening[]
+  boosterRotations         BoosterRotationSet[]
+  boosterRotationProposals BoosterRotationProposalSet[]
 
   @@map("pokemon_sets")
 }
@@ -226,4 +229,92 @@ model PackOpeningCard {
 
   @@id([packOpeningId, position])
   @@map("pack_opening_cards")
+}
+
+model BoosterRotation {
+  id           String               @id
+  startsAt     DateTime             @map("starts_at")
+  endsAt       DateTime             @map("ends_at")
+  sourcePollId String?              @map("source_poll_id")
+  sourcePoll   BoosterRotationPoll? @relation("BoosterRotationSourcePoll", fields: [sourcePollId], references: [id], onDelete: SetNull)
+  sets         BoosterRotationSet[]
+
+  @@index([startsAt, endsAt])
+  @@index([sourcePollId])
+  @@map("booster_rotations")
+}
+
+model BoosterRotationSet {
+  rotationId String          @map("rotation_id")
+  setId      String          @map("set_id")
+  position   Int
+  rotation   BoosterRotation @relation(fields: [rotationId], references: [id], onDelete: Cascade)
+  set        PokemonSet      @relation(fields: [setId], references: [id], onDelete: Restrict)
+
+  @@id([rotationId, setId])
+  @@unique([rotationId, position])
+  @@index([setId])
+  @@map("booster_rotation_sets")
+}
+
+model BoosterRotationPoll {
+  id                 String                    @id
+  votingStartsAt     DateTime                  @map("voting_starts_at")
+  votingEndsAt       DateTime                  @map("voting_ends_at")
+  targetStartsAt     DateTime                  @map("target_starts_at")
+  targetEndsAt       DateTime                  @map("target_ends_at")
+  selectedProposalId String?                   @map("selected_proposal_id")
+  closedAt           DateTime?                 @map("closed_at")
+  selectedProposal   BoosterRotationProposal?  @relation("BoosterRotationPollSelectedProposal", fields: [selectedProposalId], references: [id], onDelete: SetNull)
+  proposals          BoosterRotationProposal[]
+  votes              BoosterRotationVote[]
+  sourceRotations    BoosterRotation[]         @relation("BoosterRotationSourcePoll")
+
+  @@index([votingStartsAt, votingEndsAt])
+  @@index([targetStartsAt, targetEndsAt])
+  @@index([selectedProposalId])
+  @@map("booster_rotation_polls")
+}
+
+model BoosterRotationProposal {
+  id              String                       @id
+  pollId          String                       @map("poll_id")
+  position        Int
+  poll            BoosterRotationPoll          @relation(fields: [pollId], references: [id], onDelete: Cascade)
+  selectedByPolls BoosterRotationPoll[]        @relation("BoosterRotationPollSelectedProposal")
+  sets            BoosterRotationProposalSet[]
+  votes           BoosterRotationVote[]
+
+  @@unique([pollId, position])
+  @@index([pollId])
+  @@map("booster_rotation_proposals")
+}
+
+model BoosterRotationProposalSet {
+  proposalId String                  @map("proposal_id")
+  setId      String                  @map("set_id")
+  position   Int
+  proposal   BoosterRotationProposal @relation(fields: [proposalId], references: [id], onDelete: Cascade)
+  set        PokemonSet              @relation(fields: [setId], references: [id], onDelete: Restrict)
+
+  @@id([proposalId, setId])
+  @@unique([proposalId, position])
+  @@index([setId])
+  @@map("booster_rotation_proposal_sets")
+}
+
+model BoosterRotationVote {
+  pollId     String                  @map("poll_id")
+  userId     String                  @map("user_id")
+  proposalId String                  @map("proposal_id")
+  createdAt  DateTime                @default(now()) @map("created_at")
+  updatedAt  DateTime                @updatedAt @map("updated_at")
+  poll       BoosterRotationPoll     @relation(fields: [pollId], references: [id], onDelete: Cascade)
+  user       User                    @relation(fields: [userId], references: [id], onDelete: Cascade)
+  proposal   BoosterRotationProposal @relation(fields: [proposalId], references: [id], onDelete: Cascade)
+
+  @@id([pollId, userId])
+  @@index([proposalId])
+  @@index([userId])
+  @@map("booster_rotation_votes")
 }

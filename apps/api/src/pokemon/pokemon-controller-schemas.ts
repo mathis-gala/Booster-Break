@@ -28,3 +28,7 @@ export const openPackBodySchema = z.object({
   setId: z.string().optional(),
   locale: localeSchema.optional(),
 })
+
+export const votePackRotationBodySchema = z.object({
+  proposalId: z.string(),
+})

@@ -1,4 +1,9 @@
-import type { AuthMeResponse, HealthResponse, OpenPackResponse } from '@tcg-collection/shared'
+import type {
+  AuthMeResponse,
+  HealthResponse,
+  OpenPackResponse,
+  PackRotationResponse,
+} from '@tcg-collection/shared'
 import { api, getApiUrl } from '@/lib/api-client'
 import type { EdenError } from '@/lib/queries/eden-query-option'
 import { m } from '@/paraglide/messages'
@@ -59,6 +64,18 @@ export async function openPokemonPackSandbox(setId?: string): Promise<OpenPackRe
   return data
 }
 
+export async function votePackRotation(proposalId: string): Promise<PackRotationResponse> {
+  const { data, error } = await api.pokemon.packs.rotation.vote.post({
+    proposalId,
+  })
+
+  if (error || !data) {
+    throw new Error(toApiErrorMessage(toApiErrorPayload(error), m.api_unable_vote_pack_rotation()))
+  }
+
+  return data
+}
+
 const toApiErrorMessage = (
   payload: { message?: string; error?: string } | undefined,
   fallback: string,
@@ -72,6 +89,8 @@ const toApiErrorMessage = (
       return m.api_sign_in_open_pack()
     case 'pack_cooldown':
       return payload.message ?? m.api_pack_cooldown()
+    case 'pack_rotation_vote_closed':
+      return payload.message ?? m.packs_rotation_vote_closed()
     default:
       return payload?.error ?? fallback
   }

@@ -6,21 +6,26 @@ import type { AuthStore } from '../auth/session-store'
 import type { AuthUser } from '../auth/types'
 import type { ApiConfig } from '../config'
 import { localePlugin, resolveLocaleOverride } from '../i18n/locale'
-import { PokemonRepository } from './pokemon-repository'
+import type { BoosterRotationService } from './booster-rotation-service'
+import type { BoosterRotationServiceError } from './booster-rotation-types'
+import { isBoosterRotationServiceError } from './booster-rotation-types'
+import type { PokemonRepository } from './pokemon-repository'
 import { PokemonSandboxService } from './pokemon-sandbox-service'
 import { isPokemonServiceError, PokemonService } from './pokemon-service'
-import { ScrydexSealedClient } from './scrydex-sealed-client'
-import { TcgDexClient } from './tcgdex-client'
+import type { ScrydexSealedClient } from './scrydex-sealed-client'
+import type { TcgDexClient } from './tcgdex-client'
 import {
   cardsQuerySchema,
   collectionQuerySchema,
   localeQuerySchema,
   openPackBodySchema,
+  votePackRotationBodySchema,
 } from './pokemon-controller-schemas'
 
 interface PokemonControllerOptions {
   authService?: AuthService
   authStore?: AuthStore
+  boosterRotationService: BoosterRotationService
   config: ApiConfig
   localizedPokemonClients: Record<SupportedLocale, TcgDexClient>
   pokemonClient: TcgDexClient
@@ -33,6 +38,7 @@ interface PokemonControllerOptions {
 export const createPokemonController = ({
   authService,
   authStore,
+  boosterRotationService,
   config,
   localizedPokemonClients,
   pokemonClient,
@@ -54,6 +60,7 @@ export const createPokemonController = ({
     service ??
     new PokemonService({
       authService: resolvedAuthService!,
+      boosterRotationService,
       localizedPokemonClients,
       pokemonClient,
       pokemonRepository,
@@ -109,6 +116,25 @@ export const createPokemonController = ({
       }),
       {
         query: cardsQuerySchema,
+      },
+    )
+    .get(
+      '/packs/rotation',
+      async ({ headers, locale, query, status }) => {
+        const currentUser = await resolvedAuthService?.getCurrentUser(headers.cookie)
+        const result = await boosterRotationService.getRotation({
+          locale: resolveLocaleOverride(query.locale, locale),
+          userId: currentUser?.id,
+        })
+
+        if (!isBoosterRotationServiceError(result)) {
+          return result
+        }
+
+        return status(toBoosterRotationErrorStatus(result.error), result)
+      },
+      {
+        query: localeQuerySchema,
       },
     )
     .get('/packs/status', async ({ headers }) => pokemonService.getPackOpenStatus(headers.cookie))
@@ -177,6 +203,26 @@ export const createPokemonController = ({
       return status(toPokemonErrorStatus(result.error), result)
     })
     .post(
+      '/packs/rotation/vote',
+      async (context) => {
+        const { currentUser, body, locale, status } = getAuthenticatedContext(context)
+        const result = await boosterRotationService.vote({
+          locale,
+          proposalId: body.proposalId,
+          userId: currentUser.id,
+        })
+
+        if (!isBoosterRotationServiceError(result)) {
+          return result
+        }
+
+        return status(toBoosterRotationErrorStatus(result.error), result)
+      },
+      {
+        body: votePackRotationBodySchema,
+      },
+    )
+    .post(
       '/packs/open',
       async (context) => {
         const { currentUser, body, locale, status } = getAuthenticatedContext(context)
@@ -204,7 +250,18 @@ const toPokemonErrorStatus = (error: string): 401 | 404 | 409 => {
     case 'unauthenticated':
       return 401
     case 'pack_cooldown':
+    case 'pack_not_in_rotation':
     case 'pokemon_sets_not_synced':
+      return 409
+    default:
+      return 404
+  }
+}
+
+const toBoosterRotationErrorStatus = (error: BoosterRotationServiceError['error']): 404 | 409 => {
+  switch (error) {
+    case 'pokemon_sets_not_synced':
+    case 'pack_rotation_vote_closed':
       return 409
     default:
       return 404

@@ -15,6 +15,12 @@ export interface ApiConfig {
   slackRedirectUri: string
   scrydexApiKey?: string
   scrydexTeamId?: string
+  boosterRotationAvailableCount: number
+  boosterRotationProposalCount: number
+  boosterRotationCadenceUnit: 'day' | 'month'
+  boosterRotationCadenceValue: number
+  boosterRotationTimeZone: string
+  boosterRotationAnchorLocalDate: string
 }
 
 export const getConfig = (): ApiConfig => {
@@ -43,9 +49,21 @@ export const getConfig = (): ApiConfig => {
     slackRedirectUri: Bun.env.SLACK_REDIRECT_URI ?? `${apiOrigin}/auth/slack/callback`,
     scrydexApiKey: Bun.env.SCRYDEX_API_KEY,
     scrydexTeamId: Bun.env.SCRYDEX_TEAM_ID,
+    boosterRotationAvailableCount: readPositiveInteger(Bun.env.BOOSTER_ROTATION_AVAILABLE_COUNT, 3),
+    boosterRotationProposalCount: readPositiveInteger(Bun.env.BOOSTER_ROTATION_PROPOSAL_COUNT, 3),
+    boosterRotationCadenceUnit: Bun.env.BOOSTER_ROTATION_CADENCE_UNIT === 'month' ? 'month' : 'day',
+    boosterRotationCadenceValue: readPositiveInteger(Bun.env.BOOSTER_ROTATION_CADENCE_VALUE, 7),
+    boosterRotationTimeZone: Bun.env.BOOSTER_ROTATION_TIME_ZONE ?? 'Europe/Paris',
+    boosterRotationAnchorLocalDate: Bun.env.BOOSTER_ROTATION_ANCHOR_LOCAL_DATE ?? '2026-06-29',
   }
 }
 
 const toOrigin = (url: string): string => {
   return new URL(url).origin
+}
+
+const readPositiveInteger = (value: string | undefined, fallback: number): number => {
+  const parsed = Number(value)
+
+  return Number.isInteger(parsed) && parsed > 0 ? parsed : fallback
 }

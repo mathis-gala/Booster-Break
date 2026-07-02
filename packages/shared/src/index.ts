@@ -128,6 +128,32 @@ export interface OpenPackResponse {
   isGodPack: boolean
 }
 
+export interface PackRotationResponse {
+  active: {
+    id: string
+    startsAt: string
+    endsAt: string
+    sets: PokemonSetSummary[]
+  }
+  poll: {
+    id: string
+    votingStartsAt: string
+    votingEndsAt: string
+    targetStartsAt: string
+    targetEndsAt: string
+    userVoteProposalId?: string
+    proposals: Array<{
+      id: string
+      sets: PokemonSetSummary[]
+      voteCount: number
+    }>
+  }
+}
+
+export interface VotePackRotationRequest {
+  proposalId: string
+}
+
 export type TradeAuctionStatus = 'active' | 'accepted' | 'cancelled' | 'expired'
 
 export type TradeOfferStatus = 'pending' | 'accepted' | 'rejected' | 'cancelled'

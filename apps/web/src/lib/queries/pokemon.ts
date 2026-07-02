@@ -197,6 +197,17 @@ export const usePackOpenStatusQueryOption = () =>
     toError: () => new Error(m.api_unable_load_pack_status()),
   })
 
+export const usePackRotationQueryOption = () => {
+  const locale = getLocale()
+
+  return edenQueryOption({
+    edenQuery: api.pokemon.packs.rotation.get,
+    queryKey: pokemonQueryKeys.packRotation(locale),
+    mapData: (data) => data,
+    toError: () => new Error(m.api_unable_load_pack_rotation()),
+  })
+}
+
 const loadUserCollectionPage = async (
   params: CollectionQueryParams,
 ): Promise<UserCollectionResponse> => {
