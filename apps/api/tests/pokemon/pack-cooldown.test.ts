@@ -59,6 +59,25 @@ describe('getBoosterChargeStatus', () => {
     expect(status.cooldownSeconds).toBe(0)
     expect(status.nextOpenAt).toBeNull()
   })
+
+  test('treats the exact cooldown boundary as one full charge', () => {
+    const anchor = at(0)
+    const justBefore = new Date(at(2).getTime() - 1)
+    const exactly = at(2)
+
+    expect(getBoosterChargeStatus(anchor, justBefore, BASE, 3).availableBoosters).toBe(0)
+    expect(getBoosterChargeStatus(anchor, exactly, BASE, 3).availableBoosters).toBe(1)
+  })
+
+  test('ignores a future anchor from clock skew instead of granting charges', () => {
+    const now = at(1)
+    const futureAnchor = new Date(now.getTime() + BASE * 1000)
+    const status = getBoosterChargeStatus(futureAnchor, now, BASE, 3)
+
+    expect(status.canOpen).toBe(false)
+    expect(status.availableBoosters).toBe(0)
+    expect(status.cooldownSeconds).toBeGreaterThanOrEqual(0)
+  })
 })
 
 describe('consumeBoosterCharge', () => {
