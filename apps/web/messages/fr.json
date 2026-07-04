@@ -86,7 +86,7 @@
   "sandbox_wait_seconds": "Attends {time}",
   "packs_next_in_seconds": "Prochain booster dans {time}",
   "sandbox_next_in_seconds": "Prochaine ouverture dans {time}",
-  "packs_sign_in_timer": "Connecte-toi pour ouvrir un booster à la fois.",
+  "packs_sign_in_timer": "Connecte-toi pour ouvrir un booster.",
   "sandbox_sign_in_timer": "Ouverture limitée par le minuteur local.",
   "packs_selected_ready": "{name} sélectionné. Un booster peut être ouvert maintenant.",
   "packs_selected_ready_plural": "{name} sélectionné. {count} boosters peuvent être ouverts maintenant.",

@@ -86,7 +86,7 @@
   "sandbox_wait_seconds": "Wait {time}",
   "packs_next_in_seconds": "Next booster in {time}",
   "sandbox_next_in_seconds": "Next deck in {time}",
-  "packs_sign_in_timer": "Sign in to open one booster at a time.",
+  "packs_sign_in_timer": "Sign in to open a booster.",
   "sandbox_sign_in_timer": "Open is limited by the local timer.",
   "packs_selected_ready": "{name} selected. One booster can be opened now.",
   "packs_selected_ready_plural": "{name} selected. {count} boosters can be opened now.",
