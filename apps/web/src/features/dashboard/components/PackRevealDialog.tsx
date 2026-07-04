@@ -32,7 +32,7 @@ export function PackRevealDialog({
   const revealedCards = openPackResult.cards.slice(0, maxRevealedCardIndex + 1)
   const isFirstRevealCard = revealedCardIndex === 0
   const isLastRevealCard = revealedCardIndex === openPackResult.cards.length - 1
-  const newCardCount = openPackResult.cards.filter((card) => card.isNew).length
+  const newCardCount = revealedCards.filter((card) => card.isNew).length
   const isGodPack = openPackResult.isGodPack
   const subtitle =
     resultLabel ??
