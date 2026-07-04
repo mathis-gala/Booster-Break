@@ -72,6 +72,29 @@ describe('drawPokemonPackCards', () => {
     expect(cards.some((card) => card.rarity === 'Double Rare')).toBe(true)
   })
 
+  test('does not upgrade the Illustration Rare band to a Special Illustration Rare when the set has no Illustration Rare', () => {
+    // Roll lands in the second foil slot's Illustration Rare band (0%-7.67%).
+    // Prismatic Evolutions (sv08.5) has no plain Illustration Rare, so this band
+    // must fall back to a reverse holo rather than cascading into the rarer
+    // Special Illustration Rare band (7.67%-10.82%).
+    Math.random = () => 0.05
+
+    const { cards } = drawPokemonPackCards(
+      [
+        ...makeCards('common', 'Common', 6, ['normal', 'reverse_holo']),
+        ...makeCards('uncommon', 'Uncommon', 5, ['normal', 'reverse_holo']),
+        ...makeCards('rare', 'Rare', 4, ['holo', 'reverse_holo']),
+        ...makeCards('double-rare', 'Double Rare', 2, ['holo']),
+        ...makeCards('special-illustration-rare', 'Special Illustration Rare', 2, ['holo']),
+      ],
+      { enableGodPack: false },
+    )
+
+    expect(cards).toHaveLength(10)
+    expect(cards.some((card) => card.rarity === 'Special Illustration Rare')).toBe(false)
+    expect(cards.filter((card) => card.finish === 'reverse_holo')).toHaveLength(2)
+  })
+
   test('upgrades to a god pack of Illustration Rare or better when the roll hits', () => {
     Math.random = () => 0
 

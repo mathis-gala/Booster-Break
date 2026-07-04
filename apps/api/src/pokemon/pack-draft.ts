@@ -278,9 +278,7 @@ const drawChanceRule = (
 
     const card = drawUniqueCard(getCardsByRarity(allCards, rule.rarities), selectedCards)
 
-    if (card) {
-      return withFinish(card, rule.finish)
-    }
+    return card ? withFinish(card, rule.finish) : undefined
   }
 
   return undefined
