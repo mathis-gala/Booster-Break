@@ -58,8 +58,13 @@ for (let i = 0; i < count; i += 1) {
     continue
   }
 
-  // cooldownSeconds 0 bypasses the per-user open throttle for debugging.
-  const { newCardIds } = await repository.recordPackOpening(user.id, set.id, cards, 0)
+  // Clearing the cooldown anchor bypasses the per-user open throttle for debugging.
+  await prisma.user.update({
+    where: { id: user.id },
+    data: { boosterCooldownAnchor: null },
+  })
+
+  const { newCardIds } = await repository.recordPackOpening(user.id, set.id, cards)
 
   openedCount += 1
   drawnCards += cards.length
