@@ -9,7 +9,6 @@ import type {
   UserCollectionResponse,
 } from '@tcg-collection/shared'
 import { getFinishRank, getRarityRank } from '@tcg-collection/shared'
-import type { Prisma } from '@prisma/client'
 import type { AppPrisma } from '../db/prisma'
 import {
   getLocalizedCardName,
@@ -21,6 +20,8 @@ import {
   toSetSummary,
   toSetWrite,
 } from './pokemon-mappers'
+import { listReservedCardQuantities } from './trade-reservations'
+import { listOwnedCardIdsForCards } from './user-card-ownership'
 import { SYNCED_BOOSTER_LIMIT } from './pokemon-config'
 import { consumeBoosterCharge, getBoosterChargeStatus, PackCooldownError } from './pack-cooldown'
 import type { Set as TcgDexSet } from '@tcgdex/sdk'
@@ -182,10 +183,24 @@ export class PokemonRepository {
     const page = Math.min(Math.max(options.page, 1), pageCount)
     const pagedRows = rows.slice((page - 1) * options.pageSize, page * options.pageSize)
 
+    const reservedByKey =
+      options.source === 'owned'
+        ? new Map(
+            (
+              await listReservedCardQuantities(
+                this.db,
+                userId,
+                pagedRows.map((row) => row.cardId),
+              )
+            ).map((row) => [`${row.cardId}:${row.finish}`, row.quantity]),
+          )
+        : new Map<string, number>()
+
     return {
       cards: pagedRows.map((row) => ({
         ...toCardSummary(row.card, row.finish as CardFinish, options.locale),
         quantity: row.quantity,
+        reservedQuantity: reservedByKey.get(`${row.cardId}:${row.finish}`) ?? 0,
         firstCollectedAt: row.firstCollectedAt.toISOString(),
         updatedAt: row.updatedAt.toISOString(),
       })),
@@ -237,7 +252,6 @@ export class PokemonRepository {
     return [...sets.values()].sort((first, second) => first.name.localeCompare(second.name))
   }
 
-  // Owned card ids, deduped and finish-agnostic: a card held in any finish appears once.
   async listOwnedCardIds(userId: string): Promise<string[]> {
     const where = {
       userId,
@@ -268,26 +282,6 @@ export class PokemonRepository {
     }
 
     return [...cardIds]
-  }
-
-  // Ownership is finish-agnostic (by cardId), matching getOwnedCardIds.
-  private async listOwnedCardIdsForCards(
-    tx: Prisma.TransactionClient,
-    userId: string,
-    cardIds: string[],
-  ): Promise<Set<string>> {
-    const where = {
-      userId,
-      cardId: { in: cardIds },
-      quantity: { gt: 0 },
-    }
-
-    const [ownedRows, giftedRows] = await Promise.all([
-      tx.userCard.findMany({ where, select: { cardId: true } }),
-      tx.giftedUserCard.findMany({ where, select: { cardId: true } }),
-    ])
-
-    return new Set([...ownedRows, ...giftedRows].map((row) => row.cardId))
   }
 
   async recordPackOpening(
@@ -323,7 +317,7 @@ export class PokemonRepository {
         },
       })
 
-      const previouslyOwned = await this.listOwnedCardIdsForCards(
+      const previouslyOwned = await listOwnedCardIdsForCards(
         tx,
         userId,
         cards.map((card) => card.id),
@@ -370,6 +364,22 @@ export class PokemonRepository {
     })
 
     return { openingId, newCardIds: [...newCardIds] }
+  }
+
+  async getLatestPackOpening(userId: string): Promise<{ openedAt: Date } | undefined> {
+    const opening = await this.db.packOpening.findFirst({
+      where: {
+        userId,
+      },
+      orderBy: {
+        openedAt: 'desc',
+      },
+      select: {
+        openedAt: true,
+      },
+    })
+
+    return opening ?? undefined
   }
 
   async getBoosterCooldownAnchor(userId: string): Promise<Date | null> {

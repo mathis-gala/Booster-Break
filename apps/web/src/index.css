@@ -271,6 +271,88 @@ body,
   }
 }
 
+@keyframes recycle-merge {
+  0%,
+  46.43% {
+    transform: var(--recycle-fan);
+    opacity: 1;
+  }
+  100% {
+    transform: translate(-50%, -50%) scale(0.16);
+    opacity: 0;
+  }
+}
+
+@keyframes recycle-orb-rise {
+  0%,
+  46.43% {
+    opacity: 0;
+    transform: translate(-50%, -50%) scale(0.85);
+  }
+  73% {
+    opacity: 1;
+    transform: translate(-50%, -50%) scale(1.18);
+  }
+  100% {
+    opacity: 0.85;
+    transform: translate(-50%, -50%) scale(1);
+  }
+}
+
+@keyframes recycle-phase-driver {
+  from,
+  to {
+    opacity: 0;
+  }
+}
+
+@keyframes recycle-burst {
+  0% {
+    opacity: 0;
+    transform: translate(-50%, -50%) scale(0.2);
+  }
+  35% {
+    opacity: 0.95;
+  }
+  100% {
+    opacity: 0;
+    transform: translate(-50%, -50%) scale(2.6);
+  }
+}
+
+@keyframes recycle-reveal-pop {
+  0% {
+    opacity: 0;
+    transform: scale(0.35) rotate(-7deg);
+  }
+  60% {
+    opacity: 1;
+    transform: scale(1.08) rotate(2deg);
+  }
+  100% {
+    opacity: 1;
+    transform: scale(1) rotate(0deg);
+  }
+}
+
+@keyframes foil-hologram {
+  0% {
+    opacity: 0;
+    transform: translateY(10px) scale(0.5) rotate(-8deg);
+  }
+  55% {
+    opacity: 1;
+    transform: translateY(0) scale(1.18) rotate(3deg);
+  }
+  75% {
+    transform: scale(0.94) rotate(-1deg);
+  }
+  100% {
+    opacity: 1;
+    transform: none;
+  }
+}
+
 @keyframes new-card-badge {
   0% {
     opacity: 0;

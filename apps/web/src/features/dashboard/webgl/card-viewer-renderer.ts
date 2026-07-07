@@ -137,7 +137,8 @@ export class CardViewerRenderer {
   }
 
   private resize(): void {
-    const { width, height } = this.canvas.getBoundingClientRect()
+    const width = this.canvas.clientWidth
+    const height = this.canvas.clientHeight
     const pixelRatio = Math.min(window.devicePixelRatio || 1, 2)
     const displayWidth = Math.max(1, Math.floor(width * pixelRatio))
     const displayHeight = Math.max(1, Math.floor(height * pixelRatio))

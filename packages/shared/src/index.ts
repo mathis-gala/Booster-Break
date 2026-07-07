@@ -55,6 +55,7 @@ export interface PokemonCardSummary {
 
 export interface UserCollectionCard extends PokemonCardSummary {
   quantity: number
+  reservedQuantity: number
   firstCollectedAt: string
   updatedAt: string
 }
@@ -127,6 +128,29 @@ export interface OpenPackResponse {
   set: PokemonSetSummary
   cards: OpenedPackCard[]
   isGodPack: boolean
+}
+
+export const RECYCLE_COST = 5
+
+export interface RecycleCardItem {
+  cardId: string
+  finish: CardFinish
+  quantity: number
+}
+
+export interface RecycleCardsRequest {
+  items: RecycleCardItem[]
+  locale?: SupportedLocale
+}
+
+export interface AwardedCard extends PokemonCardSummary {
+  isNew: boolean
+}
+
+export interface RecycleCardsResponse {
+  recycledCount: number
+  rewardCount: number
+  awardedCards: AwardedCard[]
 }
 
 export type TradeAuctionStatus = 'active' | 'accepted' | 'cancelled' | 'expired'
@@ -401,9 +425,11 @@ export type TradeErrorCode =
 export {
   getFinishRank,
   getPackRarityChance,
+  getRaritiesAtOrAboveRank,
   getRarityRank,
   getRarityWeight,
   normalizeRarity,
   isRareOrBetter,
   pokemonRarityOrder,
+  UNKNOWN_RARITY_RANK,
 } from './pokemon-rarity'

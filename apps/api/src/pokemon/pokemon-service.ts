@@ -22,8 +22,12 @@ import type { PokemonPackDrawResult } from './pack-draft'
 import { drawPokemonPackCards } from './pack-draft'
 import { getBoosterChargeStatus, PackCooldownError } from './pack-cooldown'
 import { PokemonCatalogSyncService } from './pokemon-catalog-sync-service'
+import type { PokemonServiceError } from './pokemon-service-error'
 import { ScrydexSealedClient } from './scrydex-sealed-client'
 import { TcgDexClient } from './tcgdex-client'
+
+export { isPokemonServiceError } from './pokemon-service-error'
+export type { PokemonServiceError, PokemonServiceErrorCode } from './pokemon-service-error'
 
 export interface PokemonServiceOptions {
   authService: AuthService
@@ -31,17 +35,6 @@ export interface PokemonServiceOptions {
   pokemonClient: TcgDexClient
   pokemonRepository: PokemonRepository
   sealedClient: ScrydexSealedClient
-}
-
-export type PokemonServiceErrorCode =
-  | 'pack_cooldown'
-  | 'pack_unavailable'
-  | 'pokemon_sets_not_synced'
-  | 'unauthenticated'
-
-export interface PokemonServiceError {
-  error: PokemonServiceErrorCode
-  message: string
 }
 
 interface PokemonSyncResult {
@@ -254,12 +247,6 @@ export class PokemonService {
 
     return drawPokemonPackCards(allCards)
   }
-}
-
-export const isPokemonServiceError = <T>(
-  result: T | PokemonServiceError,
-): result is PokemonServiceError => {
-  return typeof result === 'object' && result !== null && 'error' in result
 }
 
 const toPokemonDate = (date: Date): string => {
