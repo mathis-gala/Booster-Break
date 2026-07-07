@@ -18,11 +18,12 @@ import {
   POKEMON_SYNC_START_DATE,
   SYNCED_BOOSTER_LIMIT,
 } from './pokemon-config'
+import type { PokemonPackDrawResult } from './pack-draft'
 import { drawPokemonPackCards } from './pack-draft'
+import { getBoosterChargeStatus, PackCooldownError } from './pack-cooldown'
 import { PokemonCatalogSyncService } from './pokemon-catalog-sync-service'
 import { ScrydexSealedClient } from './scrydex-sealed-client'
 import { TcgDexClient } from './tcgdex-client'
-import { PokemonRepositoryErrorException } from './pokemon-repository'
 
 export interface PokemonServiceOptions {
   authService: AuthService
@@ -196,7 +197,7 @@ export class PokemonService {
       }
     }
 
-    const cards = await this.drawPackCards(setId, locale)
+    const { cards, isGodPack } = await this.drawPackCards(setId, locale)
 
     if (cards.length === 0) {
       return {
@@ -205,65 +206,50 @@ export class PokemonService {
       }
     }
 
+    let openingId: string
+    let newCardIds: string[]
+
     try {
-      const { openingId, newCardIds } = await this.options.pokemonRepository.recordPackOpening(
+      ;({ openingId, newCardIds } = await this.options.pokemonRepository.recordPackOpening(
         user.id,
         set.id,
         cards,
-        PACK_OPEN_COOLDOWN_SECONDS,
-      )
-
-      const newCardIdSet = new Set(newCardIds)
-
-      return {
-        openingId,
-        set,
-        cards: cards.map((card) => ({ ...card, isNew: newCardIdSet.has(card.id) })),
-      }
+      ))
     } catch (error) {
-      if (error instanceof PokemonRepositoryErrorException) {
-        const updatedPackOpenStatus = await this.getPackOpenStatusForUser(user.id)
-
-        return {
-          error: 'pack_cooldown',
-          message: `Next booster available in ${updatedPackOpenStatus.cooldownSeconds}s.`,
-        }
+      if (error instanceof PackCooldownError) {
+        return { error: 'pack_cooldown', message: error.message }
       }
-
       throw error
+    }
+
+    const newCardIdSet = new Set(newCardIds)
+
+    return {
+      openingId,
+      set,
+      cards: cards.map((card) => ({ ...card, isNew: newCardIdSet.has(card.id) })),
+      isGodPack,
     }
   }
 
   private async getPackOpenStatusForUser(userId: string): Promise<PackOpenStatusResponse> {
-    const latestOpening = await this.options.pokemonRepository.getLatestPackOpening(userId)
-
-    if (!latestOpening) {
-      return {
-        authenticated: true,
-        canOpen: true,
-        cooldownSeconds: 0,
-        cooldownDurationSeconds: PACK_OPEN_COOLDOWN_SECONDS,
-      }
-    }
-
-    const lastOpenedAt = latestOpening.openedAt
-    const nextOpenAt = new Date(lastOpenedAt.getTime() + PACK_OPEN_COOLDOWN_SECONDS * 1000)
-    const cooldownSeconds = Math.max(0, Math.ceil((nextOpenAt.getTime() - Date.now()) / 1000))
+    const anchor = await this.options.pokemonRepository.getBoosterCooldownAnchor(userId)
+    const status = getBoosterChargeStatus(anchor, new Date())
 
     return {
       authenticated: true,
-      canOpen: cooldownSeconds === 0,
-      cooldownSeconds,
-      cooldownDurationSeconds: PACK_OPEN_COOLDOWN_SECONDS,
-      lastOpenedAt: lastOpenedAt.toISOString(),
-      nextOpenAt: nextOpenAt.toISOString(),
+      canOpen: status.canOpen,
+      cooldownSeconds: status.cooldownSeconds,
+      cooldownDurationSeconds: status.cooldownDurationSeconds,
+      availableBoosters: status.availableBoosters,
+      ...(status.nextOpenAt ? { nextOpenAt: status.nextOpenAt.toISOString() } : {}),
     }
   }
 
   private async drawPackCards(
     setId: string,
     locale: SupportedLocale,
-  ): Promise<PokemonCardSummary[]> {
+  ): Promise<PokemonPackDrawResult> {
     const allCards = await this.options.pokemonRepository.listCards(setId, locale)
 
     return drawPokemonPackCards(allCards)

@@ -74,6 +74,7 @@ export interface CollectionSetOption {
   id: string
   name: string
   count: number
+  distinctCount: number
 }
 
 export interface UserCollectionResponse {
@@ -106,6 +107,7 @@ export type PackOpenStatusResponse =
       canOpen: boolean
       cooldownSeconds: number
       cooldownDurationSeconds: number
+      availableBoosters?: number
       nextOpenAt?: string
       lastOpenedAt?: string
     }
@@ -124,6 +126,7 @@ export interface OpenPackResponse {
   openingId: string
   set: PokemonSetSummary
   cards: OpenedPackCard[]
+  isGodPack: boolean
 }
 
 export type TradeAuctionStatus = 'active' | 'accepted' | 'cancelled' | 'expired'

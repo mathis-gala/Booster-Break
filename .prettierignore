@@ -5,6 +5,8 @@ apps/*/node_modules
 packages/*/dist
 packages/*/node_modules
 apps/web/src/paraglide
+apps/web/project.inlang/.meta.json
+apps/web/project.inlang/README.md
 apps/api/tcg-collection.sqlite
 *.local
 bun.lock

@@ -98,7 +98,10 @@ export class PokemonSandboxService {
       return toPackUnavailable('No cards are available for this booster set.')
     }
 
-    const drawnCards = drawPokemonPackCards(await this.listSourceSetCards(sourceSet, locale))
+    const { cards: drawnCards } = drawPokemonPackCards(
+      await this.listSourceSetCards(sourceSet, locale),
+      { enableGodPack: false },
+    )
 
     if (drawnCards.length === 0) {
       return toPackUnavailable('No cards are available for this booster set.')
@@ -108,6 +111,7 @@ export class PokemonSandboxService {
       openingId: crypto.randomUUID(),
       set,
       cards: drawnCards.map((card) => ({ ...card, isNew: false })),
+      isGodPack: false,
     }
   }
 

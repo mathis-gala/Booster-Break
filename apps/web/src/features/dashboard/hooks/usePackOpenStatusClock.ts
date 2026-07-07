@@ -28,17 +28,17 @@ export function useSandboxPackOpenStatus(nextOpenAt: string | undefined) {
 
 export const usePackOpenStatusClock = (
   status: PackOpenStatusResponse | undefined,
+  dataUpdatedAt?: number,
 ): PackOpenStatusResponse | undefined => {
-  const isCooldownActive =
-    status?.authenticated === true && !status.canOpen && Boolean(status.nextOpenAt)
+  const isRegenerating = status?.authenticated === true && Boolean(status.nextOpenAt)
 
-  const now = usePackOpenClock(isCooldownActive)
+  const now = usePackOpenClock(isRegenerating)
 
-  if (!isCooldownActive || !status?.nextOpenAt) {
+  if (status?.authenticated !== true || !status.nextOpenAt) {
     return status
   }
 
-  const cooldownSeconds = getRemainingCooldownSeconds(status.nextOpenAt, now)
+  const cooldownSeconds = getRemainingCooldownSeconds(status, dataUpdatedAt, now)
 
   if (cooldownSeconds <= 0) {
     return {
@@ -50,7 +50,6 @@ export const usePackOpenStatusClock = (
 
   return {
     ...status,
-    canOpen: false,
     cooldownSeconds,
   }
 }
@@ -65,8 +64,18 @@ const usePackOpenClock = (enabled: boolean) => {
 
 const noOpSubscribe = () => () => {}
 
-const getRemainingCooldownSeconds = (nextOpenAt: string, now = Date.now()): number => {
-  return Math.max(0, Math.ceil((new Date(nextOpenAt).getTime() - now) / 1000))
+const getRemainingCooldownSeconds = (
+  status: Extract<PackOpenStatusResponse, { authenticated: true }>,
+  dataUpdatedAt: number | undefined,
+  now: number,
+): number => {
+  if (dataUpdatedAt) {
+    return Math.max(0, Math.ceil(status.cooldownSeconds - (now - dataUpdatedAt) / 1000))
+  }
+
+  return status.nextOpenAt
+    ? Math.max(0, Math.ceil((new Date(status.nextOpenAt).getTime() - now) / 1000))
+    : 0
 }
 
 // Keep sandbox cooldown state local-only: no persistence across browser tabs, sessions, or devices.
