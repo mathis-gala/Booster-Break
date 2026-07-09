@@ -143,7 +143,17 @@ ghcr.io/mathis-gala/booster-break/api:sha-<commit>
 
 ## Auth
 
-The API uses Slack OAuth for sign-in. Sessions are stored in HTTP-only cookies through Prisma.
+The API uses Slack OAuth as the default sign-in method. Sessions are stored in HTTP-only cookies through Prisma.
+
+GitHub sign-in is also available as an alternative provider. The web UI shows Slack as the primary
+button, with a dropdown to switch to GitHub. Enable it by setting `GITHUB_CLIENT_ID` and
+`GITHUB_CLIENT_SECRET`; the callback URL is `GITHUB_REDIRECT_URI` (defaults to
+`<API_ORIGIN>/auth/github/callback`).
+
+Account linking: when a GitHub account signs in for the first time, it is linked to an existing
+player if that player already has the same **verified primary email**. The GitHub client fetches the
+verified email via `/user/emails`. Linking by display name or pseudo is intentionally not supported,
+because those are user-claimable and would allow account takeover.
 
 It also supports server-admin generated magic links for custom users:
 
@@ -163,6 +173,8 @@ Auth endpoints:
 - `GET /auth/me`
 - `GET /auth/slack/start`
 - `GET /auth/slack/callback`
+- `GET /auth/github/start`
+- `GET /auth/github/callback`
 - `POST /auth/logout`
 - `POST /auth/magic/generate`
 - `GET /auth/magic/callback`
