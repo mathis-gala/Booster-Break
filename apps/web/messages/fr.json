@@ -39,6 +39,8 @@
   "setup_production_domains": "Caddy sert l’interface sur https://booster.example.com et proxifie l’API sur /api, ce qui évite CORS et les cookies cross-site.",
   "auth_sign_in": "Connexion",
   "auth_sign_in_slack": "Se connecter",
+  "auth_sign_in_github": "Continuer avec GitHub",
+  "auth_sign_in_other": "Autres méthodes de connexion",
   "auth_signing_in": "Connexion",
   "auth_close_sign_in": "Fermer la connexion",
   "auth_description": "Utilise ton pseudo interne.",
