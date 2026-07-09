@@ -11,8 +11,10 @@ model User {
   pseudo       String
   displayName  String?       @map("display_name")
   avatarUrl    String?       @map("avatar_url")
+  email        String?       @unique
   slackUserId  String        @unique @map("slack_user_id")
   slackTeamId  String?       @map("slack_team_id")
+  githubUserId String?       @unique @map("github_user_id")
   createdAt    DateTime      @default(now()) @map("created_at")
   updatedAt    DateTime      @updatedAt @map("updated_at")
   sessions     Session[]
