@@ -17,19 +17,19 @@
     "typecheck": "prisma generate --schema prisma/schema.prisma && tsc --noEmit"
   },
   "dependencies": {
-    "@elysiajs/cors": "latest",
+    "@elysiajs/cors": "1.4.2",
     "@prisma/adapter-pg": "^7.8.0",
     "@prisma/client": "^7.8.0",
     "@tcg-collection/shared": "workspace:*",
     "@tcgdex/sdk": "^2.9.0",
-    "elysia": "latest",
+    "elysia": "1.4.29",
     "pg": "^8.21.0",
+    "prisma": "^7.8.0",
     "zod": "^4.4.3"
   },
   "devDependencies": {
     "@types/bun": "latest",
     "@types/pg": "^8.20.0",
-    "prisma": "^7.8.0",
     "typescript": "~6.0.3"
   }
 }

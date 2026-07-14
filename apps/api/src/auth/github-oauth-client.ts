@@ -1,5 +1,7 @@
 import { z } from 'zod'
 
+const upstreamTimeoutMs = 10_000
+
 const githubTokenResponseSchema = z.object({
   access_token: z.string().optional(),
   token_type: z.string().optional(),
@@ -54,10 +56,7 @@ export class GithubOAuthClient {
   async getProfile(code: string): Promise<GithubProfile> {
     const accessToken = await this.exchangeCode(code)
     const profile = await this.fetchUser(accessToken)
-    const email =
-      profile.email && profile.email.length > 0
-        ? profile.email
-        : await this.fetchPrimaryVerifiedEmail(accessToken)
+    const email = await this.fetchPrimaryVerifiedEmail(accessToken)
 
     return {
       githubUserId: String(profile.id),
@@ -81,6 +80,7 @@ export class GithubOAuthClient {
         code,
         redirect_uri: this.options.redirectUri,
       }),
+      signal: AbortSignal.timeout(upstreamTimeoutMs),
     })
     const payload = githubTokenResponseSchema.parse(await response.json())
 
@@ -98,6 +98,7 @@ export class GithubOAuthClient {
         Accept: 'application/vnd.github+json',
         'X-GitHub-Api-Version': '2022-11-28',
       },
+      signal: AbortSignal.timeout(upstreamTimeoutMs),
     })
 
     if (!response.ok) {
@@ -114,6 +115,7 @@ export class GithubOAuthClient {
         Accept: 'application/vnd.github+json',
         'X-GitHub-Api-Version': '2022-11-28',
       },
+      signal: AbortSignal.timeout(upstreamTimeoutMs),
     })
 
     if (!response.ok) {

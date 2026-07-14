@@ -3,6 +3,7 @@ import { normalizePseudo, type AuthStore, type CustomUserInput } from './session
 import type { GithubProfile } from './github-oauth-client'
 import type { SlackProfile } from './slack-oauth-client'
 import type { AuthUser } from './types'
+import { createSessionToken, hashSessionToken } from './session-token'
 
 const sessionCookieMaxAge = 60 * 60 * 24 * 14
 
@@ -84,13 +85,13 @@ export class AuthService {
   }
 
   async getCurrentUser(cookieHeader: string | undefined): Promise<AuthUser | undefined> {
-    const sessionId = this.getSessionId(cookieHeader)
+    const sessionToken = this.getSessionToken(cookieHeader)
 
-    if (!sessionId) {
+    if (!sessionToken) {
       return undefined
     }
 
-    const session = await this.options.store.getSession(sessionId)
+    const session = await this.options.store.getSession(await hashSessionToken(sessionToken))
 
     return session ? this.options.store.getUser(session.userId) : undefined
   }
@@ -189,14 +190,7 @@ export class AuthService {
       }
     }
 
-    const session = await this.options.store.createSession(user.id)
-
-    return {
-      authenticated: true,
-      user,
-      sessionId: session.id,
-      maxAge: sessionCookieMaxAge,
-    }
+    return this.issueSession(user)
   }
 
   async loginForDevelopment(input: CustomUserInput): Promise<AuthSessionResult | AuthServiceError> {
@@ -215,14 +209,7 @@ export class AuthService {
         displayName: input.displayName?.trim() || input.pseudo.trim(),
         avatarUrl: input.avatarUrl,
       })
-      const session = await this.options.store.createSession(user.id)
-
-      return {
-        authenticated: true,
-        user,
-        sessionId: session.id,
-        maxAge: sessionCookieMaxAge,
-      }
+      return this.issueSession(user)
     } catch {
       return {
         error: 'dev_auth_failed',
@@ -278,14 +265,7 @@ export class AuthService {
         displayName,
         avatarUrl: profile.picture,
       })
-      const session = await this.options.store.createSession(user.id)
-
-      return {
-        authenticated: true,
-        user,
-        sessionId: session.id,
-        maxAge: sessionCookieMaxAge,
-      }
+      return this.issueSession(user)
     } catch {
       return {
         error: 'slack_auth_failed',
@@ -340,14 +320,7 @@ export class AuthService {
         avatarUrl: profile.avatarUrl,
         email: profile.email,
       })
-      const session = await this.options.store.createSession(user.id)
-
-      return {
-        authenticated: true,
-        user,
-        sessionId: session.id,
-        maxAge: sessionCookieMaxAge,
-      }
+      return this.issueSession(user)
     } catch {
       return {
         error: 'github_auth_failed',
@@ -357,10 +330,10 @@ export class AuthService {
   }
 
   async logout(cookieHeader: string | undefined): Promise<void> {
-    const sessionId = this.getSessionId(cookieHeader)
+    const sessionToken = this.getSessionToken(cookieHeader)
 
-    if (sessionId) {
-      await this.options.store.deleteSession(sessionId)
+    if (sessionToken) {
+      await this.options.store.deleteSession(await hashSessionToken(sessionToken))
     }
   }
 
@@ -369,10 +342,23 @@ export class AuthService {
       return this.magicLinkTtlDays
     }
 
-    return Math.max(1, Math.floor(expiresInDays))
+    return Math.min(this.magicLinkTtlDays, Math.max(1, Math.floor(expiresInDays)))
   }
 
-  private getSessionId(cookieHeader: string | undefined): string | undefined {
+  private async issueSession(user: AuthUser): Promise<AuthSessionResult> {
+    const sessionToken = createSessionToken()
+    const sessionVerifier = await hashSessionToken(sessionToken)
+    await this.options.store.createSession(user.id, sessionVerifier)
+
+    return {
+      authenticated: true,
+      user,
+      sessionId: sessionToken,
+      maxAge: sessionCookieMaxAge,
+    }
+  }
+
+  private getSessionToken(cookieHeader: string | undefined): string | undefined {
     return parseCookies(cookieHeader).get(this.options.sessionCookieName)
   }
 }

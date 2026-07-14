@@ -4,13 +4,19 @@
 	encode zstd gzip
 
 	header {
+		Content-Security-Policy "default-src 'self'; base-uri 'self'; connect-src 'self'; font-src 'self' data:; form-action 'self'; frame-ancestors 'none'; img-src 'self' https: data: blob:; object-src 'none'; script-src 'self'; style-src 'self' 'unsafe-inline'; upgrade-insecure-requests"
+		Cross-Origin-Opener-Policy "same-origin"
+		Permissions-Policy "camera=(), geolocation=(), microphone=()"
 		Strict-Transport-Security "max-age=31536000; includeSubDomains; preload"
 		X-Content-Type-Options "nosniff"
+		X-Frame-Options "DENY"
 		Referrer-Policy "strict-origin-when-cross-origin"
 	}
 
 	handle_path /api/* {
-		reverse_proxy api:3100
+		reverse_proxy api:3100 {
+			header_up X-Real-IP {remote_host}
+		}
 	}
 
 	handle {

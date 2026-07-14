@@ -46,7 +46,7 @@ export class TradeAuctionService {
   ): Promise<TradeServiceResult<TradeAuctionResponse>> {
     await this.expireAuctions(now())
 
-    const auction = await this.options.tradeRepository.getAuctionById(auctionId, Boolean(user))
+    const auction = await this.options.tradeRepository.getAuctionById(auctionId, user?.id)
 
     if (!auction) {
       return {

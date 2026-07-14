@@ -6,31 +6,18 @@ import type {
 import { DEFAULT_LOCALE } from '@tcg-collection/shared'
 import type { AuthUser } from '../auth/types'
 import { normalizeTradeFilters, normalizeTradeRequirements } from './trade-normalizers'
-import {
-  buildTradeOfferAcceptedNotificationInput,
-  buildTradeOfferReceivedNotificationInput,
-} from './trade-notification-factory'
 import { resolveAuthenticatedTradeUser } from './trade-auth'
-import { normalizeOfferCards } from './trade-offer-utils'
+import { getOfferSignature, normalizeOfferCards } from './trade-offer-utils'
 import { isCardFilteredOutByAuction, matchesAuctionRequirements } from './trade-offer-validation'
 import { toTradeServiceError } from './trade-error-mapper'
 import { toTradeOfferResponse } from './trade-mappers'
 import {
   TradeRepositoryErrorException,
-  type TradeOfferStatus,
   type TradeServiceOptions,
   type TradeServiceResult,
 } from './trade-types'
 
 const now = () => new Date()
-
-const getOfferSignature = (
-  cards: Array<{ cardId: string; finish: string; quantity: number }>,
-): string =>
-  cards
-    .map((card) => `${card.cardId}:${card.finish}:${card.quantity}`)
-    .sort((first, second) => first.localeCompare(second))
-    .join('|')
 
 export class TradeOfferService {
   constructor(private readonly options: TradeServiceOptions) {}
@@ -52,7 +39,7 @@ export class TradeOfferService {
       return userOrError
     }
 
-    const auction = await this.options.tradeRepository.getAuctionById(auctionId, true)
+    const auction = await this.options.tradeRepository.getAuctionById(auctionId, userOrError.id)
 
     if (!auction) {
       return {
@@ -155,7 +142,7 @@ export class TradeOfferService {
       }
     }
 
-    let offer: { id: string }
+    let offer
     try {
       offer = await this.options.tradeRepository.createOffer({
         auctionId,
@@ -174,28 +161,7 @@ export class TradeOfferService {
       }
     }
 
-    const createdOffer = await this.options.tradeRepository.getOfferById(offer.id)
-
-    if (!createdOffer) {
-      return {
-        error: 'trade_unavailable',
-        message: 'Failed to create offer. Please try again.',
-      }
-    }
-
-    try {
-      await this.options.tradeRepository.createTradeNotification(
-        buildTradeOfferReceivedNotificationInput(auction, createdOffer),
-      )
-    } catch (error: unknown) {
-      console.error('Unable to create trade offer received notification', {
-        error: error instanceof Error ? error.message : 'Unknown error',
-        offerId: createdOffer.id,
-        auctionId: createdOffer.auctionId,
-      })
-    }
-
-    return toTradeOfferResponse(createdOffer, locale)
+    return toTradeOfferResponse(offer, locale)
   }
 
   async cancelOffer(user: AuthUser, offerId: string): Promise<TradeServiceResult<void>> {
@@ -210,38 +176,10 @@ export class TradeOfferService {
       return userOrError
     }
 
-    const offer = await this.options.tradeRepository.getOfferById(offerId)
+    const result = await this.options.tradeRepository.cancelOffer(offerId, userOrError.id, now())
 
-    if (!offer || !offer.auction) {
-      return {
-        error: 'offer_not_found',
-        message: 'This offer does not exist.',
-      }
-    }
-
-    if (offer.status !== 'pending') {
-      return {
-        error: 'auction_closed',
-        message: 'Only pending offers can be cancelled.',
-      }
-    }
-
-    if (offer.proposerId !== userOrError.id && offer.auction.creatorId !== userOrError.id) {
-      return {
-        error: 'offer_not_owned',
-        message: 'You cannot cancel this offer.',
-      }
-    }
-
-    const newStatus: TradeOfferStatus =
-      offer.proposerId === userOrError.id ? 'cancelled' : 'rejected'
-    const updated = await this.options.tradeRepository.updateOfferStatus(offerId, newStatus)
-
-    if (!updated) {
-      return {
-        error: 'trade_unavailable',
-        message: 'Unable to cancel this offer right now.',
-      }
+    if (!result.ok) {
+      return toTradeServiceError(result.error)
     }
   }
 
@@ -261,45 +199,15 @@ export class TradeOfferService {
       return userOrError
     }
 
-    const offer = await this.options.tradeRepository.getOfferById(offerId)
-
-    if (!offer || !offer.auction) {
-      return {
-        error: 'offer_not_found',
-        message: 'This offer does not exist.',
-      }
-    }
-
-    if (offer.auctionId !== auctionId) {
-      return {
-        error: 'offer_not_found',
-        message: 'This offer does not belong to the selected auction.',
-      }
-    }
-
-    if (offer.auction.creatorId !== userOrError.id) {
-      return {
-        error: 'auction_not_owned',
-        message: 'Only the auction creator can accept an offer.',
-      }
-    }
-
-    const result = await this.options.tradeRepository.acceptOffer(auctionId, offerId, now())
+    const result = await this.options.tradeRepository.acceptOffer(
+      auctionId,
+      offerId,
+      userOrError.id,
+      now(),
+    )
 
     if (!result.ok) {
       return toTradeServiceError(result.error)
-    }
-
-    try {
-      await this.options.tradeRepository.createTradeNotification(
-        buildTradeOfferAcceptedNotificationInput(offer),
-      )
-    } catch (error: unknown) {
-      console.error('Unable to create trade accepted notification', {
-        error: error instanceof Error ? error.message : 'Unknown error',
-        offerId: offer.id,
-        userId: offer.proposerId,
-      })
     }
   }
 

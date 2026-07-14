@@ -5,6 +5,7 @@ import { createAuthController } from '../../src/auth/auth-controller'
 import { createAuthRoutes } from '../../src/auth/auth-routes'
 import { MemoryAuthStore } from '../../src/auth/session-store'
 import type { ApiConfig } from '../../src/config'
+import { hashSessionToken } from '../../src/auth/session-token'
 
 const config: ApiConfig = {
   port: 3100,
@@ -107,12 +108,13 @@ describe('auth routes', () => {
       displayName: 'Player One',
       avatarUrl: 'https://example.com/avatar.png',
     })
-    const session = store.createSession(user.id)
+    const sessionToken = 'session-token'
+    store.createSession(user.id, await hashSessionToken(sessionToken))
     const app = new Elysia().use(createAuthRoutes({ config, store }))
     const response = await app.handle(
       new Request('http://localhost/auth/me', {
         headers: {
-          Cookie: `tcg_session=${session.id}`,
+          Cookie: `tcg_session=${sessionToken}`,
         },
       }),
     )
@@ -200,6 +202,29 @@ describe('auth routes', () => {
     expect(body.expiresAt).toBeDefined()
   })
 
+  test('caps requested magic-link lifetime at the configured policy', async () => {
+    const app = new Elysia().use(createAuthController({ config, store: new MemoryAuthStore() }))
+    const requestedAt = Date.now()
+    const response = await app.handle(
+      new Request('http://localhost/auth/magic/generate', {
+        method: 'POST',
+        headers: {
+          'content-type': 'application/json',
+          'x-magic-admin-secret': config.magicLinkAdminSecret!,
+        },
+        body: JSON.stringify({
+          pseudo: 'PolicyBoundGuest',
+          expiresInDays: 365,
+        }),
+      }),
+    )
+    const body = await response.json()
+    const maximumExpiry = requestedAt + config.magicLinkTtlDays * 24 * 60 * 60 * 1000 + 1_000
+
+    expect(response.status).toBe(200)
+    expect(new Date(body.expiresAt).getTime()).toBeLessThanOrEqual(maximumExpiry)
+  })
+
   test('logs in with a valid magic token and allows authenticated /auth/me', async () => {
     const store = new MemoryAuthStore()
     const app = new Elysia().use(createAuthController({ config, store }))
@@ -227,6 +252,9 @@ describe('auth routes', () => {
     expect(setCookie).toContain(`${config.sessionCookieName}=`)
 
     const sessionId = setCookie?.split(';')[0].split('=')[1]
+    expect(sessionId).toBeDefined()
+    expect(store.getSession(sessionId!)).toBeUndefined()
+
     const me = await app.handle(
       new Request('http://localhost/auth/me', {
         headers: {

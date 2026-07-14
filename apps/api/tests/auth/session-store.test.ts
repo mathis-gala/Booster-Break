@@ -27,7 +27,7 @@ describe('MemoryAuthStore', () => {
       slackUserId: 'U123',
       pseudo: 'player_01',
     })
-    const session = store.createSession(user.id)
+    const session = store.createSession(user.id, 'session-verifier')
 
     expect(store.getSession(session.id)?.userId).toBe(user.id)
     expect(store.getUser(user.id)).toEqual(user)
@@ -39,7 +39,7 @@ describe('MemoryAuthStore', () => {
       slackUserId: 'U123',
       pseudo: 'player_01',
     })
-    const session = store.createSession(user.id)
+    const session = store.createSession(user.id, 'session-verifier')
 
     store.deleteSession(session.id)
 

@@ -1,5 +1,7 @@
 import { z } from 'zod'
 
+const upstreamTimeoutMs = 10_000
+
 const slackTokenResponseSchema = z.object({
   ok: z.boolean(),
   access_token: z.string().optional(),
@@ -51,6 +53,7 @@ export class SlackOAuthClient {
       headers: {
         Authorization: `Bearer ${accessToken}`,
       },
+      signal: AbortSignal.timeout(upstreamTimeoutMs),
     })
     const payload = slackUserInfoSchema.parse(await response.json())
 
@@ -80,6 +83,7 @@ export class SlackOAuthClient {
         grant_type: 'authorization_code',
         redirect_uri: this.options.redirectUri,
       }),
+      signal: AbortSignal.timeout(upstreamTimeoutMs),
     })
     const payload = slackTokenResponseSchema.parse(await response.json())
 

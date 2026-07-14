@@ -1,4 +1,4 @@
-FROM oven/bun:1.3.13 AS deps
+FROM oven/bun:1.3.13@sha256:87416c977a612a204eb54ab9f3927023c2a3c971f4f345a01da08ea6262ae30e AS deps
 
 WORKDIR /app
 
@@ -22,9 +22,18 @@ ENV VITE_LOCAL_API_ORIGIN=
 RUN bun --cwd apps/api prisma:generate
 RUN bun --cwd apps/web build
 
-FROM nginx:1.29-alpine AS runtime
+FROM nginx:1.30.3-alpine@sha256:0d3b80406a13a767339fbe2f41406d6c7da727ab89cf8fae399e81f780f814d1 AS runtime
+
+RUN apk upgrade --no-cache
 
 COPY apps/web/nginx.conf /etc/nginx/conf.d/default.conf
 COPY --from=build /app/apps/web/dist /usr/share/nginx/html
 
+RUN chown -R nginx:nginx /etc/nginx/conf.d /run /var/cache/nginx
+
 EXPOSE 80
+
+USER nginx
+
+HEALTHCHECK --interval=30s --timeout=3s --start-period=5s --retries=3 \
+  CMD ["wget", "--quiet", "--spider", "http://127.0.0.1/"]

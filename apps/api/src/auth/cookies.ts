@@ -20,7 +20,11 @@ export const parseCookies = (cookieHeader?: string): Map<string, string> => {
       continue
     }
 
-    cookies.set(rawName, decodeURIComponent(rawValue.join('=')))
+    try {
+      cookies.set(rawName, decodeURIComponent(rawValue.join('=')))
+    } catch {
+      continue
+    }
   }
 
   return cookies

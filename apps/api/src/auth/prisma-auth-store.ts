@@ -64,45 +64,49 @@ export class PrismaAuthStore implements AuthStore {
   }
 
   async upsertGithubUser(input: GithubUserInput): Promise<AuthUser> {
-    const existing = await this.db.user.findFirst({
-      where: {
-        OR: [
-          { githubUserId: input.githubUserId },
-          ...(input.email ? [{ email: input.email }] : []),
-        ],
-      },
-      select: { id: true },
-    })
+    return this.db.$transaction(async (transaction) => {
+      const existingByGithubId = await transaction.user.findUnique({
+        where: { githubUserId: input.githubUserId },
+        select: { id: true },
+      })
+      const existingByEmail =
+        !existingByGithubId && input.email
+          ? await transaction.user.findUnique({
+              where: { email: input.email },
+              select: { id: true },
+            })
+          : undefined
+      const existing = existingByGithubId ?? existingByEmail
+      const displayName = input.name ?? input.login
 
-    const displayName = input.name ?? input.login
+      if (existing) {
+        const user = await transaction.user.update({
+          where: { id: existing.id },
+          data: {
+            displayName,
+            avatarUrl: input.avatarUrl,
+            githubUserId: input.githubUserId,
+            ...(input.email ? { email: input.email } : {}),
+          },
+        })
 
-    if (existing) {
-      const user = await this.db.user.update({
-        where: { id: existing.id },
+        return toUser(user)
+      }
+
+      const user = await transaction.user.create({
         data: {
+          id: crypto.randomUUID(),
+          pseudo: normalizePseudo(input.login),
           displayName,
           avatarUrl: input.avatarUrl,
           githubUserId: input.githubUserId,
+          slackUserId: `github:${input.githubUserId}`,
           ...(input.email ? { email: input.email } : {}),
         },
       })
 
       return toUser(user)
-    }
-
-    const user = await this.db.user.create({
-      data: {
-        id: crypto.randomUUID(),
-        pseudo: normalizePseudo(input.login),
-        displayName,
-        avatarUrl: input.avatarUrl,
-        githubUserId: input.githubUserId,
-        slackUserId: `github:${input.githubUserId}`,
-        ...(input.email ? { email: input.email } : {}),
-      },
     })
-
-    return toUser(user)
   }
 
   async findUserByEmail(email: string): Promise<AuthUser | undefined> {
@@ -113,10 +117,10 @@ export class PrismaAuthStore implements AuthStore {
     return user ? toUser(user) : undefined
   }
 
-  async createSession(userId: string): Promise<AuthSession> {
+  async createSession(userId: string, sessionVerifier: string): Promise<AuthSession> {
     const session = await this.db.session.create({
       data: {
-        id: crypto.randomUUID(),
+        id: sessionVerifier,
         userId,
         expiresAt: new Date(Date.now() + SESSION_TTL_MS),
       },

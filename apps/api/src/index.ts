@@ -16,6 +16,8 @@ import { PokemonRepository } from './pokemon/pokemon-repository'
 import { PokemonService } from './pokemon/pokemon-service'
 import { ScrydexSealedClient } from './pokemon/scrydex-sealed-client'
 import { TcgDexClient } from './pokemon/tcgdex-client'
+import { createRequestSecurityPlugin } from './security/request-security'
+import { createRateLimitPlugin } from './security/rate-limiter'
 import { createTradeController } from './trade/trade-controller'
 import { PrismaTradeRepository } from './trade/trade-repository'
 import { TradeService } from './trade/trade-service'
@@ -71,6 +73,14 @@ const tradeService = new TradeService({
 })
 
 export const app = new Elysia()
+  .use(createRateLimitPlugin())
+  .use(
+    createRequestSecurityPlugin({
+      apiOrigin: config.apiOrigin,
+      webOrigin: config.webOrigin,
+      sessionCookieName: config.sessionCookieName,
+    }),
+  )
   .use(
     cors({
       origin: config.webOrigin,
@@ -81,7 +91,6 @@ export const app = new Elysia()
   .use(
     createPokemonController({
       authService,
-      config,
       localizedPokemonClients,
       pokemonClient,
       pokemonRepository,
@@ -111,6 +120,7 @@ export const app = new Elysia()
 if (import.meta.main) {
   app.listen({
     hostname: config.host,
+    maxRequestBodySize: 64 * 1024,
     port: config.port,
   })
   console.log(`API listening on ${config.apiOrigin}`)
