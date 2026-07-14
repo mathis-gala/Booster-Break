@@ -23,6 +23,14 @@ const config: ApiConfig = {
 }
 
 describe('auth routes', () => {
+  test('reports whether development sign-in is enabled', async () => {
+    const app = new Elysia().use(createAuthController({ config, store: new MemoryAuthStore() }))
+    const response = await app.handle(new Request('http://localhost/auth/providers'))
+
+    expect(response.status).toBe(200)
+    expect(await response.json()).toEqual({ developmentAuthEnabled: false })
+  })
+
   test('returns unauthenticated without a session cookie', async () => {
     const app = new Elysia().use(createAuthRoutes({ config, store: new MemoryAuthStore() }))
     const response = await app.handle(new Request('http://localhost/auth/me'))

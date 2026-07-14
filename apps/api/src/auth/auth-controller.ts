@@ -29,6 +29,9 @@ export const createAuthController = ({ config, service, store }: AuthControllerO
   const githubStateCookieName = `${config.sessionCookieName}_github_state`
 
   return new Elysia({ prefix: '/auth' })
+    .get('/providers', () => ({
+      developmentAuthEnabled: config.devAuthEnabled,
+    }))
     .get('/me', async ({ headers, status }) => {
       const user = await authService.getCurrentUser(headers.cookie)
 
