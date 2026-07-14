@@ -10,11 +10,12 @@ import type { AppPrisma } from '../db/prisma'
 import {
   MAX_ACTIVE_AUCTIONS_PER_USER,
   MAX_PENDING_OFFERS_PER_AUCTION_BY_USER,
+  TRADE_LIST_LIMIT,
 } from './trade-config'
 import {
   tradeAuctionCardInclude,
   tradeAuctionIdSelect,
-  tradeAuctionWithOffersInclude,
+  buildTradeAuctionWithVisibleOffersInclude,
   tradeOfferWithAuctionAndCardsInclude,
   tradeNotificationSelect,
   tradePokemonCardsByIdsSelect,
@@ -47,50 +48,41 @@ import {
   toPrismaNotificationPayload,
   toTradeNotificationPayload,
 } from './trade-notification-payload-mapper'
+import {
+  buildTradeOfferAcceptedNotificationInput,
+  buildTradeOfferReceivedNotificationInput,
+} from './trade-notification-factory'
+import { getOfferSignature } from './trade-offer-utils'
 
 export class PrismaTradeRepository implements TradeRepository {
   constructor(private readonly db: AppPrisma) {}
 
   async cleanupExpiredAuctions(referenceDate: Date): Promise<number> {
-    const result = await this.db.tradeAuction.updateMany({
-      where: {
-        status: 'active',
-        expiresAt: {
-          lte: referenceDate,
+    return this.db.$transaction(async (tx) => {
+      const expiredAuctions = await tx.$queryRaw<Array<{ id: string }>>`
+        UPDATE "trade_auctions"
+        SET "status" = 'expired', "updated_at" = ${referenceDate}
+        WHERE "status" = 'active' AND "expires_at" <= ${referenceDate}
+        RETURNING "id"
+      `
+
+      if (expiredAuctions.length === 0) {
+        return 0
+      }
+
+      await tx.tradeOffer.updateMany({
+        where: {
+          auctionId: { in: expiredAuctions.map((auction) => auction.id) },
+          status: 'pending',
         },
-      },
-      data: {
-        status: 'expired',
-        updatedAt: referenceDate,
-      },
+        data: {
+          status: 'cancelled',
+          updatedAt: referenceDate,
+        },
+      })
+
+      return expiredAuctions.length
     })
-
-    return result.count
-  }
-
-  async countActiveAuctionsByCreator(creatorId: string): Promise<number> {
-    return this.db.tradeAuction.count({
-      where: {
-        creatorId,
-        status: 'active',
-      },
-    })
-  }
-
-  async isCardInActiveAuction(
-    offeredCardId: string,
-    offeredCardFinish: CardFinish,
-  ): Promise<boolean> {
-    const auction = await this.db.tradeAuction.findFirst({
-      where: {
-        offeredCardId,
-        offeredCardFinish,
-        status: 'active',
-      },
-      select: tradeAuctionIdSelect,
-    })
-
-    return Boolean(auction)
   }
 
   async createAuction(input: CreateTradeAuctionCommand): Promise<TradeAuctionRow> {
@@ -111,6 +103,7 @@ export class PrismaTradeRepository implements TradeRepository {
 
         const activeCardAuction = await tx.tradeAuction.findFirst({
           where: {
+            creatorId: input.creatorId,
             offeredCardId: input.offeredCardId,
             offeredCardFinish: input.offeredCardFinish,
             status: 'active',
@@ -170,6 +163,7 @@ export class PrismaTradeRepository implements TradeRepository {
       orderBy: {
         createdAt: 'desc',
       },
+      take: TRADE_LIST_LIMIT,
       include: tradeAuctionCardInclude,
     })
 
@@ -178,16 +172,16 @@ export class PrismaTradeRepository implements TradeRepository {
 
   async getAuctionById(
     auctionId: string,
-    includeOffers = false,
+    viewerId?: string,
   ): Promise<TradeAuctionRow | TradeAuctionWithOffers | null> {
-    if (includeOffers) {
+    if (viewerId) {
       const auction: TradeAuctionWithOffersPayload | null = await this.db.tradeAuction.findUnique({
         where: {
           id: auctionId,
         },
         include: {
           ...tradeAuctionCardInclude,
-          ...tradeAuctionWithOffersInclude,
+          ...buildTradeAuctionWithVisibleOffersInclude(viewerId),
         },
       })
 
@@ -245,17 +239,7 @@ export class PrismaTradeRepository implements TradeRepository {
     })
   }
 
-  async countPendingOffersByUser(auctionId: string, proposerId: string): Promise<number> {
-    return this.db.tradeOffer.count({
-      where: {
-        auctionId,
-        proposerId,
-        status: 'pending',
-      },
-    })
-  }
-
-  async createOffer(input: CreateTradeOfferCommand): Promise<{ id: string }> {
+  async createOffer(input: CreateTradeOfferCommand): Promise<TradeOfferRow> {
     if (input.cards.length === 0) {
       throw new TradeRepositoryErrorException('offer_invalid')
     }
@@ -311,7 +295,32 @@ export class PrismaTradeRepository implements TradeRepository {
         throw new TradeRepositoryErrorException('max_offers_reached')
       }
 
-      const created = await tx.tradeOffer.create({
+      const pendingOffers = await tx.tradeOffer.findMany({
+        where: {
+          auctionId: input.auctionId,
+          proposerId: input.proposerId,
+          status: 'pending',
+        },
+        select: {
+          cards: {
+            select: {
+              cardId: true,
+              finish: true,
+              quantity: true,
+            },
+          },
+        },
+      })
+      const offerSignature = getOfferSignature(input.cards)
+      const duplicateOffer = pendingOffers.some(
+        (pendingOffer) => getOfferSignature(pendingOffer.cards) === offerSignature,
+      )
+
+      if (duplicateOffer) {
+        throw new TradeRepositoryErrorException('duplicate_offer')
+      }
+
+      const created: TradeOfferWithAuctionPayload = await tx.tradeOffer.create({
         data: {
           id: crypto.randomUUID(),
           auctionId: input.auctionId,
@@ -321,9 +330,13 @@ export class PrismaTradeRepository implements TradeRepository {
             create: input.cards.map((card) => ({ ...card })),
           },
         },
+        include: tradeOfferWithAuctionAndCardsInclude,
       })
+      const offer = mapTradeOfferWithAuction(created)
 
-      return { id: created.id }
+      await this.insertTradeNotification(tx, buildTradeOfferReceivedNotificationInput(offer))
+
+      return offer
     })
   }
 
@@ -342,26 +355,63 @@ export class PrismaTradeRepository implements TradeRepository {
     return mapTradeOfferWithAuction(offer)
   }
 
-  async updateOfferStatus(offerId: string, status: TradeOfferStatus): Promise<boolean> {
-    const result = await this.db.tradeOffer.updateMany({
-      where: {
-        id: offerId,
-        status: {
-          notIn: ['accepted', 'rejected'],
-        },
-      },
-      data: {
-        status,
-        updatedAt: new Date(),
-      },
-    })
+  async cancelOffer(
+    offerId: string,
+    actorId: string,
+    now: Date,
+  ): Promise<{ ok: true } | { ok: false; error: TradeRepositoryError | 'trade_unavailable' }> {
+    try {
+      await this.db.$transaction(async (tx) => {
+        const offer = await tx.tradeOffer.findUnique({
+          where: { id: offerId },
+          select: {
+            proposerId: true,
+            status: true,
+            auction: {
+              select: {
+                creatorId: true,
+              },
+            },
+          },
+        })
 
-    return result.count > 0
+        if (!offer) {
+          throw new TradeRepositoryErrorException('offer_not_found')
+        }
+
+        if (offer.proposerId !== actorId && offer.auction.creatorId !== actorId) {
+          throw new TradeRepositoryErrorException('offer_not_owned')
+        }
+
+        if (offer.status !== 'pending') {
+          throw new TradeRepositoryErrorException('auction_closed')
+        }
+
+        const status: TradeOfferStatus = offer.proposerId === actorId ? 'cancelled' : 'rejected'
+        const updated = await tx.tradeOffer.updateMany({
+          where: { id: offerId, status: 'pending' },
+          data: { status, updatedAt: now },
+        })
+
+        if (updated.count !== 1) {
+          throw new TradeRepositoryErrorException('auction_closed')
+        }
+      })
+
+      return { ok: true }
+    } catch (error: unknown) {
+      if (error instanceof TradeRepositoryErrorException) {
+        return { ok: false, error: error.code }
+      }
+
+      return { ok: false, error: 'trade_unavailable' }
+    }
   }
 
   async acceptOffer(
     auctionId: string,
     offerId: string,
+    creatorId: string,
     now: Date,
   ): Promise<
     { ok: true } | { ok: false; error: TradeRepositoryError | 'trade_unavailable'; reason?: string }
@@ -382,6 +432,10 @@ export class PrismaTradeRepository implements TradeRepository {
 
         if (!offer.auction) {
           throw new TradeRepositoryErrorException('auction_not_found')
+        }
+
+        if (offer.auction.creatorId !== creatorId) {
+          throw new TradeRepositoryErrorException('auction_not_owned')
         }
 
         if (offer.status !== 'pending') {
@@ -491,6 +545,11 @@ export class PrismaTradeRepository implements TradeRepository {
             updatedAt: now,
           },
         })
+
+        await this.insertTradeNotification(
+          tx,
+          buildTradeOfferAcceptedNotificationInput(mapTradeOfferWithAuction(offer)),
+        )
       })
 
       return { ok: true }
@@ -558,6 +617,7 @@ export class PrismaTradeRepository implements TradeRepository {
       orderBy: {
         createdAt: 'desc',
       },
+      take: TRADE_LIST_LIMIT,
     })
 
     return notifications.map((notification) => {
@@ -588,10 +648,11 @@ export class PrismaTradeRepository implements TradeRepository {
     return updated.count === 1
   }
 
-  async createTradeNotification(
+  private async insertTradeNotification(
+    tx: AppPrisma | Prisma.TransactionClient,
     input: TradeRepositoryNotificationInput,
-  ): Promise<TradeNotificationRow> {
-    const created = await this.db.tradeNotification.create({
+  ): Promise<void> {
+    await tx.tradeNotification.create({
       data: {
         id: crypto.randomUUID(),
         userId: input.userId,
@@ -599,16 +660,7 @@ export class PrismaTradeRepository implements TradeRepository {
         message: input.message,
         payload: toPrismaNotificationPayload(input.payload),
       },
-      select: tradeNotificationSelect,
     })
-
-    const type = created.type as TradeNotificationType
-
-    return {
-      ...created,
-      type,
-      payload: toTradeNotificationPayload(type, created.payload),
-    }
   }
 
   private normalizeAuctionRow<

@@ -1,5 +1,6 @@
 import { Elysia } from 'elysia'
 import { z } from 'zod'
+import { createHash, timingSafeEqual } from 'node:crypto'
 import type { ApiConfig } from '../config'
 import { parseCookies, serializeCookie } from './cookies'
 import { AuthService, isAuthServiceError } from './auth-service'
@@ -14,6 +15,11 @@ interface AuthControllerOptions {
 }
 
 const magicTokenQueryError = 'magic-link-error'
+const maxAuthPseudoLength = 64
+const maxAuthDisplayNameLength = 128
+const maxAvatarUrlLength = 2_048
+const maxOAuthCodeLength = 4_096
+const maxOAuthStateLength = 128
 
 export const createAuthController = ({ config, service, store }: AuthControllerOptions) => {
   const authService =
@@ -29,10 +35,15 @@ export const createAuthController = ({ config, service, store }: AuthControllerO
   const githubStateCookieName = `${config.sessionCookieName}_github_state`
 
   return new Elysia({ prefix: '/auth' })
-    .get('/providers', () => ({
-      developmentAuthEnabled: config.devAuthEnabled,
-    }))
-    .get('/me', async ({ headers, status }) => {
+    .get('/providers', ({ set }) => {
+      set.headers['Cache-Control'] = 'no-store'
+
+      return {
+        developmentAuthEnabled: config.devAuthEnabled,
+      }
+    })
+    .get('/me', async ({ headers, set, status }) => {
+      set.headers['Cache-Control'] = 'no-store'
       const user = await authService.getCurrentUser(headers.cookie)
 
       if (!user) {
@@ -55,7 +66,9 @@ export const createAuthController = ({ config, service, store }: AuthControllerO
       return new Response(null, {
         status: 302,
         headers: {
+          'Cache-Control': 'no-store',
           Location: authorizeUrl,
+          'Referrer-Policy': 'no-referrer',
           'Set-Cookie': serializeCookie(slackStateCookieName, state, {
             maxAge: 60 * 5,
             secure: config.secureCookies,
@@ -96,7 +109,9 @@ export const createAuthController = ({ config, service, store }: AuthControllerO
       return new Response(null, {
         status: 302,
         headers: {
+          'Cache-Control': 'no-store',
           Location: authorizeUrl,
+          'Referrer-Policy': 'no-referrer',
           'Set-Cookie': serializeCookie(githubStateCookieName, state, {
             maxAge: 60 * 5,
             secure: config.secureCookies,
@@ -128,7 +143,8 @@ export const createAuthController = ({ config, service, store }: AuthControllerO
     )
     .post(
       '/magic/generate',
-      async ({ body, headers, status }) => {
+      async ({ body, headers, set, status }) => {
+        set.headers['Cache-Control'] = 'no-store'
         if (!config.magicLinkAdminSecret) {
           return status(503, {
             error: 'magic_link_admin_secret_missing',
@@ -179,6 +195,7 @@ export const createAuthController = ({ config, service, store }: AuthControllerO
     .post(
       '/dev/login',
       async ({ body, set, status }) => {
+        set.headers['Cache-Control'] = 'no-store'
         if (!config.devAuthEnabled) {
           return status(404, {
             error: 'dev_auth_disabled',
@@ -213,6 +230,8 @@ export const createAuthController = ({ config, service, store }: AuthControllerO
       return new Response(null, {
         status: 204,
         headers: {
+          'Cache-Control': 'no-store',
+          'Referrer-Policy': 'no-referrer',
           'Set-Cookie': serializeCookie(config.sessionCookieName, '', {
             maxAge: 0,
             sameSite: config.sessionCookieSameSite,
@@ -230,7 +249,9 @@ const createAuthResponse = (
   options?: { clearCookieName?: string; location?: string },
 ): Response => {
   const responseHeaders = new Headers({
+    'Cache-Control': 'no-store',
     'Content-Type': 'application/json',
+    'Referrer-Policy': 'no-referrer',
     'Set-Cookie': serializeCookie(config.sessionCookieName, result.sessionId, {
       maxAge: result.maxAge,
       sameSite: config.sessionCookieSameSite,
@@ -270,7 +291,9 @@ const createOAuthRedirectResponse = (
   return new Response(null, {
     status: 302,
     headers: {
+      'Cache-Control': 'no-store',
       Location: location,
+      'Referrer-Policy': 'no-referrer',
       'Set-Cookie': serializeCookie(stateCookieName, '', {
         maxAge: 0,
         secure: config.secureCookies,
@@ -286,7 +309,9 @@ const createMagicLinkRedirectResponse = (location: string, config: ApiConfig): R
   return new Response(null, {
     status: 302,
     headers: {
+      'Cache-Control': 'no-store',
       Location: redirectUrl,
+      'Referrer-Policy': 'no-referrer',
       'Set-Cookie': serializeCookie(config.sessionCookieName, '', {
         maxAge: 0,
         secure: config.secureCookies,
@@ -327,32 +352,32 @@ const createGithubClient = (config: ApiConfig): GithubOAuthClient | undefined =>
 }
 
 const slackCallbackQuerySchema = z.object({
-  code: z.string().optional(),
-  state: z.string().optional(),
-  error: z.string().optional(),
+  code: z.string().max(maxOAuthCodeLength).optional(),
+  state: z.string().max(maxOAuthStateLength).optional(),
+  error: z.string().max(256).optional(),
 })
 
 const githubCallbackQuerySchema = z.object({
-  code: z.string().optional(),
-  state: z.string().optional(),
-  error: z.string().optional(),
+  code: z.string().max(maxOAuthCodeLength).optional(),
+  state: z.string().max(maxOAuthStateLength).optional(),
+  error: z.string().max(256).optional(),
 })
 
 const magicLinkGenerateBodySchema = z.object({
-  pseudo: z.string().trim().min(1),
-  displayName: z.string().trim().optional(),
-  avatarUrl: z.string().trim().url().optional(),
-  expiresInDays: z.number().positive().int().optional(),
+  pseudo: z.string().trim().min(1).max(maxAuthPseudoLength),
+  displayName: z.string().trim().max(maxAuthDisplayNameLength).optional(),
+  avatarUrl: z.string().trim().max(maxAvatarUrlLength).url().optional(),
+  expiresInDays: z.number().positive().int().max(365).optional(),
 })
 
 const magicLinkCallbackQuerySchema = z.object({
-  token: z.string().optional(),
+  token: z.string().max(256).optional(),
 })
 
 const devLoginBodySchema = z.object({
-  pseudo: z.string().trim().min(1),
-  displayName: z.string().trim().optional(),
-  avatarUrl: z.string().trim().url().optional(),
+  pseudo: z.string().trim().min(1).max(maxAuthPseudoLength),
+  displayName: z.string().trim().max(maxAuthDisplayNameLength).optional(),
+  avatarUrl: z.string().trim().max(maxAvatarUrlLength).url().optional(),
 })
 
 const isMagicAdminRequestAuthorized = (
@@ -361,11 +386,16 @@ const isMagicAdminRequestAuthorized = (
 ): boolean => {
   const bearerSecret = parseBearerSecret(headers.authorization)
 
-  return (
-    headers['x-magic-admin-secret'] === secret ||
-    headers['x-admin-secret'] === secret ||
-    bearerSecret === secret
+  return [headers['x-magic-admin-secret'], headers['x-admin-secret'], bearerSecret].some(
+    (candidate) => candidate !== undefined && secretsEqual(candidate, secret),
   )
+}
+
+const secretsEqual = (candidate: string, secret: string): boolean => {
+  const candidateHash = createHash('sha256').update(candidate).digest()
+  const secretHash = createHash('sha256').update(secret).digest()
+
+  return timingSafeEqual(candidateHash, secretHash)
 }
 
 const parseBearerSecret = (authorizationHeader: string | undefined): string | undefined => {

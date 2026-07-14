@@ -2,11 +2,7 @@ import type {
   TradeOfferAcceptedNotificationPayload,
   TradeOfferReceivedNotificationPayload,
 } from '@tcg-collection/shared'
-import type {
-  TradeAuctionRow,
-  TradeOfferRow,
-  TradeRepositoryNotificationInput,
-} from './trade-types'
+import type { TradeOfferRow, TradeRepositoryNotificationInput } from './trade-types'
 
 export const buildTradeOfferAcceptedNotificationInput = (
   offer: TradeOfferRow,
@@ -67,13 +63,18 @@ export const buildTradeOfferAcceptedNotificationInput = (
 }
 
 export const buildTradeOfferReceivedNotificationInput = (
-  auction: TradeAuctionRow,
   offer: TradeOfferRow,
 ): TradeRepositoryNotificationInput => {
   const proposerDisplayName = offer.proposer.displayName?.trim()
     ? offer.proposer.displayName
     : undefined
   const proposerName = proposerDisplayName ?? offer.proposer.pseudo
+  const auction = offer.auction
+  const offeredCard = auction?.offeredCard
+
+  if (!auction || !offeredCard) {
+    throw new Error('Received offer has no auction card context')
+  }
 
   const payload: TradeOfferReceivedNotificationPayload = {
     offerId: offer.id,
@@ -84,13 +85,13 @@ export const buildTradeOfferReceivedNotificationInput = (
     proposerAvatarUrl: offer.proposer.avatarUrl ?? undefined,
     offeredCard: {
       cardId: auction.offeredCardId,
-      name: auction.offeredCard.name,
-      imageSmall: auction.offeredCard.imageSmall ?? undefined,
-      imageLarge: auction.offeredCard.imageLarge ?? undefined,
+      name: offeredCard.name,
+      imageSmall: offeredCard.imageSmall ?? undefined,
+      imageLarge: offeredCard.imageLarge ?? undefined,
       finish: auction.offeredCardFinish,
       quantity: 1,
-      setId: auction.offeredCard.setId,
-      number: auction.offeredCard.localId,
+      setId: offeredCard.setId,
+      number: offeredCard.localId,
     },
     offeredCards: offer.cards.map((card) => ({
       cardId: card.card.id,

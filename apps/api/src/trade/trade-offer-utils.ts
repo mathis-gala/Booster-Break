@@ -22,3 +22,11 @@ export const normalizeOfferCards = (cards: CreateOfferRequest['cards']): TradeOf
 
   return Array.from(merged.values()).filter((card) => card.quantity > 0)
 }
+
+export const getOfferSignature = (
+  cards: Array<{ cardId: string; finish: string; quantity: number }>,
+): string =>
+  cards
+    .map((card) => `${card.cardId}:${card.finish}:${card.quantity}`)
+    .sort((first, second) => first.localeCompare(second))
+    .join('|')

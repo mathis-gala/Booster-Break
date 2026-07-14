@@ -2,11 +2,11 @@ name: booster-break-dev
 
 services:
   postgres:
-    image: postgres:17-alpine
+    image: postgres:17.10-alpine@sha256:742f40ea20b9ff2ff31db5458d127452988a2164df9e17441e191f3b72252193
     env_file:
       - ${BOOSTER_BREAK_ENV_FILE:-apps/api/.env.local}
     ports:
-      - '5232:5432'
+      - '127.0.0.1:5232:5432'
     volumes:
       - postgres-data:/var/lib/postgresql/data
     healthcheck:

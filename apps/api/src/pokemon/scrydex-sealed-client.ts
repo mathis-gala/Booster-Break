@@ -1,5 +1,7 @@
 import type { Set } from '@tcgdex/sdk'
 
+const upstreamTimeoutMs = 10_000
+
 interface ScrydexSealedClientOptions {
   apiKey?: string
   teamId?: string
@@ -54,6 +56,7 @@ export class ScrydexSealedClient {
         'X-Api-Key': this.apiKey,
         'X-Team-ID': this.teamId,
       },
+      signal: AbortSignal.timeout(upstreamTimeoutMs),
     })
 
     if (!response.ok) {

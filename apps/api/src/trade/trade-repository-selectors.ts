@@ -1,4 +1,5 @@
 import type { Prisma } from '@prisma/client'
+import { TRADE_LIST_LIMIT } from './trade-config'
 
 const buildTradePokemonCardSelect = (): Prisma.PokemonCardSelect => ({
   id: true,
@@ -86,6 +87,27 @@ export const tradeAuctionWithOffersInclude = {
     include: tradeOfferInclude,
   },
 } satisfies Prisma.TradeAuctionInclude
+
+export const buildTradeAuctionWithVisibleOffersInclude = (viewerId: string) =>
+  ({
+    offers: {
+      where: {
+        OR: [
+          { proposerId: viewerId },
+          {
+            auction: {
+              creatorId: viewerId,
+            },
+          },
+        ],
+      },
+      orderBy: {
+        createdAt: 'desc',
+      },
+      take: TRADE_LIST_LIMIT,
+      include: tradeOfferInclude,
+    },
+  }) satisfies Prisma.TradeAuctionInclude
 
 export const tradePokemonCardsByIdsSelect = tradePokemonCardSelect
 

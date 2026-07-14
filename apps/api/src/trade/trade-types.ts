@@ -34,13 +34,16 @@ export type TradeRepositoryError =
   | 'auction_not_found'
   | 'auction_expired'
   | 'auction_closed'
+  | 'auction_not_owned'
   | 'cannot_trade_self'
   | 'max_auctions_reached'
   | 'card_in_auction'
   | 'offer_not_found'
+  | 'offer_not_owned'
   | 'offer_invalid'
   | 'card_not_owned'
   | 'max_offers_reached'
+  | 'duplicate_offer'
   | 'notification_not_found'
   | 'notification_not_owned'
   | 'trade_unavailable'
@@ -199,25 +202,27 @@ export interface TradeOfferCardWrite {
 
 export interface TradeAuctionRepository {
   cleanupExpiredAuctions(referenceDate: Date): Promise<number>
-  countActiveAuctionsByCreator(creatorId: string): Promise<number>
-  isCardInActiveAuction(offeredCardId: string, offeredCardFinish: CardFinish): Promise<boolean>
   createAuction(input: CreateTradeAuctionCommand): Promise<TradeAuctionRow>
   listActiveAuctions(): Promise<TradeAuctionRow[]>
   getAuctionById(
     auctionId: string,
-    includeOffers?: boolean,
+    viewerId?: string,
   ): Promise<TradeAuctionRow | TradeAuctionWithOffers | null>
   cancelAuction(auctionId: string, creatorId: string): Promise<boolean>
 }
 
 export interface TradeOfferRepository {
-  countPendingOffersByUser(auctionId: string, proposerId: string): Promise<number>
-  createOffer(input: CreateTradeOfferCommand): Promise<{ id: string }>
+  createOffer(input: CreateTradeOfferCommand): Promise<TradeOfferRow>
   getOfferById(offerId: string): Promise<TradeOfferRow | null>
-  updateOfferStatus(offerId: string, status: TradeOfferStatus): Promise<boolean>
+  cancelOffer(
+    offerId: string,
+    actorId: string,
+    now: Date,
+  ): Promise<{ ok: true } | { ok: false; error: TradeRepositoryError | 'trade_unavailable' }>
   acceptOffer(
     auctionId: string,
     offerId: string,
+    creatorId: string,
     now: Date,
   ): Promise<
     { ok: true } | { ok: false; error: TradeRepositoryError | 'trade_unavailable'; reason?: string }
@@ -236,7 +241,6 @@ export interface TradeCardRepository {
 export interface TradeNotificationRepository {
   listTradeNotifications(userId: string): Promise<TradeNotificationRow[]>
   markTradeNotificationViewed(notificationId: string, userId: string): Promise<boolean>
-  createTradeNotification(input: TradeRepositoryNotificationInput): Promise<TradeNotificationRow>
 }
 
 export type TradeRepository = TradeAuctionRepository &

@@ -204,7 +204,7 @@ function setEnvValue(content: string, key: string, value: string): string {
   let found = false
 
   const nextLines = lines.map((line) => {
-    if (line.match(new RegExp(`^${key}=`))) {
+    if (line.startsWith(`${key}=`)) {
       found = true
       return `${key}=${value}`
     }

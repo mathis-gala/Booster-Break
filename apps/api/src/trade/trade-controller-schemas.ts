@@ -2,6 +2,7 @@ import { z } from 'zod'
 import { supportedLocaleValues } from '@tcg-collection/shared'
 import {
   MAX_FILTER_LIST_LENGTH,
+  MAX_OFFER_CARD_QUANTITY,
   MAX_OFFER_CARDS_PER_REQUEST,
   MAX_REQUIREMENT_LIST_LENGTH,
 } from './trade-config'
@@ -40,7 +41,7 @@ export const createAuctionSchema = z.object({
 export const createOfferCardSchema = z.object({
   cardId: tradeIdentifierSchema,
   finish: cardFinishSchema,
-  quantity: z.coerce.number().int().min(1),
+  quantity: z.coerce.number().int().min(1).max(MAX_OFFER_CARD_QUANTITY),
 })
 
 export const createOfferSchema = z.object({

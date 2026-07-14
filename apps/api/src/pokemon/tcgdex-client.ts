@@ -5,6 +5,9 @@ import TCGdex, {
   type SetResume,
   type SupportedLanguages,
 } from '@tcgdex/sdk'
+import { mapWithConcurrency } from '../lib/map-with-concurrency'
+
+const upstreamConcurrency = 8
 
 export interface TcgDexCard extends Card {}
 
@@ -17,7 +20,9 @@ export class TcgDexClient {
 
   async getRecentSets(fromDate: string, toDate: string): Promise<Set[]> {
     const setResumes = (await this.client.fetch('sets')) ?? []
-    const sets = await Promise.all(setResumes.map(async (set) => this.client.fetch('sets', set.id)))
+    const sets = await mapWithConcurrency(setResumes, upstreamConcurrency, async (set) =>
+      this.client.fetch('sets', set.id),
+    )
 
     return sets
       .filter((set): set is Set => Boolean(set?.releaseDate))
@@ -27,7 +32,9 @@ export class TcgDexClient {
 
   async getAllSets(): Promise<Set[]> {
     const setResumes = (await this.client.fetch('sets')) ?? []
-    const sets = await Promise.all(setResumes.map(async (set) => this.client.fetch('sets', set.id)))
+    const sets = await mapWithConcurrency(setResumes, upstreamConcurrency, async (set) =>
+      this.client.fetch('sets', set.id),
+    )
 
     return sets
       .filter((set): set is Set => Boolean(set?.releaseDate))
@@ -35,10 +42,10 @@ export class TcgDexClient {
   }
 
   async getCardsBySet(set: Set): Promise<TcgDexCard[]> {
-    const cards = await Promise.all(
-      set.cards.map(
-        async (card) => this.client.fetch('cards', card.id) as Promise<TcgDexCard | undefined>,
-      ),
+    const cards = await mapWithConcurrency(
+      set.cards,
+      upstreamConcurrency,
+      async (card) => this.client.fetch('cards', card.id) as Promise<TcgDexCard | undefined>,
     )
 
     return cards.filter((card): card is TcgDexCard => Boolean(card))
@@ -49,10 +56,10 @@ export class TcgDexClient {
   }
 
   async getCardsByIds(cardIds: string[]): Promise<TcgDexCard[]> {
-    const cards = await Promise.all(
-      cardIds.map(
-        async (cardId) => this.client.fetch('cards', cardId) as Promise<TcgDexCard | undefined>,
-      ),
+    const cards = await mapWithConcurrency(
+      cardIds,
+      upstreamConcurrency,
+      async (cardId) => this.client.fetch('cards', cardId) as Promise<TcgDexCard | undefined>,
     )
 
     return cards.filter((card): card is TcgDexCard => Boolean(card))

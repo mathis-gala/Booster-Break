@@ -11,7 +11,7 @@ export const localeQuerySchema = z.object({
 })
 
 export const cardsQuerySchema = z.object({
-  setId: z.string().optional(),
+  setId: z.string().trim().min(1).max(128).optional(),
   locale: localeSchema.optional(),
 })
 
@@ -20,11 +20,11 @@ export const collectionQuerySchema = z.object({
   pageSize: z.coerce.number().int().min(1).max(60).optional(),
   sort: collectionSortSchema.optional(),
   source: collectionSourceSchema.optional(),
-  setId: z.string().optional(),
+  setId: z.string().trim().min(1).max(128).optional(),
   locale: localeSchema.optional(),
 })
 
 export const openPackBodySchema = z.object({
-  setId: z.string().optional(),
+  setId: z.string().trim().min(1).max(128).optional(),
   locale: localeSchema.optional(),
 })

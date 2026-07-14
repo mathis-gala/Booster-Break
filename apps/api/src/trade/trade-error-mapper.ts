@@ -37,6 +37,11 @@ export const toTradeServiceError = (error: string): TradeServiceError => {
         error: 'auction_closed',
         message: 'The selected auction is closed.',
       }
+    case 'auction_not_owned':
+      return {
+        error: 'auction_not_owned',
+        message: 'Only the auction creator can accept an offer.',
+      }
     case 'cannot_trade_self':
       return {
         error: 'cannot_trade_self',
@@ -46,6 +51,11 @@ export const toTradeServiceError = (error: string): TradeServiceError => {
       return {
         error: 'offer_not_found',
         message: 'This offer does not exist anymore.',
+      }
+    case 'offer_not_owned':
+      return {
+        error: 'offer_not_owned',
+        message: 'You cannot cancel this offer.',
       }
     case 'offer_invalid':
       return {

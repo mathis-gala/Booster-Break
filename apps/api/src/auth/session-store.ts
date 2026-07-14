@@ -7,7 +7,7 @@ export interface AuthStore {
   upsertCustomUser(input: CustomUserInput): AuthUser | Promise<AuthUser>
   upsertGithubUser(input: GithubUserInput): AuthUser | Promise<AuthUser>
   findUserByEmail(email: string): AuthUser | undefined | Promise<AuthUser | undefined>
-  createSession(userId: string): AuthSession | Promise<AuthSession>
+  createSession(userId: string, sessionVerifier: string): AuthSession | Promise<AuthSession>
   getSession(sessionId: string): AuthSession | undefined | Promise<AuthSession | undefined>
   getUser(userId: string): AuthUser | undefined | Promise<AuthUser | undefined>
   deleteSession(sessionId: string): void | Promise<void>
@@ -122,11 +122,11 @@ export class MemoryAuthStore implements AuthStore {
     return userId ? this.users.get(userId) : undefined
   }
 
-  createSession(userId: string): AuthSession {
+  createSession(userId: string, sessionVerifier: string): AuthSession {
     this.pruneExpired()
 
     const session: AuthSession = {
-      id: crypto.randomUUID(),
+      id: sessionVerifier,
       userId,
       expiresAt: new Date(Date.now() + SESSION_TTL_MS),
     }
