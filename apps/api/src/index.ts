@@ -4,6 +4,7 @@ import type { HealthResponse } from '@tcg-collection/shared'
 import { createAuthController } from './auth/auth-controller'
 import { AuthService } from './auth/auth-service'
 import { PrismaAuthStore } from './auth/prisma-auth-store'
+import { GithubOAuthClient } from './auth/github-oauth-client'
 import { SlackOAuthClient } from './auth/slack-oauth-client'
 import { getConfig } from './config'
 import { prisma } from './db/prisma'
@@ -30,6 +31,14 @@ const authService = new AuthService({
           clientId: config.slackClientId,
           clientSecret: config.slackClientSecret,
           redirectUri: config.slackRedirectUri,
+        })
+      : undefined,
+  githubClient:
+    config.githubClientId && config.githubClientSecret
+      ? new GithubOAuthClient({
+          clientId: config.githubClientId,
+          clientSecret: config.githubClientSecret,
+          redirectUri: config.githubRedirectUri,
         })
       : undefined,
   store: authStore,
@@ -108,6 +117,7 @@ if (import.meta.main) {
   console.log(`Web origin ${config.webOrigin}`)
   console.log(`Web app URL ${config.webAppUrl}`)
   console.log(`Slack redirect ${config.slackRedirectUri}`)
+  console.log(`GitHub redirect ${config.githubRedirectUri}`)
   console.log(`Development auth ${config.devAuthEnabled ? 'enabled' : 'disabled'}`)
 }
 

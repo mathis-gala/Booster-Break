@@ -16,6 +16,7 @@ const config: ApiConfig = {
   sessionCookieSameSite: 'Lax',
   secureCookies: false,
   slackRedirectUri: 'http://127.0.0.1:3100/auth/slack/callback',
+  githubRedirectUri: 'http://127.0.0.1:3100/auth/github/callback',
   magicLinkAdminSecret: 'unit-magic-secret',
   magicLinkTtlDays: 30,
   devAuthEnabled: false,
@@ -368,5 +369,119 @@ describe('auth routes', () => {
 
     expect(response.status).toBe(404)
     expect(body.error).toBe('dev_auth_disabled')
+  })
+
+  test('reports clear GitHub setup error when OAuth is not configured', async () => {
+    const app = new Elysia().use(createAuthRoutes({ config, store: new MemoryAuthStore() }))
+    const response = await app.handle(new Request('http://localhost/auth/github/start'))
+    const body = await response.json()
+
+    expect(response.status).toBe(503)
+    expect(body.error).toBe('github_auth_not_configured')
+  })
+
+  test('redirects to GitHub and stores OAuth state', async () => {
+    const store = new MemoryAuthStore()
+    const service = new AuthService({
+      sessionCookieName: config.sessionCookieName,
+      store,
+      githubClient: {
+        createAuthorizeUrl: (state: string) => `https://github.com/oauth?state=${state}`,
+        getProfile: async () => {
+          throw new Error('not used')
+        },
+      },
+    })
+    const app = new Elysia().use(createAuthController({ config, service }))
+    const response = await app.handle(new Request('http://localhost/auth/github/start'))
+
+    expect(response.status).toBe(302)
+    expect(response.headers.get('location')).toContain('https://github.com/oauth?state=')
+    expect(response.headers.get('set-cookie')).toContain('tcg_session_github_state=')
+  })
+
+  test('creates a session after GitHub callback', async () => {
+    const store = new MemoryAuthStore()
+    const service = new AuthService({
+      sessionCookieName: config.sessionCookieName,
+      store,
+      githubClient: {
+        createAuthorizeUrl: (state: string) => `https://github.com/oauth?state=${state}`,
+        getProfile: async () => ({
+          githubUserId: 'gh-12345',
+          login: 'octocat',
+          name: 'The Octocat',
+          avatarUrl: 'https://example.com/octocat.png',
+          email: 'octocat@example.com',
+        }),
+      },
+    })
+    const app = new Elysia().use(createAuthController({ config, service }))
+    const response = await app.handle(
+      new Request('http://localhost/auth/github/callback?code=oauth-code&state=state-1', {
+        headers: {
+          Cookie: 'tcg_session_github_state=state-1',
+        },
+      }),
+    )
+
+    expect(response.status).toBe(302)
+    expect(response.headers.get('location')).toBe(config.webAppUrl)
+    expect(response.headers.get('set-cookie')).toContain('tcg_session=')
+  })
+
+  test('links GitHub sign-in to an existing user by verified email', async () => {
+    const store = new MemoryAuthStore()
+
+    // First GitHub sign-in creates an account with a verified email.
+    const first = store.upsertGithubUser({
+      githubUserId: 'gh-1',
+      login: 'octocat',
+      name: 'The Octocat',
+      avatarUrl: 'https://example.com/octocat.png',
+      email: 'octocat@example.com',
+    })
+
+    // Second GitHub sign-in, different GitHub id but same verified email,
+    // must resolve to the same player account (account linking).
+    const linked = store.upsertGithubUser({
+      githubUserId: 'gh-2',
+      login: 'octocat-personal',
+      name: 'The Octocat',
+      avatarUrl: 'https://example.com/octocat.png',
+      email: 'octocat@example.com',
+    })
+
+    expect(linked.id).toBe(first.id)
+    expect(store.findUserByEmail('octocat@example.com')?.id).toBe(first.id)
+  })
+
+  test('rejects GitHub callback with invalid state', async () => {
+    const store = new MemoryAuthStore()
+    const service = new AuthService({
+      sessionCookieName: config.sessionCookieName,
+      store,
+      githubClient: {
+        createAuthorizeUrl: (state: string) => `https://github.com/oauth?state=${state}`,
+        getProfile: async () => ({
+          githubUserId: 'gh-12345',
+          login: 'octocat',
+          avatarUrl: 'https://example.com/octocat.png',
+        }),
+      },
+    })
+    const app = new Elysia().use(createAuthController({ config, service }))
+    const response = await app.handle(
+      new Request('http://localhost/auth/github/callback?code=oauth-code&state=wrong', {
+        headers: {
+          Cookie: 'tcg_session_github_state=state-1',
+        },
+      }),
+    )
+
+    expect(response.status).toBe(302)
+    // Failed OAuth callback redirects to the web app without a session cookie.
+    expect(response.headers.get('location')).toBe(config.webAppUrl)
+    expect(response.headers.get('set-cookie') ?? '').not.toContain('tcg_session=')
   })
 })

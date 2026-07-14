@@ -6,6 +6,7 @@ import {
   type AuthStore,
   type CreateMagicLoginTokenInput,
   type CustomUserInput,
+  type GithubUserInput,
   type SlackUserInput,
 } from './session-store'
 
@@ -60,6 +61,56 @@ export class PrismaAuthStore implements AuthStore {
     })
 
     return toUser(user)
+  }
+
+  async upsertGithubUser(input: GithubUserInput): Promise<AuthUser> {
+    const existing = await this.db.user.findFirst({
+      where: {
+        OR: [
+          { githubUserId: input.githubUserId },
+          ...(input.email ? [{ email: input.email }] : []),
+        ],
+      },
+      select: { id: true },
+    })
+
+    const displayName = input.name ?? input.login
+
+    if (existing) {
+      const user = await this.db.user.update({
+        where: { id: existing.id },
+        data: {
+          displayName,
+          avatarUrl: input.avatarUrl,
+          githubUserId: input.githubUserId,
+          ...(input.email ? { email: input.email } : {}),
+        },
+      })
+
+      return toUser(user)
+    }
+
+    const user = await this.db.user.create({
+      data: {
+        id: crypto.randomUUID(),
+        pseudo: normalizePseudo(input.login),
+        displayName,
+        avatarUrl: input.avatarUrl,
+        githubUserId: input.githubUserId,
+        slackUserId: `github:${input.githubUserId}`,
+        ...(input.email ? { email: input.email } : {}),
+      },
+    })
+
+    return toUser(user)
+  }
+
+  async findUserByEmail(email: string): Promise<AuthUser | undefined> {
+    const user = await this.db.user.findUnique({
+      where: { email },
+    })
+
+    return user ? toUser(user) : undefined
   }
 
   async createSession(userId: string): Promise<AuthSession> {

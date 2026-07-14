@@ -13,6 +13,9 @@ export interface ApiConfig {
   slackClientId?: string
   slackClientSecret?: string
   slackRedirectUri: string
+  githubClientId?: string
+  githubClientSecret?: string
+  githubRedirectUri: string
   scrydexApiKey?: string
   scrydexTeamId?: string
 }
@@ -41,6 +44,9 @@ export const getConfig = (): ApiConfig => {
     slackClientId: Bun.env.SLACK_CLIENT_ID,
     slackClientSecret: Bun.env.SLACK_CLIENT_SECRET,
     slackRedirectUri: Bun.env.SLACK_REDIRECT_URI ?? `${apiOrigin}/auth/slack/callback`,
+    githubClientId: Bun.env.GITHUB_CLIENT_ID,
+    githubClientSecret: Bun.env.GITHUB_CLIENT_SECRET,
+    githubRedirectUri: Bun.env.GITHUB_REDIRECT_URI ?? `${apiOrigin}/auth/github/callback`,
     scrydexApiKey: Bun.env.SCRYDEX_API_KEY,
     scrydexTeamId: Bun.env.SCRYDEX_TEAM_ID,
   }

@@ -1,5 +1,6 @@
 import { parseCookies } from './cookies'
 import { normalizePseudo, type AuthStore, type CustomUserInput } from './session-store'
+import type { GithubProfile } from './github-oauth-client'
 import type { SlackProfile } from './slack-oauth-client'
 import type { AuthUser } from './types'
 
@@ -23,6 +24,7 @@ const hashMagicToken = async (token: string): Promise<string> => {
 export interface AuthServiceOptions {
   sessionCookieName: string
   slackClient?: SlackIdentityProvider
+  githubClient?: GithubIdentityProvider
   magicLinkTtlDays?: number
   store: AuthStore
 }
@@ -32,11 +34,18 @@ export interface SlackIdentityProvider {
   getProfile(code: string): Promise<SlackProfile>
 }
 
+export interface GithubIdentityProvider {
+  createAuthorizeUrl(state: string): string
+  getProfile(code: string): Promise<GithubProfile>
+}
+
 export type AuthServiceErrorCode =
   | 'invalid_oauth_state'
   | 'missing_oauth_code'
   | 'slack_auth_not_configured'
   | 'slack_auth_failed'
+  | 'github_auth_not_configured'
+  | 'github_auth_failed'
   | 'magic_link_generation_failed'
   | 'magic_link_invalid'
   | 'dev_auth_failed'
@@ -281,6 +290,68 @@ export class AuthService {
       return {
         error: 'slack_auth_failed',
         message: 'Slack sign-in failed. Please try again.',
+      }
+    }
+  }
+
+  createGithubAuthorizeUrl(state: string): string | AuthServiceError {
+    if (!this.options.githubClient) {
+      return {
+        error: 'github_auth_not_configured',
+        message: 'Set GITHUB_CLIENT_ID and GITHUB_CLIENT_SECRET to enable GitHub sign-in.',
+      }
+    }
+
+    return this.options.githubClient.createAuthorizeUrl(state)
+  }
+
+  async loginWithGithub(
+    code: string | undefined,
+    state: string | undefined,
+    expectedState: string | undefined,
+  ): Promise<AuthSessionResult | AuthServiceError> {
+    if (!this.options.githubClient) {
+      return {
+        error: 'github_auth_not_configured',
+        message: 'Set GITHUB_CLIENT_ID and GITHUB_CLIENT_SECRET to enable GitHub sign-in.',
+      }
+    }
+
+    if (!code) {
+      return {
+        error: 'missing_oauth_code',
+        message: 'GitHub did not return an OAuth code.',
+      }
+    }
+
+    if (!state || !expectedState || state !== expectedState) {
+      return {
+        error: 'invalid_oauth_state',
+        message: 'GitHub sign-in state is invalid. Please try again.',
+      }
+    }
+
+    try {
+      const profile = await this.options.githubClient.getProfile(code)
+      const user = await this.options.store.upsertGithubUser({
+        githubUserId: profile.githubUserId,
+        login: profile.login,
+        name: profile.name,
+        avatarUrl: profile.avatarUrl,
+        email: profile.email,
+      })
+      const session = await this.options.store.createSession(user.id)
+
+      return {
+        authenticated: true,
+        user,
+        sessionId: session.id,
+        maxAge: sessionCookieMaxAge,
+      }
+    } catch {
+      return {
+        error: 'github_auth_failed',
+        message: 'GitHub sign-in failed. Please try again.',
       }
     }
   }
