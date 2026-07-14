@@ -195,11 +195,7 @@ interface SignInDialogProps {
   onSignIn: (provider: 'slack' | 'github') => void | Promise<void>
 }
 
-function SignInDialog({
-  className,
-  isStartingSignIn,
-  onSignIn,
-}: SignInDialogProps) {
+function SignInDialog({ className, isStartingSignIn, onSignIn }: SignInDialogProps) {
   const handleSlackSignInClick = (event: MouseEvent<HTMLAnchorElement>) => {
     event.preventDefault()
     void onSignIn('slack')
@@ -225,10 +221,7 @@ function SignInDialog({
       >
         {m.auth_open_sign_in()}
       </DialogTrigger>
-      <DialogContent
-        closeLabel={m.auth_close_sign_in()}
-        className="gap-5 p-5 sm:max-w-xl sm:p-6"
-      >
+      <DialogContent closeLabel={m.auth_close_sign_in()} className="gap-5 p-5 sm:max-w-xl sm:p-6">
         <DialogHeader className="pr-8">
           <DialogTitle className="text-xl font-black">{m.auth_sign_in()}</DialogTitle>
           <DialogDescription>{m.auth_choose_provider()}</DialogDescription>

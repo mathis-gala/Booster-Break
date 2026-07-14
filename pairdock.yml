@@ -9,14 +9,14 @@ sandbox:
   workdir: /workspace
   network: host-services
   env:
-    DATABASE_URL: "postgresql://postgres:pairdockdev@host.docker.internal:55432/pairdock"
+    DATABASE_URL: 'postgresql://postgres:pairdockdev@host.docker.internal:55432/pairdock'
   ports:
-    - "127.0.0.1:4000:4000"
+    - '127.0.0.1:4000:4000'
 preview:
-  start: "bun install --frozen-lockfile && bun --cwd apps/web dev --host 0.0.0.0 --port 4000"
-  healthcheck: "http://127.0.0.1:4000"
+  start: 'bun install --frozen-lockfile && bun --cwd apps/web dev --host 0.0.0.0 --port 4000'
+  healthcheck: 'http://127.0.0.1:4000'
   tunnel: cloudflare
 checks:
-  build: "bun run build:web"
-  test: "bun run test"
-  lint: "bun run lint"
+  build: 'bun run build:web'
+  test: 'bun run test'
+  lint: 'bun run lint'
