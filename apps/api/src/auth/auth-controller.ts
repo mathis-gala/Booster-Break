@@ -4,6 +4,7 @@ import type { ApiConfig } from '../config'
 import { parseCookies, serializeCookie } from './cookies'
 import { AuthService, isAuthServiceError } from './auth-service'
 import type { AuthStore } from './session-store'
+import { GithubOAuthClient } from './github-oauth-client'
 import { SlackOAuthClient } from './slack-oauth-client'
 
 interface AuthControllerOptions {
@@ -20,12 +21,17 @@ export const createAuthController = ({ config, service, store }: AuthControllerO
     new AuthService({
       sessionCookieName: config.sessionCookieName,
       slackClient: createSlackClient(config),
+      githubClient: createGithubClient(config),
       magicLinkTtlDays: config.magicLinkTtlDays,
       store: mustProvideStore(store),
     })
   const slackStateCookieName = `${config.sessionCookieName}_slack_state`
+  const githubStateCookieName = `${config.sessionCookieName}_github_state`
 
   return new Elysia({ prefix: '/auth' })
+    .get('/providers', () => ({
+      developmentAuthEnabled: config.devAuthEnabled,
+    }))
     .get('/me', async ({ headers, status }) => {
       const user = await authService.getCurrentUser(headers.cookie)
 
@@ -77,6 +83,47 @@ export const createAuthController = ({ config, service, store }: AuthControllerO
       },
       {
         query: slackCallbackQuerySchema,
+      },
+    )
+    .get('/github/start', ({ status }) => {
+      const state = crypto.randomUUID()
+      const authorizeUrl = authService.createGithubAuthorizeUrl(state)
+
+      if (typeof authorizeUrl !== 'string') {
+        return status(503, authorizeUrl)
+      }
+
+      return new Response(null, {
+        status: 302,
+        headers: {
+          Location: authorizeUrl,
+          'Set-Cookie': serializeCookie(githubStateCookieName, state, {
+            maxAge: 60 * 5,
+            secure: config.secureCookies,
+          }),
+        },
+      })
+    })
+    .get(
+      '/github/callback',
+      async ({ headers, query }) => {
+        const result = await authService.loginWithGithub(
+          query.code,
+          query.state,
+          parseCookies(headers.cookie).get(githubStateCookieName),
+        )
+
+        if (isAuthServiceError(result)) {
+          return createOAuthRedirectResponse(config.webAppUrl, config, githubStateCookieName)
+        }
+
+        return createAuthResponse(result, 302, config, {
+          clearCookieName: githubStateCookieName,
+          location: config.webAppUrl,
+        })
+      },
+      {
+        query: githubCallbackQuerySchema,
       },
     )
     .post(
@@ -267,7 +314,25 @@ const createSlackClient = (config: ApiConfig): SlackOAuthClient | undefined => {
   })
 }
 
+const createGithubClient = (config: ApiConfig): GithubOAuthClient | undefined => {
+  if (!config.githubClientId || !config.githubClientSecret) {
+    return undefined
+  }
+
+  return new GithubOAuthClient({
+    clientId: config.githubClientId,
+    clientSecret: config.githubClientSecret,
+    redirectUri: config.githubRedirectUri,
+  })
+}
+
 const slackCallbackQuerySchema = z.object({
+  code: z.string().optional(),
+  state: z.string().optional(),
+  error: z.string().optional(),
+})
+
+const githubCallbackQuerySchema = z.object({
   code: z.string().optional(),
   state: z.string().optional(),
   error: z.string().optional(),

@@ -1,13 +1,23 @@
 import { useId, useState, type FormEvent, type MouseEvent } from 'react'
-import { useMutation, useQueryClient } from '@tanstack/react-query'
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { LogInIcon, LogOutIcon, UserIcon } from 'lucide-react'
 import type { AuthMeResponse } from '@tcg-collection/shared'
 
+import { Button } from '@/components/ui/button'
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
+} from '@/components/ui/dialog'
 import { toast } from '@/features/toast/toast-store'
 import { useDevLoginMutationOption } from '@/lib/mutations/auth'
 import { cn } from '@/lib/utils'
 import { m } from '@/paraglide/messages'
-import { fetchHealth, getApiUrl } from '../lib/api'
+import { fetchAuthProviders, fetchHealth, getApiUrl } from '../lib/api'
+import { GithubIcon } from './GithubIcon'
 import { SlackIcon } from './SlackIcon'
 
 interface AuthNavCardProps {
@@ -26,10 +36,15 @@ export function AuthNavCard({
   className,
 }: AuthNavCardProps) {
   const [isStartingSignIn, setIsStartingSignIn] = useState(false)
+  const authProviders = useQuery({
+    queryKey: ['auth', 'providers'],
+    queryFn: fetchAuthProviders,
+    enabled: !auth?.authenticated,
+    retry: false,
+    staleTime: Infinity,
+  })
 
-  const handleSlackSignInClick = async (event: MouseEvent<HTMLAnchorElement>) => {
-    event.preventDefault()
-
+  const handleOAuthSignIn = async (provider: 'slack' | 'github') => {
     if (isStartingSignIn) {
       return
     }
@@ -38,7 +53,7 @@ export function AuthNavCard({
 
     try {
       await fetchHealth()
-      window.location.assign(getApiUrl('/auth/slack/start'))
+      window.location.assign(getApiUrl(`/auth/${provider}/start`))
     } catch {
       toast.show(m.api_unable_reach())
       setIsStartingSignIn(false)
@@ -60,23 +75,16 @@ export function AuthNavCard({
   }
 
   if (!auth?.authenticated) {
-    if (isDevelopmentAuthVisible) {
+    if (authProviders.data?.developmentAuthEnabled) {
       return <DevelopmentAuthForm className={className} />
     }
 
     return (
-      <a
-        href={getApiUrl('/auth/slack/start')}
-        onClick={handleSlackSignInClick}
-        aria-disabled={isStartingSignIn}
-        className={cn(
-          'flex min-h-11 w-full cursor-pointer items-center justify-center gap-2 rounded-lg bg-sidebar-accent px-3 text-sm font-black text-sidebar-accent-foreground transition-colors hover:bg-sidebar-accent/90 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sidebar-ring aria-disabled:pointer-events-none aria-disabled:opacity-70',
-          className,
-        )}
-      >
-        <SlackIcon className="size-4" />
-        {isStartingSignIn ? m.auth_signing_in() : m.auth_sign_in_slack()}
-      </a>
+      <SignInDialog
+        className={className}
+        onSignIn={handleOAuthSignIn}
+        isStartingSignIn={isStartingSignIn}
+      />
     )
   }
 
@@ -181,4 +189,78 @@ function DevelopmentAuthForm({ className }: { className?: string }) {
   )
 }
 
-const isDevelopmentAuthVisible = import.meta.env.DEV
+interface SignInDialogProps {
+  className?: string
+  isStartingSignIn: boolean
+  onSignIn: (provider: 'slack' | 'github') => void | Promise<void>
+}
+
+function SignInDialog({ className, isStartingSignIn, onSignIn }: SignInDialogProps) {
+  const handleSlackSignInClick = (event: MouseEvent<HTMLAnchorElement>) => {
+    event.preventDefault()
+    void onSignIn('slack')
+  }
+
+  const handleGithubSignInClick = (event: MouseEvent<HTMLAnchorElement>) => {
+    event.preventDefault()
+    void onSignIn('github')
+  }
+
+  return (
+    <Dialog>
+      <DialogTrigger
+        render={
+          <Button
+            size="lg"
+            className={cn(
+              'h-11 w-full bg-sidebar-accent text-sm font-black text-sidebar-accent-foreground hover:bg-sidebar-accent/90',
+              className,
+            )}
+          />
+        }
+      >
+        {m.auth_open_sign_in()}
+      </DialogTrigger>
+      <DialogContent closeLabel={m.auth_close_sign_in()} className="gap-5 p-5 sm:max-w-xl sm:p-6">
+        <DialogHeader className="pr-8">
+          <DialogTitle className="text-xl font-black">{m.auth_sign_in()}</DialogTitle>
+          <DialogDescription>{m.auth_choose_provider()}</DialogDescription>
+        </DialogHeader>
+        <div className="grid gap-3 sm:grid-cols-2">
+          <a
+            href={getApiUrl('/auth/slack/start')}
+            onClick={handleSlackSignInClick}
+            aria-disabled={isStartingSignIn}
+            className="group flex min-h-44 cursor-pointer flex-col items-center justify-center gap-4 rounded-xl border border-border bg-card p-5 text-center text-card-foreground shadow-sm transition-[transform,box-shadow,border-color,background-color] duration-200 hover:-translate-y-0.5 hover:border-foreground/25 hover:bg-muted/45 hover:shadow-md focus-visible:outline-none focus-visible:ring-3 focus-visible:ring-ring/50 active:translate-y-0 aria-disabled:pointer-events-none aria-disabled:opacity-60 motion-reduce:transform-none motion-reduce:transition-none"
+          >
+            <span className="flex size-20 items-center justify-center rounded-xl bg-background ring-1 ring-border transition-transform duration-200 group-hover:scale-105 motion-reduce:transform-none motion-reduce:transition-none">
+              <SlackIcon className="size-14" />
+            </span>
+            <span className="flex flex-col gap-1">
+              <span className="text-base font-black">Slack</span>
+              <span className="text-xs font-semibold text-muted-foreground">
+                {isStartingSignIn ? m.auth_signing_in() : m.auth_sign_in_slack()}
+              </span>
+            </span>
+          </a>
+          <a
+            href={getApiUrl('/auth/github/start')}
+            onClick={handleGithubSignInClick}
+            aria-disabled={isStartingSignIn}
+            className="group flex min-h-44 cursor-pointer flex-col items-center justify-center gap-4 rounded-xl border border-border bg-card p-5 text-center text-card-foreground shadow-sm transition-[transform,box-shadow,border-color,background-color] duration-200 hover:-translate-y-0.5 hover:border-foreground/25 hover:bg-muted/45 hover:shadow-md focus-visible:outline-none focus-visible:ring-3 focus-visible:ring-ring/50 active:translate-y-0 aria-disabled:pointer-events-none aria-disabled:opacity-60 motion-reduce:transform-none motion-reduce:transition-none"
+          >
+            <span className="flex size-20 items-center justify-center rounded-xl bg-background ring-1 ring-border transition-transform duration-200 group-hover:scale-105 motion-reduce:transform-none motion-reduce:transition-none">
+              <GithubIcon className="size-14" />
+            </span>
+            <span className="flex flex-col gap-1">
+              <span className="text-base font-black">GitHub</span>
+              <span className="text-xs font-semibold text-muted-foreground">
+                {isStartingSignIn ? m.auth_signing_in() : m.auth_sign_in_github()}
+              </span>
+            </span>
+          </a>
+        </div>
+      </DialogContent>
+    </Dialog>
+  )
+}

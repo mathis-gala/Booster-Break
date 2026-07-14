@@ -5,6 +5,16 @@ import { m } from '@/paraglide/messages'
 
 export { getApiUrl }
 
+export async function fetchAuthProviders(): Promise<{ developmentAuthEnabled: boolean }> {
+  const { data, error } = await api.auth.providers.get()
+
+  if (error || !data) {
+    throw new Error(m.api_unable_auth_session())
+  }
+
+  return data
+}
+
 export async function fetchHealth(): Promise<HealthResponse> {
   const { data, error } = await api.health.get()
 

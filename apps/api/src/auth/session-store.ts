@@ -5,6 +5,8 @@ const SESSION_TTL_MS = 1000 * 60 * 60 * 24 * 14
 export interface AuthStore {
   upsertSlackUser(input: SlackUserInput): AuthUser | Promise<AuthUser>
   upsertCustomUser(input: CustomUserInput): AuthUser | Promise<AuthUser>
+  upsertGithubUser(input: GithubUserInput): AuthUser | Promise<AuthUser>
+  findUserByEmail(email: string): AuthUser | undefined | Promise<AuthUser | undefined>
   createSession(userId: string): AuthSession | Promise<AuthSession>
   getSession(sessionId: string): AuthSession | undefined | Promise<AuthSession | undefined>
   getUser(userId: string): AuthUser | undefined | Promise<AuthUser | undefined>
@@ -24,6 +26,15 @@ export interface SlackUserInput {
   pseudo: string
   displayName?: string
   avatarUrl?: string
+}
+
+export interface GithubUserInput {
+  githubUserId: string
+  login: string
+  name?: string
+  avatarUrl?: string
+  /** Verified primary email from GitHub, when available. Used to link existing accounts. */
+  email?: string
 }
 
 export interface CustomUserInput {
@@ -53,6 +64,8 @@ export class MemoryAuthStore implements AuthStore {
   private readonly sessions = new Map<string, AuthSession>()
   private readonly users = new Map<string, AuthUser>()
   private readonly usersBySlackId = new Map<string, string>()
+  private readonly usersByGithubId = new Map<string, string>()
+  private readonly userIdsByEmail = new Map<string, string>()
   private readonly magicLoginTokens = new Map<string, AuthMagicLoginToken>()
   private readonly magicLoginTokenIdsByHash = new Map<string, string>()
 
@@ -77,6 +90,36 @@ export class MemoryAuthStore implements AuthStore {
       displayName: input.displayName,
       avatarUrl: input.avatarUrl,
     })
+  }
+
+  upsertGithubUser(input: GithubUserInput): AuthUser {
+    const existingByGithubId = this.usersByGithubId.get(input.githubUserId)
+    const existingByEmail = input.email ? this.userIdsByEmail.get(input.email) : undefined
+    const existingUserId = existingByGithubId ?? existingByEmail
+    const existing = existingUserId ? this.users.get(existingUserId) : undefined
+    const displayName = input.name ?? input.login
+
+    const user: AuthUser = {
+      id: existing?.id ?? crypto.randomUUID(),
+      pseudo: existing?.pseudo ?? normalizePseudo(input.login),
+      displayName,
+      avatarUrl: input.avatarUrl,
+    }
+
+    this.users.set(user.id, user)
+    this.usersByGithubId.set(input.githubUserId, user.id)
+
+    if (input.email) {
+      this.userIdsByEmail.set(input.email, user.id)
+    }
+
+    return user
+  }
+
+  findUserByEmail(email: string): AuthUser | undefined {
+    const userId = this.userIdsByEmail.get(email)
+
+    return userId ? this.users.get(userId) : undefined
   }
 
   createSession(userId: string): AuthSession {
