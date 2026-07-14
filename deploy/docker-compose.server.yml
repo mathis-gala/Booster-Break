@@ -17,7 +17,7 @@ services:
       - caddy-config:/config
 
   web:
-    image: ghcr.io/mathis-gala/booster-break/web:latest
+    image: ghcr.io/mathis-gala/booster-break/web:${IMAGE_TAG:-latest}
     restart: unless-stopped
     expose:
       - '80'
@@ -36,7 +36,7 @@ services:
       retries: 12
 
   api:
-    image: ghcr.io/mathis-gala/booster-break/api:latest
+    image: ghcr.io/mathis-gala/booster-break/api:${IMAGE_TAG:-latest}
     restart: unless-stopped
     env_file:
       - ${BOOSTER_BREAK_ENV_FILE:-booster-break.env}

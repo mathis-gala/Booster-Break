@@ -238,27 +238,32 @@ Pokemon endpoints:
 
 ## GitHub Container Registry
 
-The pipeline builds and pushes Docker images only. It must not bake database URLs, Slack secrets,
+Publishing a GitHub release builds and pushes versioned API and web images. A stable release also
+updates the `latest` tag; a pre-release only publishes its release and commit tags. The pipeline
+does not connect to or deploy the production server. It must not bake database URLs, Slack secrets,
 or Postgres passwords into the image.
 
 The API image runs `prisma migrate deploy` on startup. Production updates should back up Postgres
-before pulling a new image:
+before pulling a new image. Set `IMAGE_TAG` in the `.env` file next to the production Compose file
+to the GitHub release tag, for example `IMAGE_TAG=v1.0.0`, then deploy manually:
 
 ```bash
-docker compose exec postgres pg_dump -U "$POSTGRES_USER" "$POSTGRES_DB" > "backup-$(date +%Y%m%d-%H%M%S).sql"
-docker compose pull
-docker compose up -d
-docker compose logs -f api
+docker compose exec -T postgres sh -c 'pg_dump -U "$POSTGRES_USER" "$POSTGRES_DB"' > "backup-$(date +%Y%m%d-%H%M%S).sql"
+docker compose pull web api
+docker compose up -d --force-recreate web api
+docker compose logs --tail=100 api
 ```
+
+Rollback by restoring the previous `IMAGE_TAG` in `.env` and running the same pull and up commands.
 
 Downloaded users run the image with their own runtime env file:
 
 ```yaml
 services:
   web:
-    image: ghcr.io/mathis-gala/booster-break/web:latest
+    image: ghcr.io/mathis-gala/booster-break/web:${IMAGE_TAG:-latest}
   api:
-    image: ghcr.io/mathis-gala/booster-break/api:latest
+    image: ghcr.io/mathis-gala/booster-break/api:${IMAGE_TAG:-latest}
     env_file:
       - booster-break.env
 ```
