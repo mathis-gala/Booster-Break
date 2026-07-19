@@ -24,7 +24,7 @@ export function BoosterOpeningOverlay({
 
   return (
     <div
-      className="fixed inset-0 z-50 flex flex-col items-center justify-center bg-slate-950/80 p-4 backdrop-blur-md focus:outline-none"
+      className="fixed inset-0 z-50 flex flex-col items-center justify-center bg-cyan-950/80 p-4 backdrop-blur-md focus:outline-none"
       role="dialog"
       aria-modal="true"
       aria-label={m.packs_tear_aria({ name: setName })}

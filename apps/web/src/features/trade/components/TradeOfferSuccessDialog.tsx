@@ -14,7 +14,7 @@ export function TradeOfferSuccessDialog({ open, onClose }: TradeOfferSuccessDial
 
   return (
     <div
-      className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/78 p-3 backdrop-blur-sm"
+      className="fixed inset-0 z-50 flex items-center justify-center bg-cyan-950/78 p-3 backdrop-blur-sm"
       role="dialog"
       aria-modal="true"
       aria-label={m.trade_offer_success_title()}

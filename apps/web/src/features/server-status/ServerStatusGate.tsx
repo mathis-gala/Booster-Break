@@ -20,7 +20,7 @@ export function ServerStatusGate() {
 
   return (
     <div
-      className="fixed inset-0 z-90 flex items-center justify-center bg-foreground/70 p-4"
+      className="fixed inset-0 z-90 flex items-center justify-center bg-cyan-950/70 p-4"
       role="alertdialog"
       aria-modal="true"
       aria-labelledby="server-status-title"

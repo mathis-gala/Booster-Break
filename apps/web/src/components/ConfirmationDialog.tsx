@@ -31,8 +31,8 @@ export function ConfirmationDialog({
     <div
       className={
         className !== undefined
-          ? `fixed inset-0 ${className} flex items-center justify-center bg-slate-950/78 p-3 backdrop-blur-sm`
-          : 'fixed inset-0 z-40 flex items-center justify-center bg-slate-950/78 p-3 backdrop-blur-sm'
+          ? `fixed inset-0 ${className} flex items-center justify-center bg-cyan-950/78 p-3 backdrop-blur-sm`
+          : 'fixed inset-0 z-40 flex items-center justify-center bg-cyan-950/78 p-3 backdrop-blur-sm'
       }
       role="alertdialog"
       aria-modal="true"
