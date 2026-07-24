@@ -88,10 +88,9 @@ function main() {
 Setup complete.
 
 Next commands:
-  bun run dev:api
-  bun run dev:web
+  bun run dev
 
-Open http://127.0.0.1:5173 after both dev servers are running.
+Open http://127.0.0.1:5173 after the dev servers are running.
 API health check: http://127.0.0.1:3100/health
 `)
 }

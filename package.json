@@ -8,6 +8,7 @@
   ],
   "scripts": {
     "setup": "bun scripts/setup.ts",
+    "dev": "bun scripts/dev.ts",
     "dev:web": "bun --cwd apps/web dev",
     "dev:api": "bun --cwd apps/api dev",
     "build": "bun --filter '*' build",
