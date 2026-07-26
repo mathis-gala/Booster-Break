@@ -45,7 +45,10 @@ const AFTER_LAUNCH_HOLD_MS = 260
 
 // Camera/projection constants mirrored from mat4.ts so we can map pointer
 // coordinates onto the booster's actual on-screen footprint.
-const BOOSTER_CAMERA_DISTANCE = 8.4
+// InteractiveBooster gives the canvas extra horizontal and vertical viewport
+// space. Match its 1.16x height in the camera so the pack keeps its original
+// size while the detached strip has room to leave without clipping.
+const BOOSTER_CAMERA_DISTANCE = 8.4 * 1.16
 const FIELD_OF_VIEW = Math.PI / 4
 const BOOSTER_FILL = BOOSTER_HEIGHT / (2 * Math.tan(FIELD_OF_VIEW / 2) * BOOSTER_CAMERA_DISTANCE)
 

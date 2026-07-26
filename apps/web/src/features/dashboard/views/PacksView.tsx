@@ -1,4 +1,4 @@
-import { useCallback, useMemo, useState } from 'react'
+import { useMemo, useState } from 'react'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 
 import { PackStage } from '../components/PackStage'
@@ -16,11 +16,8 @@ import {
 
 export function PacksView() {
   useLocale()
-  const [isTearOpen, setIsTearOpen] = useState(false)
-  const [isRevealOpen, setIsRevealOpen] = useState(false)
+  const [isOpeningExperienceOpen, setIsOpeningExperienceOpen] = useState(false)
   const [isPreparingReveal, setIsPreparingReveal] = useState(false)
-  const [revealedCardIndex, setRevealedCardIndex] = useState(0)
-  const [maxRevealedCardIndex, setMaxRevealedCardIndex] = useState(0)
   const [previewSetId, setPreviewSetId] = useState<string>()
   const queryClient = useQueryClient()
   const sets = useQuery(usePokemonSetsQueryOption())
@@ -30,10 +27,7 @@ export function PacksView() {
     useOpenPokemonPackMutationOption(queryClient, {
       onPreparingChange: setIsPreparingReveal,
       onPrepared: () => {
-        setRevealedCardIndex(0)
-        setMaxRevealedCardIndex(0)
-        setIsRevealOpen(false)
-        setIsTearOpen(true)
+        setIsOpeningExperienceOpen(true)
       },
     }),
   )
@@ -52,31 +46,18 @@ export function PacksView() {
     [ownedCardIdsQuery.data],
   )
 
-  const handleTearComplete = useCallback(() => {
-    setIsTearOpen(false)
-    setIsRevealOpen(true)
-  }, [])
-
   return (
     <div className="w-full max-w-6xl">
       <PackStage
         sets={sets.data ?? []}
         setsIsPending={sets.isPending}
         onOpenPack={(setId) => openPack.mutate(setId)}
-        openPackIsPending={openPack.isPending || isPreparingReveal}
+        openPackIsPending={openPack.isPending || isPreparingReveal || isOpeningExperienceOpen}
         openPackResult={openPack.data}
         packOpenStatus={packOpenStatus}
         packOpenStatusIsPending={packStatusQuery.isPending}
-        isTearOpen={isTearOpen}
-        onTearComplete={handleTearComplete}
-        isRevealOpen={isRevealOpen}
-        onCloseReveal={() => setIsRevealOpen(false)}
-        revealedCardIndex={revealedCardIndex}
-        maxRevealedCardIndex={maxRevealedCardIndex}
-        onRevealCardIndexChange={(index) => {
-          setRevealedCardIndex(index)
-          setMaxRevealedCardIndex((currentIndex) => Math.max(currentIndex, index))
-        }}
+        isOpeningExperienceOpen={isOpeningExperienceOpen}
+        onCompleteOpeningExperience={() => setIsOpeningExperienceOpen(false)}
         previewSet={previewSet}
         previewCards={previewCards.data ?? []}
         previewIsPending={previewCards.isPending && Boolean(previewSetId)}

@@ -92,7 +92,7 @@ export function InteractiveBooster({
     <div className="relative size-full">
       <canvas
         ref={mountCanvas}
-        className="size-full cursor-grab touch-none select-none active:cursor-grabbing"
+        className="absolute left-[-12%] top-[-8%] h-[116%] w-[124%] cursor-grab touch-none select-none active:cursor-grabbing"
         role="img"
         aria-label={m.packs_tear_aria({ name: setName })}
       />

@@ -1,11 +1,10 @@
-import { useCallback, useMemo, useState } from 'react'
+import { useMemo, useState } from 'react'
 import { useMutation, useQuery } from '@tanstack/react-query'
 import type { PokemonSetSummary } from '@tcg-collection/shared'
 
 import { BoosterPickerPanel } from '../components/BoosterPickerPanel'
-import { BoosterOpeningOverlay } from '../components/BoosterOpeningOverlay'
 import { PackBoosterStage } from '../components/PackBoosterStage'
-import { PackRevealDialog } from '../components/PackRevealDialog'
+import { PackOpeningExperience } from '../components/PackOpeningExperience'
 import { BoosterPreviewDialog } from '../components/BoosterPreviewDialog'
 import { useSandboxPackOpenStatus } from '../hooks/usePackOpenStatusClock'
 import { useLocale } from '@/features/i18n/useLocale'
@@ -23,11 +22,8 @@ type SandboxSet = PokemonSetSummary & { boosterImageUrl: string }
 
 export function SandboxView() {
   useLocale()
-  const [isTearOpen, setIsTearOpen] = useState(false)
-  const [isRevealOpen, setIsRevealOpen] = useState(false)
+  const [isOpeningExperienceOpen, setIsOpeningExperienceOpen] = useState(false)
   const [isPreparingReveal, setIsPreparingReveal] = useState(false)
-  const [revealedCardIndex, setRevealedCardIndex] = useState(0)
-  const [maxRevealedCardIndex, setMaxRevealedCardIndex] = useState(0)
   const [previewSetId, setPreviewSetId] = useState<string>()
   const [activeSetIdOverride, setActiveSetIdOverride] = useState<string>()
   const [cooldownUntil, setCooldownUntil] = useState<string>()
@@ -38,10 +34,7 @@ export function SandboxView() {
     useOpenPokemonPackSandboxMutationOption({
       onPreparingChange: setIsPreparingReveal,
       onPrepared: () => {
-        setRevealedCardIndex(0)
-        setMaxRevealedCardIndex(0)
-        setIsRevealOpen(false)
-        setIsTearOpen(true)
+        setIsOpeningExperienceOpen(true)
         setCooldownUntil(new Date(Date.now() + SANDBOX_OPEN_COOLDOWN_MS).toISOString())
       },
     }),
@@ -59,11 +52,6 @@ export function SandboxView() {
 
   const previewSet = sets.data?.find((set) => set.id === previewSetId)
 
-  const handleTearComplete = useCallback(() => {
-    setIsTearOpen(false)
-    setIsRevealOpen(true)
-  }, [])
-
   const activeSetId =
     activeSetIdOverride && boosterSets.some((set) => set.id === activeSetIdOverride)
       ? activeSetIdOverride
@@ -78,7 +66,7 @@ export function SandboxView() {
           <PackBoosterStage
             activeSet={activeSet}
             boosterCount={boosterSets.length}
-            isOpening={openPack.isPending}
+            isOpening={openPack.isPending || isOpeningExperienceOpen}
             packOpenStatus={packOpenStatus}
             packOpenStatusIsPending={openPack.isPending || isPreparingReveal}
             labels={{
@@ -114,24 +102,11 @@ export function SandboxView() {
         </div>
       </section>
 
-      {openPack.data && isTearOpen && openPack.data.set.boosterImageUrl ? (
-        <BoosterOpeningOverlay
-          boosterImageUrl={openPack.data.set.boosterImageUrl}
-          setName={openPack.data.set.name}
-          onComplete={handleTearComplete}
-        />
-      ) : null}
-
-      {openPack.data && isRevealOpen ? (
-        <PackRevealDialog
+      {openPack.data && isOpeningExperienceOpen && openPack.data.set.boosterImageUrl ? (
+        <PackOpeningExperience
+          key={openPack.data.openingId}
           openPackResult={openPack.data}
-          revealedCardIndex={revealedCardIndex}
-          maxRevealedCardIndex={maxRevealedCardIndex}
-          onClose={() => setIsRevealOpen(false)}
-          onRevealCardIndexChange={(index) => {
-            setRevealedCardIndex(index)
-            setMaxRevealedCardIndex((currentIndex) => Math.max(currentIndex, index))
-          }}
+          onComplete={() => setIsOpeningExperienceOpen(false)}
           resultLabel={m.sandbox_reveal_label()}
         />
       ) : null}

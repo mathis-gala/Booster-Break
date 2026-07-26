@@ -7,10 +7,9 @@ import type {
 } from '@tcg-collection/shared'
 
 import { BoosterPickerPanel } from './BoosterPickerPanel'
-import { BoosterOpeningOverlay } from './BoosterOpeningOverlay'
 import { BoosterPreviewDialog } from './BoosterPreviewDialog'
 import { PackBoosterStage } from './PackBoosterStage'
-import { PackRevealDialog } from './PackRevealDialog'
+import { PackOpeningExperience } from './PackOpeningExperience'
 
 interface PackStageProps {
   sets: PokemonSetSummary[]
@@ -20,13 +19,8 @@ interface PackStageProps {
   openPackResult?: OpenPackResponse
   packOpenStatus?: PackOpenStatusResponse
   packOpenStatusIsPending: boolean
-  isTearOpen: boolean
-  onTearComplete: () => void
-  isRevealOpen: boolean
-  onCloseReveal: () => void
-  revealedCardIndex: number
-  maxRevealedCardIndex: number
-  onRevealCardIndexChange: (index: number) => void
+  isOpeningExperienceOpen: boolean
+  onCompleteOpeningExperience: () => void
   previewSet?: PokemonSetSummary
   previewCards: PokemonCardSummary[]
   previewIsPending: boolean
@@ -45,13 +39,8 @@ export function PackStage({
   openPackResult,
   packOpenStatus,
   packOpenStatusIsPending,
-  isTearOpen,
-  onTearComplete,
-  isRevealOpen,
-  onCloseReveal,
-  revealedCardIndex,
-  maxRevealedCardIndex,
-  onRevealCardIndexChange,
+  isOpeningExperienceOpen,
+  onCompleteOpeningExperience,
   previewSet,
   previewCards,
   previewIsPending,
@@ -77,7 +66,6 @@ export function PackStage({
     () => boosterSets.find((set) => set.id === activeSetId) ?? boosterSets[0],
     [activeSetId, boosterSets],
   )
-
   return (
     <section className="min-w-0 rounded-lg border bg-card text-card-foreground">
       <div className="grid min-h-full gap-5 p-4 md:grid-cols-[1fr_1.1fr] md:p-5">
@@ -102,21 +90,11 @@ export function PackStage({
         />
       </div>
 
-      {openPackResult && isTearOpen && openPackResult.set.boosterImageUrl ? (
-        <BoosterOpeningOverlay
-          boosterImageUrl={openPackResult.set.boosterImageUrl}
-          setName={openPackResult.set.name}
-          onComplete={onTearComplete}
-        />
-      ) : null}
-
-      {openPackResult && isRevealOpen ? (
-        <PackRevealDialog
+      {openPackResult && isOpeningExperienceOpen && openPackResult.set.boosterImageUrl ? (
+        <PackOpeningExperience
+          key={openPackResult.openingId}
           openPackResult={openPackResult}
-          revealedCardIndex={revealedCardIndex}
-          maxRevealedCardIndex={maxRevealedCardIndex}
-          onClose={onCloseReveal}
-          onRevealCardIndexChange={onRevealCardIndexChange}
+          onComplete={onCompleteOpeningExperience}
         />
       ) : null}
 
