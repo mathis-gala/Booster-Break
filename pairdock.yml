@@ -2,21 +2,30 @@ version: 1
 name: TCG Collection
 repoFullName: mathis-gala/Booster-Break
 defaultBranch: main
-models:
-  - gpt-5.5
 sandbox:
   image: oven/bun:1
   workdir: /workspace
   network: host-services
   env:
-    DATABASE_URL: 'postgresql://postgres:pairdockdev@host.docker.internal:55432/pairdock'
+    DATABASE_URL: 'postgresql://postgres:pairdockdev@host.docker.internal:55432/booster_break_pairdock'
+    API_ORIGIN: 'http://127.0.0.1:3100'
+    DEV_AUTH_ENABLED: 'true'
+    WEB_APP_URL: 'http://127.0.0.1:{{hostPort}}'
+    WEB_ORIGIN: 'http://127.0.0.1:{{hostPort}}'
   ports:
-    - '127.0.0.1:4000:4000'
+    - '127.0.0.1:{{hostPort}}:4000'
 preview:
-  start: 'bun install --frozen-lockfile && bun --cwd apps/web dev --host 0.0.0.0 --port 4000'
-  healthcheck: 'http://127.0.0.1:4000'
+  start: >-
+    bun install --frozen-lockfile &&
+    bun --cwd apps/api prisma:generate &&
+    bun --cwd apps/api prisma:migrate:deploy &&
+    { bun apps/api/src/index.ts & bun --cwd apps/web dev --host 0.0.0.0 --port 4000 & wait; }
+  healthcheck: 'http://127.0.0.1:{{hostPort}}'
+  healthcheckTimeoutMs: 120000
+  # PairDock creates a per-session HTTPS quick tunnel for remote PM access.
   tunnel: cloudflare
 checks:
-  build: 'bun run build:web'
+  # PairDock already executes checks in an isolated, network-disabled Docker container.
+  build: 'bun run build'
   test: 'bun run test'
-  lint: 'bun run lint'
+  lint: 'bun run lint && bun run format:check'
