@@ -147,6 +147,22 @@ body {
   background: var(--background);
 }
 
+.app-background {
+  background-color: var(--background);
+  background-image:
+    linear-gradient(rgb(255 253 246 / 0.62), rgb(255 253 246 / 0.62)),
+    url('/images/eevee-pokeball-background.png');
+  background-position: center;
+  background-size: cover;
+  background-attachment: fixed;
+}
+
+.dark .app-background {
+  background-image:
+    linear-gradient(rgb(24 24 27 / 0.74), rgb(24 24 27 / 0.74)),
+    url('/images/eevee-pokeball-background.png');
+}
+
 html,
 body,
 #root {

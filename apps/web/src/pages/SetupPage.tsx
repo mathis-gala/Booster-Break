@@ -17,7 +17,7 @@ export function SetupPage() {
   useLocale()
 
   return (
-    <main className="min-h-dvh bg-background px-4 py-8 text-foreground sm:px-6">
+    <main className="app-background min-h-dvh px-4 py-8 text-foreground sm:px-6">
       <div className="mx-auto grid w-full max-w-4xl gap-6">
         <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
           <Link to="/" className={cn(buttonVariants({ variant: 'outline' }), 'w-fit')}>

@@ -18,7 +18,7 @@ export function LeaderboardPage() {
   } = useLeaderboardPage()
 
   return (
-    <div className="min-h-dvh bg-background text-foreground">
+    <div className="app-background min-h-dvh text-foreground">
       <a
         href="#main-content"
         className="sr-only focus:not-sr-only focus:fixed focus:left-4 focus:top-4 focus:z-50 focus:rounded-lg focus:bg-sidebar focus:px-4 focus:py-3 focus:text-sidebar-foreground"
