@@ -147,6 +147,15 @@ body {
   background: var(--background);
 }
 
+.app-background {
+  min-height: 100dvh;
+  background-color: var(--background);
+  background-image: url('/green-felt.png');
+  background-position: center;
+  background-size: cover;
+  background-attachment: fixed;
+}
+
 html,
 body,
 #root {
