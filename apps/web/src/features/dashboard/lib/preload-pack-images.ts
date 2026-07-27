@@ -16,6 +16,7 @@ export const preloadPackImages = async (pack: OpenPackResponse): Promise<void> =
 const preloadImage = async (src: string): Promise<void> => {
   await new Promise<void>((resolve) => {
     const image = new Image()
+    image.crossOrigin = 'anonymous'
     image.onload = () => resolve()
     image.onerror = () => resolve()
     image.src = src

@@ -17,6 +17,9 @@ import { loadImageTexture } from './texture-loader'
 interface CardViewerRendererOptions {
   frontImageUrl: string
   finish?: CardFinish
+  interactive?: boolean
+  cameraDistance?: number
+  rotationLimit?: number
 }
 
 const ROTATION_LIMIT = 0.72
@@ -33,6 +36,8 @@ export class CardViewerRenderer {
   private frontTexture?: WebGLTexture
   private vertexBuffer?: WebGLBuffer
   private indexBuffer?: WebGLBuffer
+  private interactive = false
+  private rendering = false
   private isDragging = false
   private previousPointer?: { x: number; y: number }
   private rotation = { x: 0, y: 0 }
@@ -54,7 +59,7 @@ export class CardViewerRenderer {
     this.options = options
     this.gl = gl
     this.resizeObserver = new ResizeObserver(() => {
-      this.resize()
+      if (this.rendering) this.resize()
     })
   }
 
@@ -76,18 +81,58 @@ export class CardViewerRenderer {
     this.frontTexture = await loadImageTexture(gl, this.options.frontImageUrl)
   }
 
-  start(): void {
+  start(interactive = this.options.interactive !== false, rendering = true): void {
     this.resizeObserver.observe(this.canvas)
-    this.canvas.addEventListener('pointerdown', this.handlePointerDown)
-    this.canvas.addEventListener('pointermove', this.handlePointerMove)
-    this.canvas.addEventListener('pointerup', this.handlePointerUp)
-    this.canvas.addEventListener('pointercancel', this.handlePointerUp)
+    this.setInteractive(interactive)
+    this.resize()
+    // Effects may set the desired state while the texture is still loading.
+    // Force the first post-initialization frame instead of treating it as a no-op.
+    this.rendering = false
+    this.setRendering(rendering)
+  }
+
+  setInteractive(interactive: boolean): void {
+    if (this.interactive === interactive) return
+    this.interactive = interactive
+
+    if (interactive) {
+      this.canvas.addEventListener('pointerdown', this.handlePointerDown)
+      this.canvas.addEventListener('pointermove', this.handlePointerMove)
+      this.canvas.addEventListener('pointerup', this.handlePointerUp)
+      this.canvas.addEventListener('pointercancel', this.handlePointerUp)
+      return
+    }
+
+    this.canvas.removeEventListener('pointerdown', this.handlePointerDown)
+    this.canvas.removeEventListener('pointermove', this.handlePointerMove)
+    this.canvas.removeEventListener('pointerup', this.handlePointerUp)
+    this.canvas.removeEventListener('pointercancel', this.handlePointerUp)
+    this.isDragging = false
+    this.previousPointer = undefined
+  }
+
+  setTargetRotation(rotationX: number, rotationY: number): void {
+    const rotationLimit = this.options.rotationLimit ?? ROTATION_LIMIT
+    this.targetRotation.x = clamp(rotationX, -rotationLimit, rotationLimit)
+    this.targetRotation.y = clamp(rotationY, -rotationLimit, rotationLimit)
+  }
+
+  setRendering(rendering: boolean): void {
+    if (this.rendering === rendering) return
+    this.rendering = rendering
+
+    if (!rendering) {
+      cancelAnimationFrame(this.animationFrame)
+      return
+    }
+
     this.resize()
     this.render()
   }
 
   dispose(): void {
     const gl = this.gl
+    this.rendering = false
     cancelAnimationFrame(this.animationFrame)
     this.resizeObserver.disconnect()
     this.canvas.removeEventListener('pointerdown', this.handlePointerDown)
@@ -114,15 +159,16 @@ export class CardViewerRenderer {
 
     const dx = event.clientX - this.previousPointer.x
     const dy = event.clientY - this.previousPointer.y
+    const rotationLimit = this.options.rotationLimit ?? ROTATION_LIMIT
     this.targetRotation.y = clamp(
       this.targetRotation.y + dx * ROTATION_DRAG_SENSITIVITY,
-      -ROTATION_LIMIT,
-      ROTATION_LIMIT,
+      -rotationLimit,
+      rotationLimit,
     )
     this.targetRotation.x = clamp(
       this.targetRotation.x + dy * ROTATION_DRAG_SENSITIVITY,
-      -ROTATION_LIMIT,
-      ROTATION_LIMIT,
+      -rotationLimit,
+      rotationLimit,
     )
     this.previousPointer = { x: event.clientX, y: event.clientY }
   }
@@ -137,7 +183,11 @@ export class CardViewerRenderer {
   }
 
   private resize(): void {
-    const { width, height } = this.canvas.getBoundingClientRect()
+    // CSS transforms are used while cards leave the booster. clientWidth keeps
+    // the backing buffer at the final layout size instead of rasterizing at the
+    // temporary transformed scale and stretching a blurry canvas afterwards.
+    const width = this.canvas.clientWidth
+    const height = this.canvas.clientHeight
     const pixelRatio = Math.min(window.devicePixelRatio || 1, 2)
     const displayWidth = Math.max(1, Math.floor(width * pixelRatio))
     const displayHeight = Math.max(1, Math.floor(height * pixelRatio))
@@ -151,6 +201,7 @@ export class CardViewerRenderer {
   }
 
   private render = (): void => {
+    if (!this.rendering) return
     const gl = this.gl
 
     if (!this.program || !this.frontTexture) {
@@ -170,7 +221,7 @@ export class CardViewerRenderer {
 
     const aspect = this.canvas.width / this.canvas.height
     const projection = createProjectionMatrix(Math.PI / 4, aspect, 0.1, 100)
-    const view = createViewMatrix()
+    const view = createViewMatrix(this.options.cameraDistance)
     const model = createModelMatrix(this.rotation.x, this.rotation.y)
     const mvp = createModelViewProjectionMatrix(projection, view, model)
 
@@ -184,6 +235,6 @@ export class CardViewerRenderer {
     gl.bindTexture(gl.TEXTURE_2D, this.frontTexture)
     setUniform1i(gl, this.program, 'uFrontTexture', 0)
     gl.drawElements(gl.TRIANGLES, CARD_INDEX_COUNT, gl.UNSIGNED_SHORT, 0)
-    this.animationFrame = requestAnimationFrame(this.render)
+    if (this.rendering) this.animationFrame = requestAnimationFrame(this.render)
   }
 }
