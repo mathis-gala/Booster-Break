@@ -1,4 +1,5 @@
 import { Elysia } from 'elysia'
+import { isIP } from 'node:net'
 
 interface FixedWindowRateLimiterOptions {
   limit: number
@@ -14,10 +15,8 @@ interface RateLimitEntry {
   resetAt: number
 }
 
-const overflowKey = Symbol('rate-limit-overflow')
-
 export class FixedWindowRateLimiter {
-  private readonly entries = new Map<string | symbol, RateLimitEntry>()
+  private readonly entries = new Map<string, RateLimitEntry>()
   private readonly maxKeys: number
   private readonly now: () => number
 
@@ -58,7 +57,7 @@ export class FixedWindowRateLimiter {
     return { allowed: true }
   }
 
-  private resolveEntryKey(key: string, currentTime: number): string | symbol {
+  private resolveEntryKey(key: string, currentTime: number): string {
     if (this.entries.has(key)) {
       return key
     }
@@ -73,7 +72,15 @@ export class FixedWindowRateLimiter {
       }
     }
 
-    return this.entries.size < this.maxKeys ? key : overflowKey
+    if (this.entries.size >= this.maxKeys) {
+      const oldestKey = this.entries.keys().next().value
+
+      if (oldestKey !== undefined) {
+        this.entries.delete(oldestKey)
+      }
+    }
+
+    return key
   }
 }
 
@@ -82,6 +89,11 @@ export interface RateLimitRule {
   path: string
   limit: number
   windowMs: number
+}
+
+interface RateLimitPluginOptions {
+  rules?: RateLimitRule[]
+  trustProxy?: boolean
 }
 
 export const apiRateLimitRules: RateLimitRule[] = [
@@ -101,7 +113,8 @@ export const apiRateLimitRules: RateLimitRule[] = [
   { method: 'GET', path: '/trade/auctions', limit: 60, windowMs: 60_000 },
 ]
 
-export const createRateLimitPlugin = (rules: RateLimitRule[] = apiRateLimitRules) => {
+export const createRateLimitPlugin = (options: RateLimitPluginOptions = {}) => {
+  const rules = options.rules ?? apiRateLimitRules
   const limiters = new Map(
     rules.map((rule) => [
       toRuleKey(rule.method, rule.path),
@@ -113,7 +126,7 @@ export const createRateLimitPlugin = (rules: RateLimitRule[] = apiRateLimitRules
   )
 
   return new Elysia({ name: 'rate-limit' })
-    .onBeforeHandle(({ request, set, status }) => {
+    .onBeforeHandle(({ request, server, set, status }) => {
       const path = new URL(request.url).pathname
       const limiter = limiters.get(toRuleKey(request.method, path))
 
@@ -121,7 +134,13 @@ export const createRateLimitPlugin = (rules: RateLimitRule[] = apiRateLimitRules
         return
       }
 
-      const result = limiter.check(getClientIdentifier(request))
+      const result = limiter.check(
+        getClientIdentifier(
+          request,
+          server?.requestIP(request)?.address,
+          options.trustProxy ?? false,
+        ),
+      )
 
       if (result.allowed) {
         return
@@ -141,8 +160,14 @@ export const createRateLimitPlugin = (rules: RateLimitRule[] = apiRateLimitRules
 const toRuleKey = (method: string, path: string): string =>
   `${method.toUpperCase()} ${path.length > 1 ? path.replace(/\/$/, '') : path}`
 
-const getClientIdentifier = (request: Request): string => {
-  const realIp = request.headers.get('x-real-ip')?.trim()
+const getClientIdentifier = (
+  request: Request,
+  remoteAddress: string | undefined,
+  trustProxy: boolean,
+): string => {
+  const forwardedAddress = trustProxy ? request.headers.get('x-real-ip')?.trim() : undefined
+  const clientAddress =
+    forwardedAddress && isIP(forwardedAddress) ? forwardedAddress : remoteAddress
 
-  return (realIp || 'unknown').slice(0, 128)
+  return (clientAddress || 'unknown').slice(0, 128)
 }

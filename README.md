@@ -190,6 +190,10 @@ For local development, the Vite UI shows a pseudo-only sign-in form. It calls
 This route is enabled automatically only for loopback HTTP API/web origins. Set
 `DEV_AUTH_ENABLED=false` to disable it.
 
+Rate limiting uses the direct socket address by default. Set `TRUST_PROXY=true` only when the API
+is behind a trusted reverse proxy that overwrites `X-Real-IP`; the bundled Caddy deployment
+configures this automatically.
+
 Auth endpoints:
 
 - `GET /auth/me`

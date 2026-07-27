@@ -20,25 +20,64 @@ describe('FixedWindowRateLimiter', () => {
     expect(limiter.check('client')).toEqual({ allowed: true })
   })
 
-  test('returns 429 and Retry-After for a protected route', async () => {
+  test('does not merge new clients when identifier capacity is reached', () => {
+    const limiter = new FixedWindowRateLimiter({
+      limit: 1,
+      windowMs: 60_000,
+      maxKeys: 2,
+      now: () => 1_000,
+    })
+
+    expect(limiter.check('client-1')).toEqual({ allowed: true })
+    expect(limiter.check('client-2')).toEqual({ allowed: true })
+    expect(limiter.check('client-3')).toEqual({ allowed: true })
+    expect(limiter.check('client-4')).toEqual({ allowed: true })
+  })
+
+  test('ignores spoofed proxy headers unless proxy trust is enabled', async () => {
     const app = new Elysia()
       .use(
-        createRateLimitPlugin([{ method: 'POST', path: '/sensitive', limit: 1, windowMs: 60_000 }]),
+        createRateLimitPlugin({
+          rules: [{ method: 'POST', path: '/sensitive', limit: 1, windowMs: 60_000 }],
+        }),
       )
       .post('/sensitive', () => ({ ok: true }))
 
-    const request = () =>
+    const request = (realIp: string) =>
       app.handle(
         new Request('http://localhost/sensitive', {
           method: 'POST',
-          headers: { 'x-real-ip': '192.0.2.1' },
+          headers: { 'x-real-ip': realIp },
         }),
       )
 
-    expect((await request()).status).toBe(200)
+    expect((await request('192.0.2.1')).status).toBe(200)
 
-    const blocked = await request()
+    const blocked = await request('192.0.2.2')
     expect(blocked.status).toBe(429)
     expect(blocked.headers.get('retry-after')).toBe('60')
+  })
+
+  test('uses the forwarded client IP when proxy trust is enabled', async () => {
+    const app = new Elysia()
+      .use(
+        createRateLimitPlugin({
+          rules: [{ method: 'POST', path: '/sensitive', limit: 1, windowMs: 60_000 }],
+          trustProxy: true,
+        }),
+      )
+      .post('/sensitive', () => ({ ok: true }))
+
+    const request = (realIp: string) =>
+      app.handle(
+        new Request('http://localhost/sensitive', {
+          method: 'POST',
+          headers: { 'x-real-ip': realIp },
+        }),
+      )
+
+    expect((await request('192.0.2.1')).status).toBe(200)
+    expect((await request('192.0.2.2')).status).toBe(200)
+    expect((await request('192.0.2.1')).status).toBe(429)
   })
 })
