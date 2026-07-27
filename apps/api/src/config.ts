@@ -1,3 +1,5 @@
+import { isIP } from 'node:net'
+
 export interface ApiConfig {
   port: number
   host: string
@@ -18,6 +20,7 @@ export interface ApiConfig {
   githubRedirectUri: string
   scrydexApiKey?: string
   scrydexTeamId?: string
+  trustProxy: boolean
 }
 
 type ApiEnvironment = Record<string, string | undefined>
@@ -39,6 +42,7 @@ export const getConfig = (env: ApiEnvironment = Bun.env): ApiConfig => {
 
   const webOrigin = toOrigin(configuredWebOrigin)
   assertBooleanSwitch('SECURE_COOKIES', env.SECURE_COOKIES)
+  assertBooleanSwitch('TRUST_PROXY', env.TRUST_PROXY)
   const secureCookies =
     env.SECURE_COOKIES === 'true' || new URL(apiOrigin).protocol.toLowerCase() === 'https:'
   const devAuthEnabled = resolveDevAuthEnabled(env.DEV_AUTH_ENABLED, apiOrigin, webOrigin)
@@ -95,6 +99,7 @@ export const getConfig = (env: ApiEnvironment = Bun.env): ApiConfig => {
     githubRedirectUri,
     scrydexApiKey: env.SCRYDEX_API_KEY,
     scrydexTeamId: env.SCRYDEX_TEAM_ID,
+    trustProxy: env.TRUST_PROXY === 'true',
   }
 }
 
@@ -159,6 +164,12 @@ const resolveMagicLinkTtlDays = (configuredValue: string | undefined): number =>
 
 const isLoopbackOrigin = (value: string): boolean => {
   const hostname = new URL(value).hostname
+  const normalizedHostname =
+    hostname.startsWith('[') && hostname.endsWith(']') ? hostname.slice(1, -1) : hostname
 
-  return hostname === 'localhost' || hostname === '::1' || hostname.startsWith('127.')
+  return (
+    normalizedHostname === 'localhost' ||
+    normalizedHostname === '::1' ||
+    (isIP(normalizedHostname) === 4 && normalizedHostname.startsWith('127.'))
+  )
 }

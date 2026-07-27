@@ -21,6 +21,7 @@ const config: ApiConfig = {
   magicLinkAdminSecret: 'unit-magic-secret',
   magicLinkTtlDays: 30,
   devAuthEnabled: false,
+  trustProxy: false,
 }
 
 describe('auth routes', () => {

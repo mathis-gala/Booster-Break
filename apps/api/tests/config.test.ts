@@ -21,6 +21,15 @@ describe('getConfig', () => {
     expect(config.devAuthEnabled).toBe(true)
   })
 
+  test('does not treat a public hostname starting with 127 as loopback', () => {
+    const config = getConfig({
+      API_ORIGIN: 'https://127.attacker.example',
+      WEB_ORIGIN: 'https://127.attacker.example',
+    })
+
+    expect(config.devAuthEnabled).toBe(false)
+  })
+
   test('rejects invalid server ports', () => {
     expect(() => getConfig({ PORT: 'not-a-port' })).toThrow(
       'PORT must be an integer between 1 and 65535',
@@ -57,6 +66,17 @@ describe('getConfig', () => {
   test('rejects invalid secure-cookie switches', () => {
     expect(() => getConfig({ SECURE_COOKIES: 'yes' })).toThrow(
       'SECURE_COOKIES must be either true or false',
+    )
+  })
+
+  test('enables trusted proxy handling only when explicitly configured', () => {
+    expect(getConfig({}).trustProxy).toBe(false)
+    expect(getConfig({ TRUST_PROXY: 'true' }).trustProxy).toBe(true)
+  })
+
+  test('rejects invalid trusted-proxy switches', () => {
+    expect(() => getConfig({ TRUST_PROXY: 'yes' })).toThrow(
+      'TRUST_PROXY must be either true or false',
     )
   })
 

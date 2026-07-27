@@ -43,6 +43,7 @@ services:
     environment:
       PORT: 3100
       HOST: 0.0.0.0
+      TRUST_PROXY: 'true'
     depends_on:
       postgres:
         condition: service_healthy

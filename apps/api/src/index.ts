@@ -73,7 +73,7 @@ const tradeService = new TradeService({
 })
 
 export const app = new Elysia()
-  .use(createRateLimitPlugin())
+  .use(createRateLimitPlugin({ trustProxy: config.trustProxy }))
   .use(
     createRequestSecurityPlugin({
       apiOrigin: config.apiOrigin,
