@@ -1,16 +1,22 @@
+import { getApiUrl } from '@/lib/api-client'
+import { getTcgDexTextureProxyPath } from './tcgdex-texture-url'
+
 export const loadImageTexture = async (
   gl: WebGLRenderingContext,
   imageUrl: string,
 ): Promise<WebGLTexture> => {
+  const proxyPath = getTcgDexTextureProxyPath(imageUrl)
+  const textureUrl = proxyPath ? getApiUrl(proxyPath) : imageUrl
+
   try {
-    return await uploadImageTexture(gl, imageUrl)
+    return await uploadImageTexture(gl, textureUrl)
   } catch (error) {
     // A non-CORS cache entry (e.g. the same image already shown via a plain
     // <img>) taints texImage2D. Retry once with a cache-busting param to force a
     // fresh CORS fetch.
     if (error instanceof DOMException && error.name === 'SecurityError') {
-      const separator = imageUrl.includes('?') ? '&' : '?'
-      return uploadImageTexture(gl, `${imageUrl}${separator}cors=1`)
+      const separator = textureUrl.includes('?') ? '&' : '?'
+      return uploadImageTexture(gl, `${textureUrl}${separator}cors=1`)
     }
     throw error
   }
