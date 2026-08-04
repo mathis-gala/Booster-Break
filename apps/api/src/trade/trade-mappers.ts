@@ -150,6 +150,9 @@ const toLocalizedNotificationCardPayload = (
     imageLarge: localizedCard.imageLarge,
     setId: localizedCard.setId,
     number: localizedCard.number,
+    rarity: payload.rarity ?? localizedCard.rarity,
+    supertype: payload.supertype ?? localizedCard.supertype,
+    isEvolved: payload.isEvolved ?? localizedCard.isEvolved,
   }
 }
 

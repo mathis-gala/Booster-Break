@@ -145,7 +145,11 @@ export function TradeCreateAuctionCardSection({
               <FoilCardImage
                 src={selectedCard.imageLarge ?? selectedCard.imageSmall ?? ''}
                 alt={selectedCard.name}
+                cardId={selectedCard.id}
                 finish={selectedCard.finish}
+                rarity={selectedCard.rarity}
+                supertype={selectedCard.supertype}
+                isEvolved={selectedCard.isEvolved}
                 className="w-full rounded-md"
               />
               <p className="mt-1 text-center text-sm font-black">

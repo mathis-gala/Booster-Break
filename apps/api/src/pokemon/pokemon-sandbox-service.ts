@@ -8,6 +8,7 @@ import type {
 import type { Card, Set } from '@tcgdex/sdk'
 import { DEFAULT_LOCALE } from '@tcg-collection/shared'
 import { drawPokemonPackCards } from './pack-draft'
+import { resolveCardIsEvolved } from './pokemon-mappers'
 import type { PokemonServiceError } from './pokemon-service'
 import {
   compareSetsByNewestRelease,
@@ -179,6 +180,7 @@ const toPokemonCardSummary = (card: Card, locale: SupportedLocale): PokemonCardS
   number: card.localId,
   rarity: card.rarity ?? undefined,
   supertype: card.category ?? undefined,
+  isEvolved: resolveCardIsEvolved(card.stage, card.evolveFrom),
   finishes: getCardFinishes(card.variants),
   imageSmall: localizeTcgDexAssetUrl(getCardImageUrl(card, 'low'), locale),
   imageLarge: localizeTcgDexAssetUrl(getCardImageUrl(card, 'high'), locale),

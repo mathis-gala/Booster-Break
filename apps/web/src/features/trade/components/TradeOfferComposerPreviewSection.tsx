@@ -36,7 +36,11 @@ export function TradeOfferComposerPreviewSection({
                 <FoilCardImage
                   src={card.card.imageSmall}
                   alt={card.card.name}
+                  cardId={card.card.id}
                   finish={card.card.finish}
+                  rarity={card.card.rarity}
+                  supertype={card.card.supertype}
+                  isEvolved={card.card.isEvolved}
                   className="aspect-63/88 w-32 rounded-md"
                 />
               ) : (

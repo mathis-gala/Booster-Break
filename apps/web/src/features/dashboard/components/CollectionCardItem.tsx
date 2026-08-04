@@ -49,8 +49,13 @@ export const CollectionCardItem = memo(function CollectionCardItem({
               <FoilCardImage
                 src={card.imageSmall}
                 alt={card.name}
+                cardId={card.id}
                 finish={card.finish}
-                className="aspect-63/88 w-full rounded-md object-cover transition-transform hover:-translate-y-0.5"
+                rarity={card.rarity}
+                supertype={card.supertype}
+                isEvolved={card.isEvolved}
+                className="aspect-63/88 w-full rounded-md object-cover"
+                containerClassName="transition-transform hover:-translate-y-0.5"
               />
             ) : (
               <div className="aspect-63/88 w-full rounded-md bg-muted" aria-hidden="true" />
@@ -60,8 +65,13 @@ export const CollectionCardItem = memo(function CollectionCardItem({
           <FoilCardImage
             src={card.imageSmall}
             alt={card.name}
+            cardId={card.id}
             finish={card.finish}
-            className="aspect-63/88 w-full rounded-md object-cover transition-transform hover:-translate-y-0.5"
+            rarity={card.rarity}
+            supertype={card.supertype}
+            isEvolved={card.isEvolved}
+            className="aspect-63/88 w-full rounded-md object-cover"
+            containerClassName="transition-transform hover:-translate-y-0.5"
           />
         ) : (
           <div className="aspect-63/88 w-full rounded-md bg-muted" aria-hidden="true" />

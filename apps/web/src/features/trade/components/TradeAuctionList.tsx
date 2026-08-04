@@ -98,7 +98,11 @@ export function TradeAuctionList({
                             auction.offeredCard.imageLarge ?? auction.offeredCard.imageSmall ?? ''
                           }
                           alt={auction.offeredCard.name}
+                          cardId={auction.offeredCard.id}
                           finish={auction.offeredCardFinish}
+                          rarity={auction.offeredCard.rarity}
+                          supertype={auction.offeredCard.supertype}
+                          isEvolved={auction.offeredCard.isEvolved}
                           className="aspect-63/88 w-full max-w-full rounded-sm"
                         />
                       ) : (

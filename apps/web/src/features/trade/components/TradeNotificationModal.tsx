@@ -47,7 +47,11 @@ const NotificationCardList = ({ title, cards, ownedCardIds }: NotificationCardLi
                   <FoilCardImage
                     src={card.imageSmall}
                     alt={card.name}
+                    cardId={card.cardId}
                     finish={card.finish}
+                    rarity={card.rarity}
+                    supertype={card.supertype}
+                    isEvolved={card.isEvolved}
                     className="aspect-63/88 w-28 rounded-md"
                   />
                 ) : (

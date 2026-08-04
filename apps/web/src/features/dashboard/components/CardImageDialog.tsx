@@ -27,7 +27,11 @@ export function CardImageDialog({ card, onClose }: CardImageDialogProps) {
             key={`${imageUrl}-${card.finish ?? 'normal'}`}
             frontImageUrl={imageUrl}
             alt={card.name}
+            cardId={card.id}
             finish={card.finish}
+            rarity={card.rarity}
+            supertype={card.supertype}
+            isEvolved={card.isEvolved}
             className="drop-shadow-2xl"
           />
         ) : (

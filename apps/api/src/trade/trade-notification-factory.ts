@@ -3,6 +3,7 @@ import type {
   TradeOfferReceivedNotificationPayload,
 } from '@tcg-collection/shared'
 import type { TradeOfferRow, TradeRepositoryNotificationInput } from './trade-types'
+import { getCardIsEvolved } from '../pokemon/pokemon-mappers'
 
 export const buildTradeOfferAcceptedNotificationInput = (
   offer: TradeOfferRow,
@@ -41,6 +42,9 @@ export const buildTradeOfferAcceptedNotificationInput = (
       quantity: 1,
       setId: offeredCard.setId,
       number: offeredCard.localId,
+      rarity: offeredCard.rarity ?? undefined,
+      supertype: offeredCard.category ?? undefined,
+      isEvolved: getCardIsEvolved(offeredCard.rawJson),
     },
     exchangedCards: offer.cards.map((card) => ({
       cardId: card.card.id,
@@ -51,6 +55,9 @@ export const buildTradeOfferAcceptedNotificationInput = (
       quantity: card.quantity,
       setId: card.card.setId,
       number: card.card.localId,
+      rarity: card.card.rarity ?? undefined,
+      supertype: card.card.category ?? undefined,
+      isEvolved: getCardIsEvolved(card.card.rawJson),
     })),
   }
 
@@ -92,6 +99,9 @@ export const buildTradeOfferReceivedNotificationInput = (
       quantity: 1,
       setId: offeredCard.setId,
       number: offeredCard.localId,
+      rarity: offeredCard.rarity ?? undefined,
+      supertype: offeredCard.category ?? undefined,
+      isEvolved: getCardIsEvolved(offeredCard.rawJson),
     },
     offeredCards: offer.cards.map((card) => ({
       cardId: card.card.id,
@@ -102,6 +112,9 @@ export const buildTradeOfferReceivedNotificationInput = (
       quantity: card.quantity,
       setId: card.card.setId,
       number: card.card.localId,
+      rarity: card.card.rarity ?? undefined,
+      supertype: card.card.category ?? undefined,
+      isEvolved: getCardIsEvolved(card.card.rawJson),
     })),
   }
 

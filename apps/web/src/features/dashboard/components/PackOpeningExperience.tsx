@@ -511,7 +511,11 @@ function OpeningCardSurface({
           <WebGlCardViewer
             frontImageUrl={imageUrl}
             alt={card.name}
+            cardId={card.id}
             finish={card.finish}
+            rarity={card.rarity}
+            supertype={card.supertype}
+            isEvolved={card.isEvolved}
             interactive={false}
             cameraDistance={5.65}
             className={cn(
@@ -524,7 +528,11 @@ function OpeningCardSurface({
           <FoilCardImage
             src={imageUrl}
             alt={card.name}
+            cardId={card.id}
             finish={card.finish}
+            rarity={card.rarity}
+            supertype={card.supertype}
+            isEvolved={card.isEvolved}
             className="size-full rounded-lg object-cover"
           />
         ) : (
@@ -757,7 +765,11 @@ function PackRecap({
                   <WebGlCardViewer
                     frontImageUrl={imageUrl}
                     alt={card.name}
+                    cardId={card.id}
                     finish={card.finish}
+                    rarity={card.rarity}
+                    supertype={card.supertype}
+                    isEvolved={card.isEvolved}
                     interactive={isSelected && zoomInteractionReady}
                     rendering={renderAllRecapCards || activeRendererIndex === index}
                     resetOnInteractiveDisable
