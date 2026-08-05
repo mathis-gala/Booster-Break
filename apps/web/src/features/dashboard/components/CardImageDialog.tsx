@@ -1,5 +1,6 @@
 import type { PokemonCardSummary } from '@tcg-collection/shared'
 
+import { resolveCardPreviewFinish } from '../lib/card-format'
 import { WebGlCardViewer } from './WebGlCardViewer'
 
 interface CardImageDialogProps {
@@ -9,6 +10,7 @@ interface CardImageDialogProps {
 
 export function CardImageDialog({ card, onClose }: CardImageDialogProps) {
   const imageUrl = card.imageLarge ?? card.imageSmall
+  const finish = resolveCardPreviewFinish(card)
 
   return (
     <div
@@ -24,11 +26,11 @@ export function CardImageDialog({ card, onClose }: CardImageDialogProps) {
       >
         {imageUrl ? (
           <WebGlCardViewer
-            key={`${imageUrl}-${card.finish ?? 'normal'}`}
+            key={`${imageUrl}-${finish ?? 'normal'}`}
             frontImageUrl={imageUrl}
             alt={card.name}
             cardId={card.id}
-            finish={card.finish}
+            finish={finish}
             rarity={card.rarity}
             supertype={card.supertype}
             isEvolved={card.isEvolved}
