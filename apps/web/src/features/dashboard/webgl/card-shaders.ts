@@ -129,6 +129,8 @@ void main() {
     materialMask = max(artworkMask, borderMask) * (1.0 - evolutionMask);
   } else if (uProfile == 2) {
     materialMask = stockMask * (1.0 - artworkMask) * (1.0 - evolutionMask);
+  } else if (uProfile == 9) {
+    materialMask = artworkMask * (1.0 - evolutionMask);
   }
 
   float drift = time + sin(idlePhase * 2.0 + uSeed * 11.0) * 0.055 * motionGate;
@@ -153,7 +155,7 @@ void main() {
   vec2 offsetA = vec2(fract(uSeed * 3.17), fract(uSeed * 7.91));
   vec2 offsetB = vec2(fract(uSeed * 11.43 + 0.31), fract(uSeed * 5.37 + 0.67));
   vec2 offsetC = vec2(fract(uSeed * 2.73 + 0.53), fract(uSeed * 13.11 + 0.19));
-  float textureMotionGate = uProfile == 3 || uProfile == 5 || uProfile == 7
+  float textureMotionGate = uProfile == 3 || uProfile == 5 || uProfile == 7 || uProfile == 10
     ? 0.0
     : motionGate;
   vec2 textureDrift = textureMotionGate * (
@@ -182,7 +184,7 @@ void main() {
     ? mix(1.0, 1.42, borderMask)
     : 1.0;
   float materialResponse = response * uIntensity * materialMask * classicBorderBoost;
-  float horizontalStripeBoost = uProfile == 1 || uProfile == 7 ? 1.35 : 1.0;
+  float horizontalStripeBoost = uProfile == 1 || uProfile == 7 || uProfile == 9 ? 1.35 : 1.0;
   float stripeProfileBoost = uProfile == 3
     ? 1.12
     : uProfile == 2
@@ -212,8 +214,8 @@ void main() {
   color += mix(prism, vec3(0.9, 0.94, 0.95), 0.58) * bandResponse * 0.18;
   float highlightResponse = materialResponse * stripeHighlight;
   color += mix(prism, vec3(0.94, 0.97, 1.0), 0.5) * highlightResponse *
-    (uProfile == 1 || uProfile == 7 ? 0.26 : 0.13);
-  if (uProfile == 1) {
+    (uProfile == 1 || uProfile == 7 || uProfile == 9 ? 0.26 : 0.13);
+  if (uProfile == 1 || uProfile == 9) {
     color += mix(prism, vec3(0.88, 0.94, 0.96), 0.24) * bandResponse * 0.25;
   } else if (uProfile == 2) {
     color += mix(prism, vec3(0.9, 0.94, 0.95), 0.46) * bandResponse * 0.28;
@@ -222,7 +224,9 @@ void main() {
   // Each recipe gets one material-breakup source. Star stock is handled below.
   if (uProfile != 3) {
     float breakup = luminance(textureA);
-    float centeredBreakup = uProfile == 1 || uProfile == 7 ? breakup - 0.5 : breakup * 0.65;
+    float centeredBreakup = uProfile == 1 || uProfile == 7 || uProfile == 9
+      ? breakup - 0.5
+      : breakup * 0.65;
     color *= 1.0 + centeredBreakup * materialResponse * 0.13;
   }
 
@@ -241,12 +245,23 @@ void main() {
     color *= 1.0 + etching * relief;
   }
 
-  if (uProfile == 7) {
+  if (uProfile == 7 || uProfile == 10) {
+    vec3 glitterBase = textureC;
     vec3 glitterLayerB = texture2D(
       uMaterialTextureC,
       materialUv(cardUv, uTextureScale * 2.05, offsetC + vec2(0.37, 0.61))
     ).rgb;
-    float glitterValueA = max(textureC.r, max(textureC.g, textureC.b));
+    if (uProfile == 10) {
+      glitterBase = texture2D(
+        uMaterialTextureB,
+        materialUv(cardUv, uTextureScale * 1.18, offsetB)
+      ).rgb;
+      glitterLayerB = texture2D(
+        uMaterialTextureB,
+        materialUv(cardUv, uTextureScale * 2.05, offsetB + vec2(0.37, 0.61))
+      ).rgb;
+    }
+    float glitterValueA = max(glitterBase.r, max(glitterBase.g, glitterBase.b));
     float glitterValueB = max(glitterLayerB.r, max(glitterLayerB.g, glitterLayerB.b));
     float glitterA = smoothstep(0.38, 0.82, glitterValueA);
     float glitterB = smoothstep(0.4, 0.84, glitterValueB);
@@ -256,7 +271,11 @@ void main() {
       smoothstep(0.74, 0.96, glitterValueB)
     );
     float glitterGate = 0.5 + glareResponse * 0.32 + reflectionSpot * 0.42;
-    vec3 glitterColor = mix(max(textureC, glitterLayerB) * 1.55, vec3(0.94, 0.98, 1.0), 0.62);
+    vec3 glitterColor = mix(
+      max(glitterBase, glitterLayerB) * 1.55,
+      vec3(0.94, 0.98, 1.0),
+      0.62
+    );
     color += glitterColor * glitter * glitterGate * uIntensity * 0.5;
     color += vec3(1.0, 0.98, 0.92) * glitterCore * glitterGate * uIntensity * 0.38;
   }

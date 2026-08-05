@@ -9,6 +9,7 @@ import {
   getBorderFoilRegions,
   getCardFoilSeed,
   getMainFoilRegions,
+  resolveFoilAssetUrl,
   resolveFoilMask,
   resolveFoilProfile,
   resolveFoilTuning,
@@ -62,14 +63,18 @@ export function FoilCardImage({
   renderTilt = false,
 }: FoilCardImageProps) {
   const rootRef = useRef<HTMLSpanElement>(null)
-  const profile = resolveFoilProfile(finish, rarity)
-  const mask = foilMask ?? resolveFoilMask(supertype, profile.name, isEvolved)
+  const profile = resolveFoilProfile(finish, rarity, { cardId, supertype })
+  const mask = resolveFoilMask(supertype, profile.name, isEvolved, cardId, foilMask)
   const tuning = resolveFoilTuning(profile, tuningOverrides)
   const seed = getCardFoilSeed(cardId)
   const mainRegions = getMainFoilRegions(profile, mask)
   const borderRegions = getBorderFoilRegions(profile, mask)
   const evolutionExclusion =
-    profile.name === 'rare-holo' || profile.name === 'reverse-holo' ? mask.evolution : undefined
+    profile.name === 'rare-holo' ||
+    profile.name === 'swsh-holo-rare' ||
+    profile.name === 'reverse-holo'
+      ? mask.evolution
+      : undefined
   const materialMaskStyle = createMaterialMaskStyle([...mainRegions, ...borderRegions])
   const initialRotationX = rotationX?.get() ?? tiltX
   const initialRotationY = rotationY?.get() ?? tiltY
@@ -168,6 +173,12 @@ export function FoilCardImage({
         >
           <span className="foil-spectrum absolute inset-0" />
           <span className="foil-bands absolute inset-0" />
+          {profile.name === 'swsh-gallery-vmax' ? (
+            <span
+              className="foil-gallery-glitter absolute inset-0"
+              style={{ backgroundImage: `url("${resolveFoilAssetUrl('glitter')}")` }}
+            />
+          ) : null}
           <span className="foil-reflection absolute inset-0" />
         </span>
       ) : null}
@@ -239,6 +250,7 @@ const createFoilStyle = (
     '--foil-band-size': `${Math.max(55, 520 / Math.max(profile.bandFrequency, 0.1))}%`,
     '--foil-motion-duration': `${motionDuration}s`,
     '--foil-motion-delay': `${-seed * motionDuration}s`,
+    '--foil-texture-size': `${tuning.textureScale * 100}%`,
     transformStyle: 'preserve-3d',
   }
 
@@ -283,7 +295,7 @@ const assignLightingVariables = (
   const materialResponse = lighting.response * tuning.intensity
   const glareResponse = lighting.glare * tuning.glare
   const isMegaRainbow = profile.name === 'mega-hyper-rare'
-  const isRareHolo = profile.name === 'rare-holo'
+  const isRareHolo = profile.name === 'rare-holo' || profile.name === 'swsh-holo-rare'
   const isReverseHolo = profile.name === 'reverse-holo'
   const isClassicHolo = isRareHolo || isReverseHolo
 
@@ -304,6 +316,7 @@ const assignLightingVariables = (
     0,
     isReverseHolo ? 0.2 : isClassicHolo ? 0.18 : 0.14,
   )
+  style['--foil-glitter-opacity'] = clamp(materialResponse * 0.34, 0, 0.24)
 }
 
 const clamp = (value: number, minimum: number, maximum: number): number =>

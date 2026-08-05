@@ -32,7 +32,11 @@ export const compareSetsByNewestRelease = (
 ): number => second.releaseDate.localeCompare(first.releaseDate)
 
 const isMainBoosterExpansionId = (setId: string): boolean => {
-  return /^(ecard|ex|dp|pl|hgss|bw|xy|sm|swsh)\d+$/.test(setId) || /^xy[1-9]\d*$/.test(setId)
+  return (
+    setId === 'swsh12.5' ||
+    /^(ecard|ex|dp|pl|hgss|bw|xy|sm|swsh)\d+$/.test(setId) ||
+    /^xy[1-9]\d*$/.test(setId)
+  )
 }
 
 const isExcludedSupplementalSet = (setName: string): boolean => {

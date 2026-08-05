@@ -197,7 +197,7 @@ export class PokemonService {
       }
     }
 
-    const { cards, isGodPack } = await this.drawPackCards(setId, locale)
+    const { cards, isGodPack } = await this.drawPackCards(set.id, locale)
 
     if (cards.length === 0) {
       return {
@@ -252,7 +252,7 @@ export class PokemonService {
   ): Promise<PokemonPackDrawResult> {
     const allCards = await this.options.pokemonRepository.listCards(setId, locale)
 
-    return drawPokemonPackCards(allCards)
+    return drawPokemonPackCards(allCards, { setId })
   }
 }
 

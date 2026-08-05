@@ -6,6 +6,7 @@ import TCGdex, {
   type SupportedLanguages,
 } from '@tcgdex/sdk'
 import { mapWithConcurrency } from '../lib/map-with-concurrency'
+import { getSwshGalleryParentSetId } from './swsh-gallery'
 
 const upstreamConcurrency = 8
 
@@ -67,10 +68,25 @@ export class TcgDexClient {
 }
 
 export const getCardImageUrl = (
-  card: Pick<CardResume, 'image'>,
+  card: Pick<CardResume, 'image'> & Partial<Pick<CardResume, 'localId'>> & { set?: { id: string } },
   quality: 'low' | 'high',
 ): string | undefined => {
-  return card.image ? `${card.image}/${quality}.png` : undefined
+  const imageBaseUrl = card.image || getSwshGalleryCardImageBaseUrl(card)
+
+  return imageBaseUrl ? `${imageBaseUrl}/${quality}.png` : undefined
+}
+
+const getSwshGalleryCardImageBaseUrl = (card: {
+  localId?: string
+  set?: { id: string }
+}): string | undefined => {
+  const parentSetId = card.set ? getSwshGalleryParentSetId(card.set.id) : undefined
+
+  if (!parentSetId || !card.localId) {
+    return undefined
+  }
+
+  return `https://assets.tcgdex.net/en/swsh/${parentSetId}/${card.localId}`
 }
 
 export const getAssetUrl = (assetBaseUrl?: string): string | undefined => {

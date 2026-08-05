@@ -3,12 +3,14 @@ import type { CardFinish } from '@tcg-collection/shared'
 export type FoilProfileName =
   | 'none'
   | 'rare-holo'
+  | 'swsh-holo-rare'
   | 'reverse-holo'
   | 'double-rare'
   | 'illustration-rare'
   | 'ultra-rare'
   | 'ace-spec'
   | 'special-illustration'
+  | 'swsh-gallery-vmax'
   | 'mega-hyper-rare'
 
 export type CardLayout = 'pokemon' | 'trainer' | 'energy'
@@ -32,6 +34,8 @@ export interface FoilCardMetadata {
   supertype?: string
   isEvolved?: boolean
 }
+
+type FoilProfileContext = Pick<FoilCardMetadata, 'cardId' | 'supertype'>
 
 export interface FoilProfile {
   name: FoilProfileName
@@ -97,6 +101,21 @@ export const FOIL_PROFILES: Readonly<Record<FoilProfileName, FoilProfile>> = {
   'rare-holo': {
     name: 'rare-holo',
     uniform: 1,
+    bandAngle: 0,
+    bandFrequency: 4.5,
+    intensity: 0.96,
+    glare: 0.88,
+    textureScale: 1.1,
+    motionSpeed: 0.025,
+    textureRoles: ['noise-base'],
+    hasEtching: false,
+    hasGlitter: false,
+    hasStars: false,
+    hasMetal: false,
+  },
+  'swsh-holo-rare': {
+    name: 'swsh-holo-rare',
+    uniform: 9,
     bandAngle: 0,
     bandFrequency: 4.5,
     intensity: 0.96,
@@ -199,6 +218,21 @@ export const FOIL_PROFILES: Readonly<Record<FoilProfileName, FoilProfile>> = {
     hasStars: false,
     hasMetal: false,
   },
+  'swsh-gallery-vmax': {
+    name: 'swsh-gallery-vmax',
+    uniform: 10,
+    bandAngle: 128,
+    bandFrequency: 8,
+    intensity: 0.88,
+    glare: 0.64,
+    textureScale: 1.2,
+    motionSpeed: 0.014,
+    textureRoles: ['noise-top', 'glitter'],
+    hasEtching: false,
+    hasGlitter: true,
+    hasStars: false,
+    hasMetal: false,
+  },
   'mega-hyper-rare': {
     name: 'mega-hyper-rare',
     uniform: 8,
@@ -235,6 +269,25 @@ export const FOIL_LAYOUT_MASKS: Readonly<Record<CardLayout, FoilMask>> = {
 
 export const EVOLUTION_BUBBLE_MASK: NormalizedCircle = [0.111, 0.131, 0.092]
 
+// SWSH cards use an older Pokemon frame while Trainer geometry is nearly unchanged.
+// The era-specific values remain independently tunable in the development foil lab.
+export const SWSH_FOIL_LAYOUT_MASKS: Readonly<Record<CardLayout, FoilMask>> = {
+  pokemon: {
+    artwork: [0.075, 0.092, 0.925, 0.478],
+    stock: [0.038, 0.028, 0.96, 0.972],
+  },
+  trainer: {
+    artwork: [0.075, 0.141, 0.925, 0.522],
+    stock: [0.038, 0.07, 0.96, 0.97],
+  },
+  energy: {
+    artwork: [0.074, 0.14, 0.926, 0.71],
+    stock: [0.052, 0.038, 0.948, 0.965],
+  },
+}
+
+export const SWSH_EVOLUTION_BUBBLE_MASK: NormalizedCircle = [0.095, 0.114, 0.075]
+
 export const FOIL_TEXTURE_PATHS: Readonly<Record<FoilTextureRole, string>> = {
   'birthday-a': 'foil-textures/151/birthday-holo-dank.webp',
   'birthday-b': 'foil-textures/151/birthday-holo-dank-2.webp',
@@ -254,9 +307,57 @@ const normalizeMetadataValue = (value: string | undefined): string =>
     .trim()
     .toLowerCase()
 
+const SWSH_GALLERY_VMAX_CARD_IDS = new Set([
+  'swsh9.5tg-TG15',
+  'swsh9.5tg-TG17',
+  'swsh9.5tg-TG19',
+  'swsh9.5tg-TG21',
+  'swsh9.5tg-TG23',
+  'swsh10.5tg-TG15',
+  'swsh10.5tg-TG18',
+  'swsh11.5tg-TG13',
+  'swsh11.5tg-TG15',
+  'swsh11.5tg-TG17',
+  'swsh11.5tg-TG22',
+  'swsh12.5tg-TG15',
+  'swsh12.5tg-TG19',
+  'swsh12.5tg-TG20',
+  'swsh12.5tg-TG21',
+  'swsh12.5gg-GG42',
+  'swsh12.5gg-GG45',
+  'swsh12.5gg-GG47',
+])
+
+const SWSH_GALLERY_VSTAR_CARD_IDS = new Set([
+  'swsh12.5gg-GG35',
+  'swsh12.5gg-GG37',
+  'swsh12.5gg-GG40',
+  'swsh12.5gg-GG43',
+  'swsh12.5gg-GG44',
+  'swsh12.5gg-GG46',
+  'swsh12.5gg-GG50',
+  'swsh12.5gg-GG52',
+  'swsh12.5gg-GG55',
+  'swsh12.5gg-GG56',
+])
+
+const SWSH_GALLERY_TRAINER_RANGES: Readonly<
+  Record<string, readonly [minimum: number, maximum: number]>
+> = {
+  'swsh9.5tg': [24, 28],
+  'swsh10.5tg': [24, 28],
+  'swsh11.5tg': [23, 28],
+  'swsh12.5tg': [23, 28],
+  'swsh12.5gg': [57, 66],
+}
+
+export const isSwordShieldCardId = (cardId: string | undefined): boolean =>
+  /^swsh\d+(?:\.\d+)?(?:tg|gg)?-/i.test(cardId ?? '')
+
 export const resolveFoilProfile = (
   finish: CardFinish | undefined,
   rarity: string | undefined,
+  context?: FoilProfileContext,
 ): FoilProfile => {
   if (finish !== 'holo' && finish !== 'reverse_holo') {
     return FOIL_PROFILES.none
@@ -267,6 +368,10 @@ export const resolveFoilProfile = (
   }
 
   const value = normalizeMetadataValue(rarity)
+
+  if (context && isSwordShieldCardId(context.cardId)) {
+    return resolveSwordShieldFoilProfile(value, context)
+  }
 
   if (value === 'mhr' || value.includes('mega hyper rare')) {
     return FOIL_PROFILES['mega-hyper-rare']
@@ -327,14 +432,25 @@ export const resolveFoilMask = (
   supertype: string | undefined,
   profileName?: FoilProfileName,
   isEvolved?: boolean,
+  cardId?: string,
+  override?: FoilMask,
 ): FoilMask => {
   const layout = resolveCardLayout(supertype)
-  const mask = FOIL_LAYOUT_MASKS[layout]
-  const usesEvolutionExclusion = profileName === 'rare-holo' || profileName === 'reverse-holo'
+  const isSwordShield = isSwordShieldCardId(cardId)
+  const mask =
+    override ?? (isSwordShield ? SWSH_FOIL_LAYOUT_MASKS[layout] : FOIL_LAYOUT_MASKS[layout])
+  const usesEvolutionExclusion =
+    profileName === 'rare-holo' ||
+    profileName === 'swsh-holo-rare' ||
+    profileName === 'reverse-holo'
+  const evolutionMask =
+    mask.evolution ?? (isSwordShield ? SWSH_EVOLUTION_BUBBLE_MASK : EVOLUTION_BUBBLE_MASK)
 
-  return layout === 'pokemon' && usesEvolutionExclusion && isEvolved
-    ? { ...mask, evolution: EVOLUTION_BUBBLE_MASK }
-    : mask
+  if (layout === 'pokemon' && usesEvolutionExclusion && isEvolved) {
+    return { ...mask, evolution: evolutionMask }
+  }
+
+  return mask.evolution ? { artwork: mask.artwork, stock: mask.stock } : mask
 }
 
 export const toCssCircleClipPath = ([centerX, centerY, radius]: NormalizedCircle): string =>
@@ -380,7 +496,7 @@ export const getMainFoilRegions = (
   profile: FoilProfile,
   mask: FoilMask,
 ): readonly NormalizedRect[] => {
-  if (profile.name === 'rare-holo') {
+  if (profile.name === 'rare-holo' || profile.name === 'swsh-holo-rare') {
     return [mask.artwork]
   }
 
@@ -453,6 +569,87 @@ const subtractRect = (outer: NormalizedRect, inner: NormalizedRect): readonly No
 
   return regions.filter((rect) => rect[2] > rect[0] && rect[3] > rect[1])
 }
+
+const resolveSwordShieldFoilProfile = (
+  rarity: string,
+  context: FoilProfileContext,
+): FoilProfile => {
+  const galleryCard = parseSwordShieldGalleryCardId(context.cardId)
+
+  if (galleryCard) {
+    const canonicalCardId = `${galleryCard.setId}-${galleryCard.prefix}${String(galleryCard.number).padStart(2, '0')}`
+
+    if (isSwordShieldGalleryGold(galleryCard) || SWSH_GALLERY_VSTAR_CARD_IDS.has(canonicalCardId)) {
+      return FOIL_PROFILES['special-illustration']
+    }
+
+    if (SWSH_GALLERY_VMAX_CARD_IDS.has(canonicalCardId)) {
+      return FOIL_PROFILES['swsh-gallery-vmax']
+    }
+
+    const trainerRange = SWSH_GALLERY_TRAINER_RANGES[galleryCard.setId]
+    const isTrainer =
+      normalizeMetadataValue(context.supertype) === 'trainer' ||
+      normalizeMetadataValue(context.supertype) === 'dresseur' ||
+      (trainerRange !== undefined &&
+        galleryCard.number >= trainerRange[0] &&
+        galleryCard.number <= trainerRange[1])
+
+    return isTrainer ? FOIL_PROFILES['ultra-rare'] : FOIL_PROFILES['illustration-rare']
+  }
+
+  if (['common', 'commune', 'uncommon', 'peu commune', 'rare'].includes(rarity)) {
+    return FOIL_PROFILES.none
+  }
+
+  if (rarity === 'holo rare vmax' || rarity === 'holo rare vstar') {
+    return FOIL_PROFILES['ultra-rare']
+  }
+
+  if (rarity === 'holo rare v') {
+    return FOIL_PROFILES['illustration-rare']
+  }
+
+  if (rarity === 'amazing rare' || rarity === 'magnifique') {
+    return FOIL_PROFILES['special-illustration']
+  }
+
+  if (rarity === 'radiant rare' || rarity === 'radieux rare') {
+    return FOIL_PROFILES['ultra-rare']
+  }
+
+  if (rarity === 'ultra rare' || rarity === 'full art trainer' || rarity === 'dresseur full art') {
+    return FOIL_PROFILES['ultra-rare']
+  }
+
+  if (rarity === 'secret rare' || rarity === 'magnifique rare') {
+    return FOIL_PROFILES['special-illustration']
+  }
+
+  return FOIL_PROFILES['swsh-holo-rare']
+}
+
+interface SwordShieldGalleryCardId {
+  setId: string
+  prefix: 'TG' | 'GG'
+  number: number
+}
+
+const parseSwordShieldGalleryCardId = (cardId: string): SwordShieldGalleryCardId | undefined => {
+  const match = /^(swsh(?:9|10|11|12)\.5tg|swsh12\.5gg)-(TG|GG)(\d+)$/i.exec(cardId)
+
+  return match
+    ? {
+        setId: match[1].toLowerCase(),
+        prefix: match[2].toUpperCase() as 'TG' | 'GG',
+        number: Number(match[3]),
+      }
+    : undefined
+}
+
+const isSwordShieldGalleryGold = (card: SwordShieldGalleryCardId): boolean =>
+  (card.prefix === 'TG' && card.number >= 29 && card.number <= 30) ||
+  (card.prefix === 'GG' && card.number >= 67 && card.number <= 70)
 
 const clamp = (value: number, minimum: number, maximum: number): number =>
   Math.min(maximum, Math.max(minimum, value))

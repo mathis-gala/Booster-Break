@@ -48,7 +48,7 @@ describe('WebGL card material contract', () => {
       'float idleLightGate = uProfile == 3 ? 0.0 : motionGate;',
     )
     expect(CARD_FRAGMENT_SHADER_SOURCE).toContain(
-      'float textureMotionGate = uProfile == 3 || uProfile == 5 || uProfile == 7',
+      'float textureMotionGate = uProfile == 3 || uProfile == 5 || uProfile == 7 || uProfile == 10',
     )
     expect(CARD_FRAGMENT_SHADER_SOURCE).toContain('vec2 idleLight = idleLightGate * vec2(')
     expect(CARD_FRAGMENT_SHADER_SOURCE).toContain('vec2 textureDrift = textureMotionGate * (')
@@ -57,7 +57,7 @@ describe('WebGL card material contract', () => {
 
   test('SR and SIR material textures stay fixed during idle motion', () => {
     expect(CARD_FRAGMENT_SHADER_SOURCE).toContain(
-      'float textureMotionGate = uProfile == 3 || uProfile == 5 || uProfile == 7',
+      'float textureMotionGate = uProfile == 3 || uProfile == 5 || uProfile == 7 || uProfile == 10',
     )
     expect(CARD_FRAGMENT_SHADER_SOURCE).toContain('vec2 textureDrift = textureMotionGate * (')
     expect(CARD_FRAGMENT_SHADER_SOURCE).toContain(
@@ -80,5 +80,16 @@ describe('WebGL card material contract', () => {
     expect(CARD_FRAGMENT_SHADER_SOURCE).toContain('uniform float uMotionPhase;')
     expect(CARD_FRAGMENT_SHADER_SOURCE).not.toContain('uniform float uTime;')
     expect(CARD_FRAGMENT_SHADER_SOURCE).not.toContain('uniform float uMotionSpeed;')
+  })
+
+  test('SWSH Holo Rare is artwork-only and gallery VMAX glitters without etching', () => {
+    expect(CARD_FRAGMENT_SHADER_SOURCE).toContain(
+      'materialMask = artworkMask * (1.0 - evolutionMask);',
+    )
+    expect(CARD_FRAGMENT_SHADER_SOURCE).toContain('if (uProfile == 7 || uProfile == 10) {')
+    expect(CARD_FRAGMENT_SHADER_SOURCE).toContain('if (uProfile == 10) {')
+    expect(CARD_FRAGMENT_SHADER_SOURCE).not.toContain(
+      'if (uProfile == 5 || uProfile == 7 || uProfile == 10)',
+    )
   })
 })

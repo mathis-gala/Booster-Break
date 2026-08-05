@@ -94,9 +94,17 @@ export class CardViewerRenderer {
     this.canvas = canvas
     this.options = options
     this.gl = gl
-    this.profile = resolveFoilProfile(options.finish, options.rarity)
-    this.mask =
-      options.foilMask ?? resolveFoilMask(options.supertype, this.profile.name, options.isEvolved)
+    this.profile = resolveFoilProfile(options.finish, options.rarity, {
+      cardId: options.cardId,
+      supertype: options.supertype,
+    })
+    this.mask = resolveFoilMask(
+      options.supertype,
+      this.profile.name,
+      options.isEvolved,
+      options.cardId,
+      options.foilMask,
+    )
     this.seed = getCardFoilSeed(options.cardId)
     this.tuning = resolveFoilTuning(this.profile, options.foilTuning)
     this.resizeObserver = new ResizeObserver(() => {
@@ -173,8 +181,13 @@ export class CardViewerRenderer {
   }
 
   setFoilMask(mask: FoilMask | undefined): void {
-    this.mask =
-      mask ?? resolveFoilMask(this.options.supertype, this.profile.name, this.options.isEvolved)
+    this.mask = resolveFoilMask(
+      this.options.supertype,
+      this.profile.name,
+      this.options.isEvolved,
+      this.options.cardId,
+      mask,
+    )
     this.requestFrame()
   }
 

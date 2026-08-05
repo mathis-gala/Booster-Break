@@ -4,6 +4,8 @@ import {
   FOIL_LAYOUT_MASKS,
   FOIL_PROFILES,
   EVOLUTION_BUBBLE_MASK,
+  SWSH_EVOLUTION_BUBBLE_MASK,
+  SWSH_FOIL_LAYOUT_MASKS,
   getBorderFoilRegions,
   getCardFoilSeed,
   getMainFoilRegions,
@@ -53,6 +55,40 @@ describe('foil profile resolution', () => {
     )
     expect(FOIL_PROFILES['ultra-rare'].textureScale).toBe(1.2)
     expect(FOIL_PROFILES['special-illustration'].textureScale).toBe(1.2)
+  })
+
+  test.each([
+    ['swsh12-001', 'Common', 'Pokémon', 'none'],
+    ['swsh12-036', 'Holo Rare', 'Pokémon', 'swsh-holo-rare'],
+    ['swsh12-007', 'Holo Rare V', 'Pokémon', 'illustration-rare'],
+    ['swsh12-008', 'Holo Rare VSTAR', 'Pokémon', 'ultra-rare'],
+    ['swsh8-045', 'Holo Rare VMAX', 'Pokémon', 'ultra-rare'],
+    ['swsh4-102', 'Amazing Rare', 'Pokémon', 'special-illustration'],
+    ['swsh4-102', 'Magnifique', 'Pokémon', 'special-illustration'],
+    ['swsh12-016', 'Radiant Rare', 'Pokémon', 'ultra-rare'],
+    ['swsh12-016', 'Radieux Rare', 'Pokémon', 'ultra-rare'],
+    ['swsh12-170', 'Ultra Rare', 'Pokémon', 'ultra-rare'],
+    ['swsh12-188', 'Dresseur Full Art', 'Dresseur', 'ultra-rare'],
+    ['swsh12-196', 'Magnifique rare', 'Pokémon', 'special-illustration'],
+    ['swsh9.5tg-TG01', 'Rare', 'Pokémon', 'illustration-rare'],
+    ['swsh9.5tg-TG15', 'Ultra Rare', 'Pokémon', 'swsh-gallery-vmax'],
+    ['swsh9.5tg-TG24', 'Ultra Rare', undefined, 'ultra-rare'],
+    ['swsh9.5tg-TG29', 'Secret Rare', 'Pokémon', 'special-illustration'],
+    ['swsh12.5gg-GG35', 'Ultra Rare', 'Pokémon', 'special-illustration'],
+    ['swsh12.5gg-GG42', 'Ultra Rare', 'Pokémon', 'swsh-gallery-vmax'],
+    ['swsh12.5gg-GG57', 'Ultra Rare', undefined, 'ultra-rare'],
+    ['swsh12.5gg-GG67', 'Secret Rare', 'Pokémon', 'special-illustration'],
+  ] as const)('maps SWSH card %s with rarity %s', (cardId, rarity, supertype, expected) => {
+    expect(resolveFoilProfile('holo', rarity, { cardId, supertype }).name).toBe(expected)
+  })
+
+  test('uses a glittering diagonal recipe without the illusion texture for gallery VMAX', () => {
+    const profile = FOIL_PROFILES['swsh-gallery-vmax']
+
+    expect(profile.textureRoles).toEqual(['noise-top', 'glitter'])
+    expect(profile.hasGlitter).toBeTrue()
+    expect(profile.hasEtching).toBeFalse()
+    expect(profile.textureRoles).not.toContain('illusion')
   })
 
   test('single-purpose recipes do not gain unrelated layers', () => {
@@ -148,6 +184,44 @@ describe('foil masks', () => {
     expect(resolveFoilMask('Dresseur', 'reverse-holo', true).evolution).toBeUndefined()
     expect(resolveFoilMask('Pokémon', 'illustration-rare', true).evolution).toBeUndefined()
     expect(toCssCircleClipPath(EVOLUTION_BUBBLE_MASK)).toContain('ellipse(')
+  })
+
+  test('selects independent SWSH frames and keeps Holo Rare off the outer border', () => {
+    expect(SWSH_FOIL_LAYOUT_MASKS.pokemon).toEqual({
+      artwork: [0.075, 0.092, 0.925, 0.478],
+      stock: [0.038, 0.028, 0.96, 0.972],
+    })
+    expect(SWSH_EVOLUTION_BUBBLE_MASK).toEqual([0.095, 0.114, 0.075])
+    expect(resolveFoilMask('Pokémon', 'reverse-holo', false, 'swsh12-002')).toBe(
+      SWSH_FOIL_LAYOUT_MASKS.pokemon,
+    )
+    expect(resolveFoilMask('Dresseur', 'reverse-holo', false, 'swsh12-152')).toBe(
+      SWSH_FOIL_LAYOUT_MASKS.trainer,
+    )
+    expect(resolveFoilMask('Pokémon', 'swsh-holo-rare', true, 'swsh12-002')).toEqual({
+      ...SWSH_FOIL_LAYOUT_MASKS.pokemon,
+      evolution: SWSH_EVOLUTION_BUBBLE_MASK,
+    })
+    expect(
+      getMainFoilRegions(FOIL_PROFILES['swsh-holo-rare'], SWSH_FOIL_LAYOUT_MASKS.pokemon),
+    ).toEqual([SWSH_FOIL_LAYOUT_MASKS.pokemon.artwork])
+    expect(
+      getBorderFoilRegions(FOIL_PROFILES['swsh-holo-rare'], SWSH_FOIL_LAYOUT_MASKS.pokemon),
+    ).toEqual([])
+  })
+
+  test('strips a custom evolution exclusion from non-evolved Pokemon', () => {
+    const customMask = {
+      ...SWSH_FOIL_LAYOUT_MASKS.pokemon,
+      evolution: SWSH_EVOLUTION_BUBBLE_MASK,
+    }
+
+    expect(resolveFoilMask('Pokémon', 'reverse-holo', false, 'swsh12-001', customMask)).toEqual(
+      SWSH_FOIL_LAYOUT_MASKS.pokemon,
+    )
+    expect(resolveFoilMask('Pokémon', 'reverse-holo', true, 'swsh12-002', customMask)).toEqual(
+      customMask,
+    )
   })
 
   test('converts bottom-origin WebGL UVs to the CSS mask orientation', () => {

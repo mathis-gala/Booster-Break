@@ -195,6 +195,7 @@ body,
 
 .foil-spectrum,
 .foil-bands,
+.foil-gallery-glitter,
 .foil-reflection {
   transition: opacity 140ms ease-out;
 }
@@ -258,6 +259,20 @@ body,
   mix-blend-mode: screen;
 }
 
+.foil-card[data-foil-profile='swsh-holo-rare'] .foil-spectrum {
+  filter: contrast(1.08) saturate(1.22) brightness(1.04);
+  mix-blend-mode: screen;
+}
+
+.foil-gallery-glitter {
+  background-position: var(--foil-reflection-x) var(--foil-reflection-y);
+  background-repeat: repeat;
+  background-size: var(--foil-texture-size) auto;
+  filter: contrast(1.22) brightness(1.12);
+  mix-blend-mode: screen;
+  opacity: var(--foil-glitter-opacity);
+}
+
 .foil-reflection {
   background-image: radial-gradient(
     ellipse 55% 40% at var(--foil-reflection-x) var(--foil-reflection-y),
@@ -284,8 +299,7 @@ body,
       alternate;
   }
 
-  .foil-card[data-foil-motion='true']
-    :is(.foil-spectrum, .foil-bands, .foil-reflection) {
+  .foil-card[data-foil-motion='true'] :is(.foil-spectrum, .foil-bands, .foil-reflection) {
     animation-delay: var(--foil-motion-delay);
   }
 }
@@ -294,6 +308,7 @@ body,
   .foil-card,
   .foil-spectrum,
   .foil-bands,
+  .foil-gallery-glitter,
   .foil-reflection {
     transition: none;
   }
@@ -301,25 +316,21 @@ body,
 
 @keyframes foil-spectrum-drift {
   0% {
-    background-position: calc(var(--foil-reflection-x) - 18%)
-      calc(var(--foil-reflection-y) - 10%);
+    background-position: calc(var(--foil-reflection-x) - 18%) calc(var(--foil-reflection-y) - 10%);
   }
 
   100% {
-    background-position: calc(var(--foil-reflection-x) + 18%)
-      calc(var(--foil-reflection-y) + 10%);
+    background-position: calc(var(--foil-reflection-x) + 18%) calc(var(--foil-reflection-y) + 10%);
   }
 }
 
 @keyframes foil-band-drift {
   0% {
-    background-position: calc(var(--foil-reflection-x) - 24%)
-      calc(var(--foil-reflection-y) + 12%);
+    background-position: calc(var(--foil-reflection-x) - 24%) calc(var(--foil-reflection-y) + 12%);
   }
 
   100% {
-    background-position: calc(var(--foil-reflection-x) + 24%)
-      calc(var(--foil-reflection-y) - 12%);
+    background-position: calc(var(--foil-reflection-x) + 24%) calc(var(--foil-reflection-y) - 12%);
   }
 }
 

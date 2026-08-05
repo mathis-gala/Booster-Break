@@ -1,5 +1,11 @@
 import { useEffect, useState } from 'react'
-import type { CSSProperties, PointerEvent as ReactPointerEvent, ReactNode } from 'react'
+import type {
+  CSSProperties,
+  Dispatch,
+  PointerEvent as ReactPointerEvent,
+  ReactNode,
+  SetStateAction,
+} from 'react'
 import type { CardFinish } from '@tcg-collection/shared'
 import { useMotionValue } from 'motion/react'
 
@@ -9,7 +15,10 @@ import {
   FOIL_PROFILES,
   EVOLUTION_BUBBLE_MASK,
   FOIL_LAYOUT_MASKS,
+  SWSH_EVOLUTION_BUBBLE_MASK,
+  SWSH_FOIL_LAYOUT_MASKS,
   getMainFoilRegions,
+  isSwordShieldCardId,
   resolveCardLayout,
   resolveFoilProfile,
   type CardLayout,
@@ -145,6 +154,87 @@ const samples: readonly FoilSample[] = [
     finish: 'holo',
     supertype: 'Pokémon',
   },
+  {
+    label: 'SWSH Holo Rare',
+    cardId: 'swsh12-036',
+    imageUrl: 'https://assets.tcgdex.net/en/swsh/swsh12/036/high.png',
+    rarity: 'Holo Rare',
+    finish: 'holo',
+    supertype: 'Pokémon',
+  },
+  {
+    label: 'SWSH Reverse Holo',
+    cardId: 'swsh12-002',
+    imageUrl: 'https://assets.tcgdex.net/en/swsh/swsh12/002/high.png',
+    rarity: 'Uncommon',
+    finish: 'reverse_holo',
+    supertype: 'Pokémon',
+    isEvolved: true,
+  },
+  {
+    label: 'SWSH Holo Trainer',
+    cardId: 'swsh12-152',
+    imageUrl: 'https://assets.tcgdex.net/en/swsh/swsh12/152/high.png',
+    rarity: 'Holo Rare',
+    finish: 'holo',
+    supertype: 'Trainer',
+  },
+  {
+    label: 'SWSH Pokémon V',
+    cardId: 'swsh12-007',
+    imageUrl: 'https://assets.tcgdex.net/en/swsh/swsh12/007/high.png',
+    rarity: 'Holo Rare V',
+    finish: 'holo',
+    supertype: 'Pokémon',
+  },
+  {
+    label: 'SWSH Pokémon VSTAR',
+    cardId: 'swsh12-008',
+    imageUrl: 'https://assets.tcgdex.net/en/swsh/swsh12/008/high.png',
+    rarity: 'Holo Rare VSTAR',
+    finish: 'holo',
+    supertype: 'Pokémon',
+  },
+  {
+    label: 'SWSH Amazing Rare',
+    cardId: 'swsh4-102',
+    imageUrl: 'https://assets.tcgdex.net/en/swsh/swsh4/102/high.png',
+    rarity: 'Amazing Rare',
+    finish: 'holo',
+    supertype: 'Pokémon',
+  },
+  {
+    label: 'SWSH Radiant Rare',
+    cardId: 'swsh12-016',
+    imageUrl: 'https://assets.tcgdex.net/en/swsh/swsh12/016/high.png',
+    rarity: 'Radiant Rare',
+    finish: 'holo',
+    supertype: 'Pokémon',
+  },
+  {
+    label: 'TG VMAX hybrid',
+    cardId: 'swsh9.5tg-TG15',
+    imageUrl: 'https://assets.tcgdex.net/en/swsh/swsh9/TG15/high.png',
+    rarity: 'Ultra Rare',
+    finish: 'holo',
+    supertype: 'Pokémon',
+  },
+  {
+    label: 'GG VSTAR / SIR',
+    cardId: 'swsh12.5gg-GG35',
+    imageUrl: 'https://assets.tcgdex.net/en/swsh/swsh12.5/GG35/high.png',
+    rarity: 'Ultra Rare',
+    finish: 'holo',
+    supertype: 'Pokémon',
+  },
+  {
+    label: 'GG Gold / HR',
+    cardId: 'swsh12.5gg-GG67',
+    imageUrl: 'https://assets.tcgdex.net/en/swsh/swsh12.5/GG67/high.png',
+    rarity: 'Secret Rare',
+    finish: 'holo',
+    supertype: 'Pokémon',
+  },
 ] as const
 
 const reverseCalibrationSamples: Readonly<Record<ReverseCalibrationLayout, FoilSample>> = {
@@ -167,6 +257,26 @@ const reverseCalibrationSamples: Readonly<Record<ReverseCalibrationLayout, FoilS
   },
 }
 
+const swshCalibrationSamples: Readonly<Record<ReverseCalibrationLayout, FoilSample>> = {
+  pokemon: {
+    label: 'SWSH Pokémon frame',
+    cardId: 'swsh12-002',
+    imageUrl: 'https://assets.tcgdex.net/en/swsh/swsh12/002/high.png',
+    rarity: 'Uncommon',
+    finish: 'reverse_holo',
+    supertype: 'Pokémon',
+    isEvolved: true,
+  },
+  trainer: {
+    label: 'SWSH Trainer frame',
+    cardId: 'swsh12-152',
+    imageUrl: 'https://assets.tcgdex.net/en/swsh/swsh12/152/high.png',
+    rarity: 'Uncommon',
+    finish: 'reverse_holo',
+    supertype: 'Trainer',
+  },
+}
+
 const reverseCalibrationLayouts: readonly ReverseCalibrationLayout[] = ['pokemon', 'trainer']
 
 const defaultReverseMaskSettings: Readonly<Record<ReverseCalibrationLayout, ReverseMaskSettings>> =
@@ -182,13 +292,25 @@ const defaultReverseMaskSettings: Readonly<Record<ReverseCalibrationLayout, Reve
     },
   }
 
+const defaultSwshMaskSettings: Readonly<Record<ReverseCalibrationLayout, ReverseMaskSettings>> = {
+  pokemon: {
+    artwork: rectToSettings(SWSH_FOIL_LAYOUT_MASKS.pokemon.artwork),
+    stock: rectToSettings(SWSH_FOIL_LAYOUT_MASKS.pokemon.stock),
+    evolution: circleToSettings(SWSH_EVOLUTION_BUBBLE_MASK),
+  },
+  trainer: {
+    artwork: rectToSettings(SWSH_FOIL_LAYOUT_MASKS.trainer.artwork),
+    stock: rectToSettings(SWSH_FOIL_LAYOUT_MASKS.trainer.stock),
+  },
+}
+
 const searchParams = new URLSearchParams(window.location.search)
 const requestedSample = Number(searchParams.get('sample') ?? 1)
 const initialSampleIndex = Number.isInteger(requestedSample)
   ? Math.min(samples.length - 1, Math.max(0, requestedSample))
   : 1
 const initialSample = samples[initialSampleIndex]
-const initialProfile = resolveFoilProfile(initialSample.finish, initialSample.rarity)
+const initialProfile = resolveFoilProfile(initialSample.finish, initialSample.rarity, initialSample)
 
 export function FoilLab() {
   const [selectedIndex, setSelectedIndex] = useState(initialSampleIndex)
@@ -205,26 +327,31 @@ export function FoilLab() {
   })
   const [reverseMaskSettings, setReverseMaskSettings] = useState<
     Record<ReverseCalibrationLayout, ReverseMaskSettings>
-  >(() => ({
-    pokemon: {
-      artwork: { ...defaultReverseMaskSettings.pokemon.artwork },
-      stock: { ...defaultReverseMaskSettings.pokemon.stock },
-      evolution: { ...defaultReverseMaskSettings.pokemon.evolution! },
-    },
-    trainer: {
-      artwork: { ...defaultReverseMaskSettings.trainer.artwork },
-      stock: { ...defaultReverseMaskSettings.trainer.stock },
-    },
-  }))
+  >(() => cloneMaskSettings(defaultReverseMaskSettings))
+  const [swshMaskSettings, setSwshMaskSettings] = useState<
+    Record<ReverseCalibrationLayout, ReverseMaskSettings>
+  >(() => cloneMaskSettings(defaultSwshMaskSettings))
   const sample = samples[selectedIndex]
   const reverseMasks: Record<ReverseCalibrationLayout, FoilMask> = {
     pokemon: settingsToMask('pokemon', reverseMaskSettings.pokemon),
     trainer: settingsToMask('trainer', reverseMaskSettings.trainer),
   }
+  const swshMasks: Record<ReverseCalibrationLayout, FoilMask> = {
+    pokemon: settingsToMask('pokemon', swshMaskSettings.pokemon),
+    trainer: settingsToMask('trainer', swshMaskSettings.trainer),
+  }
   const sampleLayout = resolveCardLayout(sample.supertype)
-  const activeReverseMask =
-    sample.finish === 'reverse_holo' && sampleLayout !== 'energy'
-      ? reverseMasks[sampleLayout]
+  const sampleProfile = resolveFoilProfile(sample.finish, sample.rarity, sample)
+  const isSwshSample = isSwordShieldCardId(sample.cardId)
+  const usesFrameMask =
+    sampleProfile.name === 'rare-holo' ||
+    sampleProfile.name === 'swsh-holo-rare' ||
+    sampleProfile.name === 'reverse-holo'
+  const activeCalibrationMask =
+    usesFrameMask && sampleLayout !== 'energy'
+      ? isSwshSample
+        ? swshMasks[sampleLayout]
+        : reverseMasks[sampleLayout]
       : undefined
   const rotationX = useMotionValue(toRadians(settings.tiltX))
   const rotationY = useMotionValue(toRadians(settings.tiltY))
@@ -245,7 +372,7 @@ export function FoilLab() {
 
   const selectSample = (index: number) => {
     const nextSample = samples[index]
-    const profile = resolveFoilProfile(nextSample.finish, nextSample.rarity)
+    const profile = resolveFoilProfile(nextSample.finish, nextSample.rarity, nextSample)
     setSelectedIndex(index)
     setWebGlReady(false)
     setSettings((current) => ({
@@ -262,45 +389,32 @@ export function FoilLab() {
     property: keyof MaskRectSettings,
     value: number,
   ) => {
-    setReverseMaskSettings((current) => {
-      const next = { ...current[layout][region], [property]: value }
-      next.x = clampRange(next.x, 0, 100 - next.width)
-      next.y = clampRange(next.y, 0, 100 - next.height)
-      next.width = clampRange(next.width, 10, 100 - next.x)
-      next.height = clampRange(next.height, 10, 100 - next.y)
-
-      return { ...current, [layout]: { ...current[layout], [region]: next } }
-    })
+    updateMaskRect(setReverseMaskSettings, layout, region, property, value)
   }
 
   const updateEvolutionMask = (property: keyof CircleMaskSettings, value: number) => {
-    setReverseMaskSettings((current) => {
-      const evolution = current.pokemon.evolution ?? { x: 10.5, y: 16, size: 16.4 }
-      const next = { ...evolution, [property]: value }
-      const radius = next.size / 2
-      next.x = clampRange(next.x, radius, 100 - radius)
-      next.y = clampRange(next.y, radius * (63 / 88), 100 - radius * (63 / 88))
-      next.size = clampRange(next.size, 2, 30)
-
-      return {
-        ...current,
-        pokemon: { ...current.pokemon, evolution: next },
-      }
-    })
+    updateEvolutionMaskSettings(setReverseMaskSettings, property, value)
   }
 
   const resetReverseMasks = () => {
-    setReverseMaskSettings({
-      pokemon: {
-        artwork: { ...defaultReverseMaskSettings.pokemon.artwork },
-        stock: { ...defaultReverseMaskSettings.pokemon.stock },
-        evolution: { ...defaultReverseMaskSettings.pokemon.evolution! },
-      },
-      trainer: {
-        artwork: { ...defaultReverseMaskSettings.trainer.artwork },
-        stock: { ...defaultReverseMaskSettings.trainer.stock },
-      },
-    })
+    setReverseMaskSettings(cloneMaskSettings(defaultReverseMaskSettings))
+  }
+
+  const updateSwshRect = (
+    layout: ReverseCalibrationLayout,
+    region: 'artwork' | 'stock',
+    property: keyof MaskRectSettings,
+    value: number,
+  ) => {
+    updateMaskRect(setSwshMaskSettings, layout, region, property, value)
+  }
+
+  const updateSwshEvolutionMask = (property: keyof CircleMaskSettings, value: number) => {
+    updateEvolutionMaskSettings(setSwshMaskSettings, property, value)
+  }
+
+  const resetSwshMasks = () => {
+    setSwshMaskSettings(cloneMaskSettings(defaultSwshMaskSettings))
   }
 
   const updateTiltFromPointer = (event: ReactPointerEvent<HTMLDivElement>) => {
@@ -454,7 +568,7 @@ export function FoilLab() {
               supertype={sample.supertype}
               isEvolved={sample.isEvolved}
               foilTuning={tuning}
-              foilMask={activeReverseMask}
+              foilMask={activeCalibrationMask}
               interactive={false}
               className="size-full rounded-[inherit] object-contain"
               containerClassName="foil-lab-card"
@@ -478,7 +592,7 @@ export function FoilLab() {
               supertype={sample.supertype}
               isEvolved={sample.isEvolved}
               foilTuning={tuning}
-              foilMask={activeReverseMask}
+              foilMask={activeCalibrationMask}
               rotationX={rotationX}
               rotationY={rotationY}
               interactive={false}
@@ -491,8 +605,12 @@ export function FoilLab() {
         </div>
       </section>
 
-      {sample.finish === 'reverse_holo' ? (
+      {sample.finish === 'reverse_holo' && !isSwshSample ? (
         <ReverseMaskCalibration
+          kicker="Scarlet & Violet / mask calibration"
+          title="Current-frame foil boundaries"
+          description="Tune each printed frame, stock edge, and evolution bubble independently. The guide uses solid regions so optical movement cannot hide a boundary error."
+          samples={reverseCalibrationSamples}
           settings={reverseMaskSettings}
           masks={reverseMasks}
           tuning={tuning}
@@ -501,11 +619,29 @@ export function FoilLab() {
           onReset={resetReverseMasks}
         />
       ) : null}
+      {isSwshSample ? (
+        <ReverseMaskCalibration
+          kicker="Sword & Shield / mask calibration"
+          title="SWSH foil boundaries"
+          description="These controls are isolated from the current-frame masks. They drive both SWSH Reverse Holo coverage and the illustration-only Holo Rare window."
+          samples={swshCalibrationSamples}
+          settings={swshMaskSettings}
+          masks={swshMasks}
+          tuning={tuning}
+          onRectChange={updateSwshRect}
+          onEvolutionChange={updateSwshEvolutionMask}
+          onReset={resetSwshMasks}
+        />
+      ) : null}
     </main>
   )
 }
 
 function ReverseMaskCalibration({
+  kicker,
+  title,
+  description,
+  samples: calibrationSamples,
   settings,
   masks,
   tuning,
@@ -513,6 +649,10 @@ function ReverseMaskCalibration({
   onEvolutionChange,
   onReset,
 }: {
+  kicker: string
+  title: string
+  description: string
+  samples: Readonly<Record<ReverseCalibrationLayout, FoilSample>>
   settings: Record<ReverseCalibrationLayout, ReverseMaskSettings>
   masks: Record<ReverseCalibrationLayout, FoilMask>
   tuning: FoilTuningOverrides
@@ -529,12 +669,9 @@ function ReverseMaskCalibration({
     <section className="foil-reverse-calibration">
       <header className="foil-reverse-calibration-header">
         <div>
-          <p className="foil-lab-kicker">Reverse holo / mask calibration</p>
-          <h2>Foil boundary masks</h2>
-          <p>
-            Tune each printed frame, stock edge, and evolution bubble independently. The guide uses
-            solid regions so optical movement cannot hide a boundary error.
-          </p>
+          <p className="foil-lab-kicker">{kicker}</p>
+          <h2>{title}</h2>
+          <p>{description}</p>
         </div>
         <button type="button" onClick={onReset}>
           Reset masks
@@ -550,7 +687,7 @@ function ReverseMaskCalibration({
 
       <div className="foil-reverse-calibration-grid">
         {reverseCalibrationLayouts.map((layout) => {
-          const sample = reverseCalibrationSamples[layout]
+          const sample = calibrationSamples[layout]
           const values = settings[layout]
           const mask = masks[layout]
 
@@ -815,6 +952,60 @@ function RendererPanel({
       </div>
     </article>
   )
+}
+
+function cloneMaskSettings(
+  settings: Readonly<Record<ReverseCalibrationLayout, ReverseMaskSettings>>,
+): Record<ReverseCalibrationLayout, ReverseMaskSettings> {
+  return {
+    pokemon: {
+      artwork: { ...settings.pokemon.artwork },
+      stock: { ...settings.pokemon.stock },
+      ...(settings.pokemon.evolution ? { evolution: { ...settings.pokemon.evolution } } : {}),
+    },
+    trainer: {
+      artwork: { ...settings.trainer.artwork },
+      stock: { ...settings.trainer.stock },
+    },
+  }
+}
+
+function updateMaskRect(
+  setSettings: Dispatch<SetStateAction<Record<ReverseCalibrationLayout, ReverseMaskSettings>>>,
+  layout: ReverseCalibrationLayout,
+  region: 'artwork' | 'stock',
+  property: keyof MaskRectSettings,
+  value: number,
+): void {
+  setSettings((current) => {
+    const next = { ...current[layout][region], [property]: value }
+    next.x = clampRange(next.x, 0, 100 - next.width)
+    next.y = clampRange(next.y, 0, 100 - next.height)
+    next.width = clampRange(next.width, 10, 100 - next.x)
+    next.height = clampRange(next.height, 10, 100 - next.y)
+
+    return { ...current, [layout]: { ...current[layout], [region]: next } }
+  })
+}
+
+function updateEvolutionMaskSettings(
+  setSettings: Dispatch<SetStateAction<Record<ReverseCalibrationLayout, ReverseMaskSettings>>>,
+  property: keyof CircleMaskSettings,
+  value: number,
+): void {
+  setSettings((current) => {
+    const evolution = current.pokemon.evolution ?? { x: 10.5, y: 16, size: 16.4 }
+    const next = { ...evolution, [property]: value }
+    const radius = next.size / 2
+    next.x = clampRange(next.x, radius, 100 - radius)
+    next.y = clampRange(next.y, radius * (63 / 88), 100 - radius * (63 / 88))
+    next.size = clampRange(next.size, 2, 30)
+
+    return {
+      ...current,
+      pokemon: { ...current.pokemon, evolution: next },
+    }
+  })
 }
 
 const toRadians = (degrees: number): number => (degrees * Math.PI) / 180

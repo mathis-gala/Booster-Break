@@ -1,4 +1,5 @@
 import type { CardFinish, PokemonCardSummary } from '@tcg-collection/shared'
+import { getSwshGallerySetId } from './swsh-gallery'
 
 const COMMON_CARD_SLOTS = 4
 const UNCOMMON_CARD_SLOTS = 3
@@ -12,10 +13,11 @@ const PACK_CARD_COUNT =
   SECOND_REVERSE_OR_SECRET_FOIL_SLOTS +
   RARE_OR_BETTER_SLOTS
 
-const COMMON_RARITIES = ['Common']
-const UNCOMMON_RARITIES = ['Uncommon']
+const COMMON_RARITIES = ['Common', 'Commune']
+const UNCOMMON_RARITIES = ['Uncommon', 'Peu Commune']
 const RARE_RARITIES = ['Rare']
 const REVERSE_FOIL_RARITIES = [...COMMON_RARITIES, ...UNCOMMON_RARITIES, ...RARE_RARITIES]
+const SWSH_REVERSE_FOIL_RARITIES = [...REVERSE_FOIL_RARITIES, 'Holo Rare']
 
 const GOD_PACK_CHANCE = 0.16
 const GOD_PACK_RARITIES = [
@@ -107,6 +109,90 @@ interface ChanceRule {
   rarities: string[]
 }
 
+type SwshRareSlotChances = readonly [number, number, number, number, number, number, number]
+
+const SWSH_RARE_SLOT_CHANCES = {
+  swsh1: [59.94, 17.78, 14.2, 2.2, 0, 3.74, 2.14],
+  swsh2: [59.96, 17.78, 12.65, 3.4, 0, 3.76, 2.45],
+  swsh3: [59.88, 17.78, 12.58, 3.85, 0, 3.85, 2.06],
+  swsh4: [60.12, 16.76, 12.41, 4.17, 0, 4.07, 2.47],
+  swsh5: [60.23, 17.78, 12.1, 4.34, 0, 3.63, 1.92],
+  swsh6: [58.8, 17.78, 13.2, 4.18, 0, 4, 2.04],
+  swsh7: [60.13, 17.78, 10.56, 5.6, 0, 3.88, 2.05],
+  swsh8: [60.18, 17.78, 12.82, 3.57, 0, 3.63, 2.02],
+  swsh9: [58.14, 17.78, 13.89, 1.06, 2.41, 4.31, 2.41],
+  swsh10: [60.14, 17.78, 12.77, 0.77, 2.7, 3.79, 2.05],
+  swsh11: [60.22, 17.78, 11.63, 0.63, 3.79, 3.9, 2.05],
+  swsh12: [61.04, 17.78, 11.55, 0.53, 3.19, 3.71, 2.2],
+  'swsh12.5': [60.97, 17.78, 12.35, 2.04, 3.26, 2.85, 0.75],
+} satisfies Record<string, SwshRareSlotChances>
+
+type SwshSetId = keyof typeof SWSH_RARE_SLOT_CHANCES
+
+const SWSH_RARE_SLOT_CATEGORIES: Array<Omit<ChanceRule, 'chance'>> = [
+  { finish: 'normal', rarities: ['Rare'] },
+  { finish: 'holo', rarities: ['Holo Rare'] },
+  { finish: 'holo', rarities: ['Holo Rare V'] },
+  { finish: 'holo', rarities: ['Holo Rare VMAX'] },
+  { finish: 'holo', rarities: ['Holo Rare VSTAR'] },
+  { finish: 'holo', rarities: ['Ultra Rare', 'Full Art Trainer', 'Dresseur Full Art'] },
+  { finish: 'holo', rarities: ['Secret Rare', 'Magnifique rare'] },
+]
+
+interface SwshGallerySlotChances {
+  normal: number
+  premium: number
+  gold: number
+}
+
+const SWSH_GALLERY_SLOT_CHANCES: Partial<Record<SwshSetId, SwshGallerySlotChances>> = {
+  swsh9: { normal: 8.74, premium: 3.36, gold: 0.87 },
+  swsh10: { normal: 8.48, premium: 4.1, gold: 0 },
+  swsh11: { normal: 8.29, premium: 3.16, gold: 0.86 },
+  swsh12: { normal: 8.25, premium: 3.08, gold: 0.9 },
+  'swsh12.5': { normal: 22.4, premium: 12, gold: 0.8 },
+}
+
+type SwshGalleryCategory = keyof SwshGallerySlotChances
+
+interface SwshReverseInsertRule {
+  chance: number
+  rarities: string[]
+}
+
+// Amazing and Radiant Rares replace the reverse card rather than the rare slot.
+const SWSH_REVERSE_INSERT_RULES: Partial<Record<SwshSetId, SwshReverseInsertRule>> = {
+  swsh4: { chance: 5.17, rarities: ['Amazing Rare', 'Magnifique'] },
+  swsh10: { chance: 4.88, rarities: ['Radiant Rare', 'Radieux Rare'] },
+  swsh11: { chance: 5.01, rarities: ['Radiant Rare', 'Radieux Rare'] },
+  swsh12: { chance: 4.55, rarities: ['Radiant Rare', 'Radieux Rare'] },
+  'swsh12.5': { chance: 4.55, rarities: ['Radiant Rare', 'Radieux Rare'] },
+}
+
+type SwshReverseSlotCategory = SwshGalleryCategory | 'insert'
+
+interface SwshGalleryCardRanges {
+  prefix: 'TG' | 'GG'
+  normal: readonly [number, number]
+  premium: readonly [number, number]
+  gold: readonly [number, number]
+}
+
+const SWSH_GALLERY_CARD_RANGES: Record<string, SwshGalleryCardRanges> = {
+  'swsh9.5tg': { prefix: 'TG', normal: [1, 12], premium: [13, 28], gold: [29, 30] },
+  // The Astral Radiance sample reports one aggregate TG13-TG30 premium rate.
+  'swsh10.5tg': { prefix: 'TG', normal: [1, 12], premium: [13, 30], gold: [0, 0] },
+  'swsh11.5tg': { prefix: 'TG', normal: [1, 11], premium: [12, 28], gold: [29, 30] },
+  'swsh12.5tg': { prefix: 'TG', normal: [1, 11], premium: [12, 28], gold: [29, 30] },
+  'swsh12.5gg': { prefix: 'GG', normal: [1, 34], premium: [35, 66], gold: [67, 70] },
+}
+
+interface WeightedCardRule {
+  cards: PokemonCardSummary[]
+  chance: number
+  finish: CardFinish
+}
+
 export interface PokemonPackDrawResult {
   cards: PokemonCardSummary[]
   isGodPack: boolean
@@ -114,9 +200,13 @@ export interface PokemonPackDrawResult {
 
 export const drawPokemonPackCards = (
   allCards: PokemonCardSummary[],
-  options: { enableGodPack?: boolean } = {},
+  options: { enableGodPack?: boolean; setId?: string } = {},
 ): PokemonPackDrawResult => {
-  const { enableGodPack = true } = options
+  const { enableGodPack = true, setId } = options
+
+  if (setId && isSwshSetId(setId)) {
+    return drawSwshPack(allCards, setId)
+  }
 
   const godPack = enableGodPack ? drawGodPack(allCards) : undefined
 
@@ -149,6 +239,207 @@ export const drawPokemonPackCards = (
   }
 
   return { cards, isGodPack: false }
+}
+
+const drawSwshPack = (
+  allCards: PokemonCardSummary[],
+  parentSetId: SwshSetId,
+): PokemonPackDrawResult => {
+  const selectedCards = new Set<string>()
+  const parentCards = allCards.filter((card) => card.setId === parentSetId)
+  const cards = [
+    ...drawManyUnique(getCardsByRarity(parentCards, COMMON_RARITIES), 5, selectedCards, 'normal'),
+    ...drawManyUnique(getCardsByRarity(parentCards, UNCOMMON_RARITIES), 3, selectedCards, 'normal'),
+    ...drawSwshReverseOrGallerySlot(allCards, parentSetId, selectedCards),
+    ...drawSwshRareSlot(parentCards, parentSetId, selectedCards),
+  ]
+
+  if (cards.length < PACK_CARD_COUNT) {
+    cards.push(...drawManyUnique(parentCards, PACK_CARD_COUNT - cards.length, selectedCards))
+  }
+
+  return { cards, isGodPack: false }
+}
+
+const drawSwshReverseOrGallerySlot = (
+  allCards: PokemonCardSummary[],
+  parentSetId: SwshSetId,
+  selectedCards: Set<string>,
+): PokemonCardSummary[] => {
+  const reverseCandidates = allCards.filter(
+    (card) =>
+      card.setId === parentSetId &&
+      SWSH_REVERSE_FOIL_RARITIES.includes(card.rarity ?? '') &&
+      card.finishes?.includes('reverse_holo'),
+  )
+  const galleryChances = SWSH_GALLERY_SLOT_CHANCES[parentSetId]
+  const gallerySetId = getSwshGallerySetId(parentSetId)
+  const insertRule = SWSH_REVERSE_INSERT_RULES[parentSetId]
+
+  if (!galleryChances && !insertRule) {
+    return drawManyUnique(reverseCandidates, 1, selectedCards, 'reverse_holo')
+  }
+
+  const galleryCards = gallerySetId ? allCards.filter((card) => card.setId === gallerySetId) : []
+  const insertCards = insertRule
+    ? allCards.filter(
+        (card) => card.setId === parentSetId && insertRule.rarities.includes(card.rarity ?? ''),
+      )
+    : []
+  const category = drawSwshReverseSlotCategory(galleryChances, insertRule?.chance ?? 0)
+
+  if (category === 'insert' && insertRule) {
+    const insertCard = drawUniqueCard(insertCards, selectedCards)
+
+    if (insertCard) {
+      return [withFinish(insertCard, 'holo')]
+    }
+  }
+
+  if (category && category !== 'insert') {
+    const galleryCard = drawUniqueCard(
+      galleryCards.filter((card) => getSwshGalleryCardCategory(card) === category),
+      selectedCards,
+    )
+
+    if (galleryCard) {
+      return [withFinish(galleryCard, 'holo')]
+    }
+  }
+
+  const reverseCard = drawUniqueCard(reverseCandidates, selectedCards)
+
+  if (reverseCard) {
+    return [withFinish(reverseCard, 'reverse_holo')]
+  }
+
+  const galleryFallback = drawWeightedAvailableCard(
+    [
+      ...(['normal', 'premium', 'gold'] as const).map((galleryCategory) => ({
+        cards: galleryCards.filter((card) => getSwshGalleryCardCategory(card) === galleryCategory),
+        chance: galleryChances?.[galleryCategory] ?? 0,
+        finish: 'holo' as const,
+      })),
+      { cards: insertCards, chance: insertRule?.chance ?? 0, finish: 'holo' },
+    ],
+    selectedCards,
+  )
+
+  return galleryFallback ? [galleryFallback] : []
+}
+
+const drawSwshReverseSlotCategory = (
+  galleryChances: SwshGallerySlotChances | undefined,
+  insertChance: number,
+): SwshReverseSlotCategory | undefined => {
+  const roll = Math.random() * 100
+  let cursor = 0
+
+  for (const category of ['normal', 'premium', 'gold'] as const) {
+    cursor += galleryChances?.[category] ?? 0
+
+    if (roll < cursor) {
+      return category
+    }
+  }
+
+  if (roll < cursor + insertChance) {
+    return 'insert'
+  }
+
+  return undefined
+}
+
+const getSwshGalleryCardCategory = (card: PokemonCardSummary): SwshGalleryCategory | undefined => {
+  const ranges = SWSH_GALLERY_CARD_RANGES[card.setId]
+  const localId = /^([A-Z]{2})(\d+)$/.exec(card.number.toUpperCase())
+
+  if (!ranges || !localId || localId[1] !== ranges.prefix) {
+    return undefined
+  }
+
+  const localNumber = Number(localId[2])
+
+  for (const category of ['normal', 'premium', 'gold'] as const) {
+    const [minimum, maximum] = ranges[category]
+
+    if (localNumber >= minimum && localNumber <= maximum) {
+      return category
+    }
+  }
+
+  return undefined
+}
+
+const drawSwshRareSlot = (
+  parentCards: PokemonCardSummary[],
+  parentSetId: SwshSetId,
+  selectedCards: Set<string>,
+): PokemonCardSummary[] => {
+  const chances = SWSH_RARE_SLOT_CHANCES[parentSetId]
+  const rules = SWSH_RARE_SLOT_CATEGORIES.map((category, index) => ({
+    cards: getCardsByRarity(parentCards, category.rarities),
+    chance: chances[index],
+    finish: category.finish,
+  }))
+  const roll = Math.random() * 100
+  let cursor = 0
+  let selectedRule = rules[rules.length - 1]
+
+  for (const rule of rules) {
+    cursor += rule.chance
+
+    if (roll < cursor) {
+      selectedRule = rule
+      break
+    }
+  }
+
+  const selectedCard = selectedRule ? drawUniqueCard(selectedRule.cards, selectedCards) : undefined
+  const normalRareRule = rules[0]
+  let rareCard =
+    selectedCard && selectedRule ? withFinish(selectedCard, selectedRule.finish) : undefined
+
+  if (!rareCard && normalRareRule) {
+    const normalRareCard = drawUniqueCard(normalRareRule.cards, selectedCards)
+    rareCard = normalRareCard ? withFinish(normalRareCard, normalRareRule.finish) : undefined
+  }
+
+  return rareCard ? [rareCard] : []
+}
+
+const drawWeightedAvailableCard = (
+  rules: WeightedCardRule[],
+  selectedCards: Set<string>,
+): PokemonCardSummary | undefined => {
+  const availableRules = rules.filter(
+    (rule) => rule.chance > 0 && rule.cards.some((card) => !selectedCards.has(card.id)),
+  )
+  const totalChance = availableRules.reduce((total, rule) => total + rule.chance, 0)
+
+  if (totalChance === 0) {
+    return undefined
+  }
+
+  let roll = Math.random() * totalChance
+  let selectedRule = availableRules[availableRules.length - 1]
+
+  for (const rule of availableRules) {
+    if (roll < rule.chance) {
+      selectedRule = rule
+      break
+    }
+
+    roll -= rule.chance
+  }
+
+  const card = selectedRule ? drawUniqueCard(selectedRule.cards, selectedCards) : undefined
+
+  return card && selectedRule ? withFinish(card, selectedRule.finish) : undefined
+}
+
+const isSwshSetId = (setId: string): setId is SwshSetId => {
+  return Object.prototype.hasOwnProperty.call(SWSH_RARE_SLOT_CHANCES, setId)
 }
 
 const drawGodPack = (allCards: PokemonCardSummary[]): PokemonCardSummary[] | undefined => {
