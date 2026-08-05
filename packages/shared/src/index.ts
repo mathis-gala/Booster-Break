@@ -405,6 +405,7 @@ export type TradeErrorCode =
 export {
   getFinishRank,
   getPackRarityChance,
+  getSetPackRarityChance,
   getRarityRank,
   getRarityWeight,
   normalizeRarity,

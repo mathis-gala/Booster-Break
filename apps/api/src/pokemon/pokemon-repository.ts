@@ -21,7 +21,12 @@ import {
   toSetSummary,
   toSetWrite,
 } from './pokemon-mappers'
-import { SYNCED_BOOSTER_LIMIT } from './pokemon-config'
+import {
+  DISABLED_BOOSTER_SET_IDS,
+  FEATURED_HISTORICAL_BOOSTER_SET_IDS,
+  PINNED_MODERN_BOOSTER_SET_IDS,
+  SYNCED_BOOSTER_LIMIT,
+} from './pokemon-config'
 import { consumeBoosterCharge, getBoosterChargeStatus, PackCooldownError } from './pack-cooldown'
 import type { Set as TcgDexSet } from '@tcgdex/sdk'
 import type { TcgDexCard } from './tcgdex-client'
@@ -53,8 +58,9 @@ export class PokemonRepository {
     syncedAt: string,
     boosterImageUrl?: string,
     localizedText?: LocalizedSetText,
+    total?: number,
   ): Promise<void> {
-    const setWrite = toSetWrite(set, syncedAt, boosterImageUrl, localizedText)
+    const setWrite = toSetWrite(set, syncedAt, boosterImageUrl, localizedText, total)
 
     await this.db.pokemonSet.upsert({
       where: {
@@ -73,7 +79,7 @@ export class PokemonRepository {
   ): Promise<void> {
     await this.db.$transaction(async (tx) => {
       for (const card of cards) {
-        const cardWrite = toCardWrite(card, syncedAt, localizedNames)
+        const cardWrite = { ...toCardWrite(card, syncedAt, localizedNames), setId }
 
         await tx.pokemonCard.upsert({
           where: {
@@ -107,6 +113,9 @@ export class PokemonRepository {
   async listSets(locale: SupportedLocale = 'fr'): Promise<PokemonSetSummary[]> {
     const sets = await this.db.pokemonSet.findMany({
       where: {
+        id: {
+          notIn: [...DISABLED_BOOSTER_SET_IDS],
+        },
         releaseDate: {
           contains: '-',
         },
@@ -117,16 +126,53 @@ export class PokemonRepository {
       orderBy: {
         releaseDate: 'desc',
       },
-      take: SYNCED_BOOSTER_LIMIT,
     })
 
-    return sets.map((set) => toSetSummary(set, locale))
+    const featuredSetIds = new Set<string>(FEATURED_HISTORICAL_BOOSTER_SET_IDS)
+    const modernSets = sets.filter((set) => !featuredSetIds.has(set.id))
+    const recentSets = modernSets.slice(0, SYNCED_BOOSTER_LIMIT)
+    const selectedRecentSetIds = new Set(recentSets.map((set) => set.id))
+
+    for (const setId of PINNED_MODERN_BOOSTER_SET_IDS) {
+      const set = modernSets.find((candidate) => candidate.id === setId)
+
+      if (set && !selectedRecentSetIds.has(set.id)) {
+        recentSets.push(set)
+      }
+    }
+
+    recentSets.sort((first, second) => second.releaseDate.localeCompare(first.releaseDate))
+    const historicalSets = FEATURED_HISTORICAL_BOOSTER_SET_IDS.flatMap((setId) => {
+      const set = sets.find((candidate) => candidate.id === setId)
+      return set ? [set] : []
+    })
+
+    return [...recentSets, ...historicalSets].map((set) => toSetSummary(set, locale))
+  }
+
+  async hasCompleteSet(setId: string, expectedTotal: number): Promise<boolean> {
+    const set = await this.db.pokemonSet.findUnique({
+      where: { id: setId },
+      include: {
+        _count: {
+          select: { cards: true },
+        },
+      },
+    })
+
+    return Boolean(
+      set?.boosterImageUrl && set.total >= expectedTotal && set._count.cards >= set.total,
+    )
   }
 
   async getSet(
     setId: string,
     locale: SupportedLocale = 'fr',
   ): Promise<PokemonSetSummary | undefined> {
+    if (DISABLED_BOOSTER_SET_IDS.includes(setId)) {
+      return undefined
+    }
+
     const set = await this.db.pokemonSet.findUnique({
       where: {
         id: setId,

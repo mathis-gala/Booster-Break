@@ -20,6 +20,20 @@ const REVERSE_FOIL_RARITIES = [...COMMON_RARITIES, ...UNCOMMON_RARITIES, ...RARE
 const SWSH_REVERSE_FOIL_RARITIES = [...REVERSE_FOIL_RARITIES, 'Holo Rare']
 
 const GOD_PACK_CHANCE = 0.16
+// Crown Zenith did not have this pack in English. This emulates the VSTAR Universe
+// nine-AR pack with its English GG equivalents at the observed estimate of 1 in 700.
+const CROWN_ZENITH_GOD_PACK_CHANCE = 100 / 700
+const CROWN_ZENITH_GOD_PACK_GG_NUMBERS = [
+  'GG26',
+  'GG27',
+  'GG28',
+  'GG29',
+  'GG30',
+  'GG31',
+  'GG32',
+  'GG33',
+  'GG34',
+] as const
 const GOD_PACK_RARITIES = [
   'Illustration rare',
   'Illustration Rare',
@@ -102,6 +116,42 @@ const RARE_SLOT_RULES: ChanceRule[] = [
     rarities: ['Ultra Rare'],
   },
 ]
+
+const MODERN_SET_SLOT_RULES: Partial<
+  Record<string, { secondFoil: ChanceRule[]; rare: ChanceRule[] }>
+> = {
+  // Observed TCGplayer samples: 8,500+ Chaos Rising and 4,000+ Pitch Black packs.
+  me04: {
+    secondFoil: [
+      { chance: 10.66, finish: 'holo', rarities: ['Illustration rare', 'Illustration Rare'] },
+      {
+        chance: 1.21,
+        finish: 'holo',
+        rarities: ['Special illustration rare', 'Special Illustration Rare'],
+      },
+      { chance: 0.1, finish: 'holo', rarities: ['Mega Hyper Rare'] },
+    ],
+    rare: [
+      { chance: 20.3, finish: 'holo', rarities: ['Double rare', 'Double Rare'] },
+      { chance: 8.29, finish: 'holo', rarities: ['Ultra Rare'] },
+    ],
+  },
+  me05: {
+    secondFoil: [
+      { chance: 11.01, finish: 'holo', rarities: ['Illustration rare', 'Illustration Rare'] },
+      {
+        chance: 1.25,
+        finish: 'holo',
+        rarities: ['Special illustration rare', 'Special Illustration Rare'],
+      },
+      { chance: 0.09, finish: 'holo', rarities: ['Mega Hyper Rare'] },
+    ],
+    rare: [
+      { chance: 21.02, finish: 'holo', rarities: ['Double rare', 'Double Rare'] },
+      { chance: 8.3, finish: 'holo', rarities: ['Ultra Rare'] },
+    ],
+  },
+}
 
 interface ChanceRule {
   chance: number
@@ -205,16 +255,20 @@ export const drawPokemonPackCards = (
   const { enableGodPack = true, setId } = options
 
   if (setId && isSwshSetId(setId)) {
-    return drawSwshPack(allCards, setId)
+    return drawSwshPack(allCards, setId, enableGodPack)
   }
 
-  const godPack = enableGodPack ? drawGodPack(allCards) : undefined
+  const godPack = enableGodPack && !setId?.startsWith('me') ? drawGodPack(allCards) : undefined
 
   if (godPack) {
     return { cards: godPack, isGodPack: true }
   }
 
   const selectedCards = new Set<string>()
+  const slotRules = (setId ? MODERN_SET_SLOT_RULES[setId] : undefined) ?? {
+    secondFoil: SECOND_FOIL_SLOT_RULES,
+    rare: RARE_SLOT_RULES,
+  }
 
   const cards = [
     ...drawManyUnique(
@@ -230,8 +284,8 @@ export const drawPokemonPackCards = (
       'normal',
     ),
     ...drawFirstFoilSlot(allCards, selectedCards),
-    ...drawSecondFoilSlot(allCards, selectedCards),
-    ...drawRareSlot(allCards, selectedCards),
+    ...drawSecondFoilSlot(allCards, selectedCards, slotRules.secondFoil),
+    ...drawRareSlot(allCards, selectedCards, slotRules.rare),
   ]
 
   if (cards.length < PACK_CARD_COUNT) {
@@ -244,9 +298,19 @@ export const drawPokemonPackCards = (
 const drawSwshPack = (
   allCards: PokemonCardSummary[],
   parentSetId: SwshSetId,
+  enableGodPack: boolean,
 ): PokemonPackDrawResult => {
+  const godPack =
+    enableGodPack && parentSetId === 'swsh12.5'
+      ? drawCrownZenithGodPack(allCards, parentSetId)
+      : undefined
+
+  if (godPack) {
+    return { cards: godPack, isGodPack: true }
+  }
+
   const selectedCards = new Set<string>()
-  const parentCards = allCards.filter((card) => card.setId === parentSetId)
+  const parentCards = getSwshParentCards(allCards, parentSetId)
   const cards = [
     ...drawManyUnique(getCardsByRarity(parentCards, COMMON_RARITIES), 5, selectedCards, 'normal'),
     ...drawManyUnique(getCardsByRarity(parentCards, UNCOMMON_RARITIES), 3, selectedCards, 'normal'),
@@ -280,7 +344,9 @@ const drawSwshReverseOrGallerySlot = (
     return drawManyUnique(reverseCandidates, 1, selectedCards, 'reverse_holo')
   }
 
-  const galleryCards = gallerySetId ? allCards.filter((card) => card.setId === gallerySetId) : []
+  const galleryCards = gallerySetId
+    ? allCards.filter((card) => isCardFromSourceSet(card, gallerySetId))
+    : []
   const insertCards = insertRule
     ? allCards.filter(
         (card) => card.setId === parentSetId && insertRule.rarities.includes(card.rarity ?? ''),
@@ -351,7 +417,8 @@ const drawSwshReverseSlotCategory = (
 }
 
 const getSwshGalleryCardCategory = (card: PokemonCardSummary): SwshGalleryCategory | undefined => {
-  const ranges = SWSH_GALLERY_CARD_RANGES[card.setId]
+  const sourceSetId = getCardSourceSetId(card)
+  const ranges = SWSH_GALLERY_CARD_RANGES[sourceSetId] ?? SWSH_GALLERY_CARD_RANGES[card.setId]
   const localId = /^([A-Z]{2})(\d+)$/.exec(card.number.toUpperCase())
 
   if (!ranges || !localId || localId[1] !== ranges.prefix) {
@@ -369,6 +436,65 @@ const getSwshGalleryCardCategory = (card: PokemonCardSummary): SwshGalleryCatego
   }
 
   return undefined
+}
+
+const drawCrownZenithGodPack = (
+  allCards: PokemonCardSummary[],
+  parentSetId: SwshSetId,
+): PokemonCardSummary[] | undefined => {
+  const galleryCards = CROWN_ZENITH_GOD_PACK_GG_NUMBERS.map((number) =>
+    allCards.find((card) => card.number.toUpperCase() === number),
+  )
+  const parentCards = getSwshParentCards(allCards, parentSetId)
+  const rareSlotRules: WeightedCardRule[] = [
+    { cards: getCardsByRarity(parentCards, ['Holo Rare V']), chance: 12.35, finish: 'holo' },
+    { cards: getCardsByRarity(parentCards, ['Holo Rare VMAX']), chance: 2.04, finish: 'holo' },
+    { cards: getCardsByRarity(parentCards, ['Holo Rare VSTAR']), chance: 3.26, finish: 'holo' },
+  ]
+
+  if (
+    galleryCards.some((card) => !card) ||
+    rareSlotRules.every((rule) => rule.cards.length === 0)
+  ) {
+    return undefined
+  }
+
+  if (Math.random() * 100 >= CROWN_ZENITH_GOD_PACK_CHANCE) {
+    return undefined
+  }
+
+  const selectedCards = new Set(galleryCards.flatMap((card) => (card ? [card.id] : [])))
+  const rareSlotCard = drawWeightedAvailableCard(rareSlotRules, selectedCards)
+
+  if (!rareSlotCard) {
+    return undefined
+  }
+
+  return [
+    ...(galleryCards as PokemonCardSummary[]).map((card) => withFinish(card, 'holo')),
+    rareSlotCard,
+  ]
+}
+
+const getSwshParentCards = (
+  cards: PokemonCardSummary[],
+  parentSetId: SwshSetId,
+): PokemonCardSummary[] => {
+  const gallerySetId = getSwshGallerySetId(parentSetId)
+
+  return cards.filter(
+    (card) =>
+      card.setId === parentSetId && (!gallerySetId || !isCardFromSourceSet(card, gallerySetId)),
+  )
+}
+
+const isCardFromSourceSet = (card: PokemonCardSummary, setId: string): boolean => {
+  return card.setId === setId || getCardSourceSetId(card) === setId
+}
+
+const getCardSourceSetId = (card: PokemonCardSummary): string => {
+  const separatorIndex = card.id.lastIndexOf('-')
+  return separatorIndex >= 0 ? card.id.slice(0, separatorIndex) : card.setId
 }
 
 const drawSwshRareSlot = (
@@ -519,8 +645,9 @@ const drawFirstFoilSlot = (
 const drawSecondFoilSlot = (
   allCards: PokemonCardSummary[],
   selectedCards: Set<string>,
+  rules: ChanceRule[],
 ): PokemonCardSummary[] => {
-  const secretCard = drawChanceRule(allCards, SECOND_FOIL_SLOT_RULES, selectedCards)
+  const secretCard = drawChanceRule(allCards, rules, selectedCards)
 
   if (secretCard) {
     return [secretCard]
@@ -537,8 +664,9 @@ const drawSecondFoilSlot = (
 const drawRareSlot = (
   allCards: PokemonCardSummary[],
   selectedCards: Set<string>,
+  rules: ChanceRule[],
 ): PokemonCardSummary[] => {
-  const rareHit = drawChanceRule(allCards, RARE_SLOT_RULES, selectedCards)
+  const rareHit = drawChanceRule(allCards, rules, selectedCards)
 
   if (rareHit) {
     return [rareHit]
@@ -563,7 +691,7 @@ const drawChanceRule = (
   for (const rule of rules) {
     chanceCursor += rule.chance
 
-    if (roll > chanceCursor) {
+    if (roll >= chanceCursor) {
       continue
     }
 

@@ -50,6 +50,65 @@ describe('drawPokemonPackCards', () => {
     expect(cards.slice(7, 9).every((card) => card.finish === 'reverse_holo')).toBe(true)
   })
 
+  test('uses the observed Chaos Rising rarity bands', () => {
+    const allCards = makeModernCards('me04')
+    const cases = [
+      {
+        secondRoll: 0.1,
+        rareRoll: 0.1,
+        secondRarity: 'Illustration Rare',
+        rareRarity: 'Double Rare',
+      },
+      {
+        secondRoll: 0.112,
+        rareRoll: 0.25,
+        secondRarity: 'Special Illustration Rare',
+        rareRarity: 'Ultra Rare',
+      },
+      {
+        secondRoll: 0.119,
+        rareRoll: 0.5,
+        secondRarity: 'Mega Hyper Rare',
+        rareRarity: 'Rare',
+      },
+    ] as const
+
+    for (const drawCase of cases) {
+      useRandomSequence([...Array<number>(9).fill(0), drawCase.secondRoll, 0, drawCase.rareRoll, 0])
+
+      const { cards } = drawPokemonPackCards(allCards, {
+        enableGodPack: false,
+        setId: 'me04',
+      })
+
+      expect(cards[8]?.rarity).toBe(drawCase.secondRarity)
+      expect(cards[9]?.rarity).toBe(drawCase.rareRarity)
+    }
+  })
+
+  test('uses the observed Pitch Black rarity bands', () => {
+    useRandomSequence([...Array<number>(9).fill(0), 0.12, 0, 0.25, 0])
+
+    const { cards } = drawPokemonPackCards(makeModernCards('me05'), {
+      enableGodPack: false,
+      setId: 'me05',
+    })
+
+    expect(cards[8]?.rarity).toBe('Special Illustration Rare')
+    expect(cards[9]?.rarity).toBe('Ultra Rare')
+  })
+
+  test('moves an exact Mega Evolution threshold into the next rarity band', () => {
+    useRandomSequence([...Array<number>(9).fill(0), 0.5, 0, 0.203, 0])
+
+    const { cards } = drawPokemonPackCards(makeModernCards('me04'), {
+      enableGodPack: false,
+      setId: 'me04',
+    })
+
+    expect(cards[9]?.rarity).toBe('Ultra Rare')
+  })
+
   test('replaces the first reverse holo slot with an ACE SPEC Rare', () => {
     // Low roll lands in the first-foil slot's ACE SPEC band (0%-4.76%).
     Math.random = () => 0.01
@@ -329,9 +388,9 @@ describe('drawPokemonPackCards', () => {
       ...makeCards('rare', 'Rare', 1, ['normal', 'reverse_holo'], 'swsh12.5'),
     ]
     const galleryCards = [
-      makeCard('swsh12.5gg-GG34', 'swsh12.5gg', 'GG34'),
-      makeCard('swsh12.5gg-GG35', 'swsh12.5gg', 'GG35'),
-      makeCard('swsh12.5gg-GG67', 'swsh12.5gg', 'GG67'),
+      makeCard('swsh12.5gg-GG34', 'swsh12.5', 'GG34'),
+      makeCard('swsh12.5gg-GG35', 'swsh12.5', 'GG35'),
+      makeCard('swsh12.5gg-GG67', 'swsh12.5', 'GG67'),
     ]
     const slotCases = [
       { roll: 0.1, id: 'swsh12.5gg-GG34' },
@@ -349,6 +408,55 @@ describe('drawPokemonPackCards', () => {
       expect(cards[8]?.id).toBe(slotCase.id)
       expect(cards[8]?.finish).toBe('holo')
     }
+  })
+
+  test('keeps persisted gallery cards out of the Crown Zenith parent rare slot', () => {
+    const allCards = [
+      ...makeCards('common', 'Common', 6, ['normal', 'reverse_holo'], 'swsh12.5'),
+      ...makeCards('uncommon', 'Uncommon', 4, ['normal', 'reverse_holo'], 'swsh12.5'),
+      ...makeCards('rare', 'Rare', 1, ['normal', 'reverse_holo'], 'swsh12.5'),
+      ...makeCards('secret', 'Secret Rare', 1, ['holo'], 'swsh12.5'),
+      makeCard('swsh12.5gg-GG67', 'swsh12.5', 'GG67'),
+    ]
+    useRandomSequence([...Array<number>(8).fill(0), 0.5, 0, 0.999, 0.999])
+
+    const { cards } = drawPokemonPackCards(allCards, {
+      enableGodPack: false,
+      setId: 'swsh12.5',
+    })
+
+    expect(cards[9]?.id).toBe('secret-0')
+  })
+
+  test('draws the Crown Zenith nine-card illustration god pack at one in 700', () => {
+    const fixedGalleryCards = Array.from({ length: 9 }, (_, index) => {
+      const number = `GG${String(index + 26).padStart(2, '0')}`
+      return makeCard(`swsh12.5gg-${number}`, 'swsh12.5', number)
+    })
+    const vCard = {
+      ...makeCard('swsh12.5-016', 'swsh12.5', '016'),
+      rarity: 'Holo Rare V',
+    }
+    useRandomSequence([0, 0, 0])
+
+    const { cards, isGodPack } = drawPokemonPackCards([...fixedGalleryCards, vCard], {
+      setId: 'swsh12.5',
+    })
+
+    expect(isGodPack).toBe(true)
+    expect(cards.map((card) => card.number)).toEqual([
+      'GG26',
+      'GG27',
+      'GG28',
+      'GG29',
+      'GG30',
+      'GG31',
+      'GG32',
+      'GG33',
+      'GG34',
+      '016',
+    ])
+    expect(cards.every((card) => card.finish === 'holo')).toBe(true)
   })
 
   test('draws Amazing and Radiant Rares from the shared reverse slot', () => {
@@ -407,6 +515,17 @@ const makeCard = (id: string, setId: string, number: string): PokemonCardSummary
   setId,
   finishes: ['holo'],
 })
+
+const makeModernCards = (setId: string): PokemonCardSummary[] => [
+  ...makeCards('common', 'Common', 6, ['normal', 'reverse_holo'], setId),
+  ...makeCards('uncommon', 'Uncommon', 5, ['normal', 'reverse_holo'], setId),
+  ...makeCards('rare', 'Rare', 2, ['holo', 'reverse_holo'], setId),
+  ...makeCards('double-rare', 'Double Rare', 2, ['holo'], setId),
+  ...makeCards('illustration-rare', 'Illustration Rare', 2, ['holo'], setId),
+  ...makeCards('ultra-rare', 'Ultra Rare', 2, ['holo'], setId),
+  ...makeCards('special-illustration-rare', 'Special Illustration Rare', 2, ['holo'], setId),
+  ...makeCards('mega-hyper-rare', 'Mega Hyper Rare', 1, ['holo'], setId),
+]
 
 const useRandomSequence = (values: number[]): void => {
   let index = 0

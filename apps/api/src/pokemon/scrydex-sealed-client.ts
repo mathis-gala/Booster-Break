@@ -77,6 +77,8 @@ const knownBoosterImageExpansionIds = new Set([
   'me1',
   'me2',
   'me3',
+  'me4',
+  'me5',
   'sv8',
   'sv8pt5',
   'sv9',

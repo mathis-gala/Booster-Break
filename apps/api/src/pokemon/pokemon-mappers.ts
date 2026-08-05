@@ -34,6 +34,7 @@ export const toSetWrite = (
   syncedAt: string,
   boosterImageUrl?: string,
   localizedText?: LocalizedSetText,
+  total = set.cardCount.total,
 ) => {
   const series = getSetSeriesName(set)
 
@@ -45,7 +46,7 @@ export const toSetWrite = (
     series,
     seriesEn: localizedText?.en?.series ?? series,
     seriesFr: localizedText?.fr?.series,
-    total: set.cardCount.total,
+    total,
     releaseDate: set.releaseDate,
     symbolUrl: getAssetUrl(set.symbol),
     logoUrl: getAssetUrl(set.logo),

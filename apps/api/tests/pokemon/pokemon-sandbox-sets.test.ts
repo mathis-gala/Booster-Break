@@ -2,10 +2,10 @@ import { describe, expect, test } from 'bun:test'
 import { getSandboxSetDateRange, isSandboxBoosterSet } from '../../src/pokemon/pokemon-sandbox-sets'
 
 describe('sandbox set eligibility', () => {
-  test('includes the 2023 sandbox range and Crown Zenith specifically', () => {
+  test('keeps Crown Zenith out of the sandbox now that it is a collection booster', () => {
     expect(getSandboxSetDateRange()).toEqual({
       fromDate: '2003-01-01',
-      toDate: '2023-12-31',
+      toDate: '2022-12-31',
     })
     expect(
       isSandboxBoosterSet({
@@ -13,7 +13,7 @@ describe('sandbox set eligibility', () => {
         name: 'Crown Zenith',
         releaseDate: '2023-01-20',
       }),
-    ).toBe(true)
+    ).toBe(false)
   })
 
   test('does not expose gallery children or arbitrary supplemental sets', () => {

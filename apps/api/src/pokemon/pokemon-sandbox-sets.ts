@@ -1,5 +1,9 @@
 import type { Set } from '@tcgdex/sdk'
-import { SANDBOX_PACK_OPEN_MAX_YEAR, SANDBOX_PACK_OPEN_MIN_YEAR } from './pokemon-config'
+import {
+  FEATURED_HISTORICAL_BOOSTER_SET_IDS,
+  SANDBOX_PACK_OPEN_MAX_YEAR,
+  SANDBOX_PACK_OPEN_MIN_YEAR,
+} from './pokemon-config'
 
 type SandboxSetCandidate = Pick<Set, 'id' | 'name' | 'releaseDate'>
 
@@ -21,6 +25,9 @@ export const isSandboxBoosterSet = (set: SandboxSetCandidate): boolean => {
     releaseYear !== undefined &&
     releaseYear >= SANDBOX_PACK_OPEN_MIN_YEAR &&
     releaseYear <= SANDBOX_PACK_OPEN_MAX_YEAR &&
+    !FEATURED_HISTORICAL_BOOSTER_SET_IDS.includes(
+      set.id as (typeof FEATURED_HISTORICAL_BOOSTER_SET_IDS)[number],
+    ) &&
     isMainBoosterExpansionId(set.id) &&
     !isExcludedSupplementalSet(set.name)
   )
@@ -32,11 +39,7 @@ export const compareSetsByNewestRelease = (
 ): number => second.releaseDate.localeCompare(first.releaseDate)
 
 const isMainBoosterExpansionId = (setId: string): boolean => {
-  return (
-    setId === 'swsh12.5' ||
-    /^(ecard|ex|dp|pl|hgss|bw|xy|sm|swsh)\d+$/.test(setId) ||
-    /^xy[1-9]\d*$/.test(setId)
-  )
+  return /^(ecard|ex|dp|pl|hgss|bw|xy|sm|swsh)\d+$/.test(setId) || /^xy[1-9]\d*$/.test(setId)
 }
 
 const isExcludedSupplementalSet = (setName: string): boolean => {

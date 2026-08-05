@@ -462,7 +462,10 @@ export class CardViewerRenderer {
     const model = createModelMatrix(this.rotation.x, this.rotation.y)
     const mvp = createModelViewProjectionMatrix(projection, view, model)
     const bandDirection = getFoilBandDirection(this.profile.bandAngle)
-    const motionPhase = (((frameTime - this.startedAt) / 1000) * this.profile.motionSpeed * 4) % 1
+    const motionScale =
+      this.profile.name === 'double-rare' || this.profile.name === 'illustration-rare' ? 1.6 : 1.2
+    const motionPhase =
+      (((frameTime - this.startedAt) / 1000) * this.profile.motionSpeed * motionScale * 4) % 1
 
     this.setUniformMatrix('uMvp', mvp)
     this.setUniformMatrix('uModel', model)

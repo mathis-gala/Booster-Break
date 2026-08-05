@@ -28,7 +28,7 @@ export function BoosterPreviewDialog({
 }: BoosterPreviewDialogProps) {
   const [selectedPreviewCard, setSelectedPreviewCard] = useState<PokemonCardSummary>()
   const [highlightOwned, setHighlightOwned] = useState(false)
-  const previewCardsByRarity = useMemo(() => groupCardsByRarity(cards), [cards])
+  const previewCardsByRarity = useMemo(() => groupCardsByRarity(cards, set.id), [cards, set.id])
   const canHighlightOwned = Boolean(ownedCardIds) && cards.length > 0
   const ownedCount = useMemo(
     () => (ownedCardIds ? cards.filter((card) => ownedCardIds.has(card.id)).length : 0),
@@ -103,7 +103,7 @@ export function BoosterPreviewDialog({
                     {formatRarity(rarity)}
                     {showRarityChanceLabels ? (
                       <span className="ml-2 text-xs font-black text-muted-foreground">
-                        {getRarityChanceLabel(rarity, cards)}
+                        {getRarityChanceLabel(rarity, cards, set.id)}
                       </span>
                     ) : null}
                   </h4>

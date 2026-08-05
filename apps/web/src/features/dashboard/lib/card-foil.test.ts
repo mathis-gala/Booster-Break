@@ -76,6 +76,7 @@ describe('foil profile resolution', () => {
     ['swsh9.5tg-TG29', 'Secret Rare', 'Pokémon', 'special-illustration'],
     ['swsh12.5gg-GG35', 'Ultra Rare', 'Pokémon', 'special-illustration'],
     ['swsh12.5gg-GG42', 'Ultra Rare', 'Pokémon', 'swsh-gallery-vmax'],
+    ['swsh12.5gg-GG41', 'Ultra Rare', 'Pokémon', 'ultra-rare'],
     ['swsh12.5gg-GG57', 'Ultra Rare', undefined, 'ultra-rare'],
     ['swsh12.5gg-GG67', 'Secret Rare', 'Pokémon', 'special-illustration'],
   ] as const)('maps SWSH card %s with rarity %s', (cardId, rarity, supertype, expected) => {
@@ -91,6 +92,16 @@ describe('foil profile resolution', () => {
     expect(profile.textureRoles).not.toContain('illusion')
   })
 
+  test('uses the illusion texture for Galarian Gallery Pokemon V', () => {
+    const profile = resolveFoilProfile('holo', 'Ultra Rare', {
+      cardId: 'swsh12.5gg-GG41',
+      supertype: 'Pokémon',
+    })
+
+    expect(profile.name).toBe('ultra-rare')
+    expect(profile.textureRoles).toContain('illusion')
+  })
+
   test('single-purpose recipes do not gain unrelated layers', () => {
     const illustrationRare = FOIL_PROFILES['illustration-rare']
     const aceSpec = FOIL_PROFILES['ace-spec']
@@ -103,7 +114,8 @@ describe('foil profile resolution', () => {
       expect(profile.bandAngle).toBe(128)
     }
 
-    expect(illustrationRare.bandFrequency).toBe(7)
+    expect(FOIL_PROFILES['double-rare'].bandFrequency).toBe(4.2)
+    expect(illustrationRare.bandFrequency).toBe(4.2)
     expect(illustrationRare.motionSpeed).toBe(0.022)
   })
 
@@ -124,6 +136,14 @@ describe('foil profile resolution', () => {
     ])
     expect(FOIL_PROFILES['special-illustration'].uniform).toBe(7)
     expect(FOIL_PROFILES['mega-hyper-rare'].textureRoles).toEqual(['grain'])
+  })
+
+  test('uses wider bands for premium WebGL recipes', () => {
+    expect(FOIL_PROFILES['ultra-rare'].bandFrequency).toBe(6.5)
+    expect(FOIL_PROFILES['ace-spec'].bandFrequency).toBe(6.5)
+    expect(FOIL_PROFILES['special-illustration'].bandFrequency).toBe(3.6)
+    expect(FOIL_PROFILES['swsh-gallery-vmax'].bandFrequency).toBe(6.5)
+    expect(FOIL_PROFILES['mega-hyper-rare'].bandFrequency).toBe(1.9)
   })
 })
 

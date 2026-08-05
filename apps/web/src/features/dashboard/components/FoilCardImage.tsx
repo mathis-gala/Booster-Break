@@ -1,5 +1,5 @@
 import { useEffect, useRef } from 'react'
-import type { CSSProperties, PointerEvent as ReactPointerEvent } from 'react'
+import type { CSSProperties } from 'react'
 import type { CardFinish } from '@tcg-collection/shared'
 import type { MotionValue } from 'motion/react'
 
@@ -37,7 +37,6 @@ interface FoilCardImageProps {
   rotationY?: MotionValue<number>
   tiltX?: number
   tiltY?: number
-  interactive?: boolean
   renderTilt?: boolean
 }
 
@@ -59,7 +58,6 @@ export function FoilCardImage({
   rotationY,
   tiltX = 0,
   tiltY = 0,
-  interactive = true,
   renderTilt = false,
 }: FoilCardImageProps) {
   const rootRef = useRef<HTMLSpanElement>(null)
@@ -114,42 +112,6 @@ export function FoilCardImage({
     }
   }, [profile, renderTilt, rotationX, rotationY, seed, tiltX, tiltY, tuning])
 
-  const handlePointerMove = (event: ReactPointerEvent<HTMLSpanElement>) => {
-    if (!interactive || profile.name === 'none' || rotationX || rotationY) return
-
-    const bounds = event.currentTarget.getBoundingClientRect()
-    const pointerX = ((event.clientX - bounds.left) / Math.max(bounds.width, 1)) * 2 - 1
-    const pointerY = ((event.clientY - bounds.top) / Math.max(bounds.height, 1)) * 2 - 1
-    const pointerTiltX = renderTilt ? -pointerY * 0.16 : -pointerY * 0.08
-    const pointerTiltY = renderTilt ? pointerX * 0.2 : pointerX * 0.1
-
-    applyFoilCssVariables(
-      event.currentTarget,
-      profile,
-      tuning,
-      pointerTiltX,
-      pointerTiltY,
-      pointerX,
-      pointerY,
-      renderTilt,
-    )
-  }
-
-  const handlePointerLeave = (event: ReactPointerEvent<HTMLSpanElement>) => {
-    if (!interactive || profile.name === 'none') return
-
-    applyFoilCssVariables(
-      event.currentTarget,
-      profile,
-      tuning,
-      rotationX?.get() ?? tiltX,
-      rotationY?.get() ?? tiltY,
-      tuning.lightX,
-      tuning.lightY,
-      renderTilt,
-    )
-  }
-
   return (
     <span
       ref={rootRef}
@@ -161,8 +123,6 @@ export function FoilCardImage({
       data-foil-profile={profile.name}
       data-foil-motion={profile.name !== 'none' && tuning.motion ? 'true' : 'false'}
       style={style}
-      onPointerMove={handlePointerMove}
-      onPointerLeave={handlePointerLeave}
     >
       <img src={src} alt={alt} className={className} />
       {profile.name !== 'none' ? (
@@ -173,10 +133,10 @@ export function FoilCardImage({
         >
           <span className="foil-spectrum absolute inset-0" />
           <span className="foil-bands absolute inset-0" />
-          {profile.name === 'swsh-gallery-vmax' ? (
+          {profile.hasMetal ? (
             <span
-              className="foil-gallery-glitter absolute inset-0"
-              style={{ backgroundImage: `url("${resolveFoilAssetUrl('glitter')}")` }}
+              className="foil-texture foil-metal absolute inset-0"
+              style={{ backgroundImage: `url("${resolveFoilAssetUrl('metal')}")` }}
             />
           ) : null}
           <span className="foil-reflection absolute inset-0" />
@@ -244,13 +204,14 @@ const createFoilStyle = (
   renderTilt: boolean,
 ): FoilCssProperties => {
   const lighting = computeFoilLighting(rotationX, rotationY, tuning.lightX, tuning.lightY)
-  const motionDuration = clamp(1 / Math.max(profile.motionSpeed * 4, 0.01), 9, 18)
+  const motionDuration = clamp(0.3 / Math.max(profile.motionSpeed, 0.001), 12, 18)
   const style: FoilCssProperties = {
-    '--foil-band-angle': `${profile.bandAngle}deg`,
-    '--foil-band-size': `${Math.max(55, 520 / Math.max(profile.bandFrequency, 0.1))}%`,
+    '--foil-band-angle': `${profile.name === 'mega-hyper-rare' ? 128 : profile.bandAngle}deg`,
     '--foil-motion-duration': `${motionDuration}s`,
     '--foil-motion-delay': `${-seed * motionDuration}s`,
-    '--foil-texture-size': `${tuning.textureScale * 100}%`,
+    '--foil-metal-size': `${tuning.textureScale * 38}%`,
+    '--foil-texture-x': `${seed * 100}%`,
+    '--foil-texture-y': `${((seed * 7.31) % 1) * 100}%`,
     transformStyle: 'preserve-3d',
   }
 
@@ -292,31 +253,28 @@ const assignLightingVariables = (
   tuning: FoilTuning,
   lighting: ReturnType<typeof computeFoilLighting>,
 ) => {
-  const materialResponse = lighting.response * tuning.intensity
-  const glareResponse = lighting.glare * tuning.glare
   const isMegaRainbow = profile.name === 'mega-hyper-rare'
   const isRareHolo = profile.name === 'rare-holo' || profile.name === 'swsh-holo-rare'
   const isReverseHolo = profile.name === 'reverse-holo'
   const isClassicHolo = isRareHolo || isReverseHolo
+  const lightVisibility = 0.78 + lighting.response * 0.22
+  const glareVisibility = 0.68 + lighting.glare * 0.32
+  const spectrumStrength = isMegaRainbow ? 0.38 : isReverseHolo ? 0.5 : isClassicHolo ? 0.56 : 0.34
+  const bandStrength = isReverseHolo ? 0.38 : isClassicHolo ? 0.4 : 0.22
+  const reflectionStrength = isClassicHolo ? 0.24 : 0.18
 
-  style['--foil-reflection-x'] = `${lighting.reflectionX}%`
-  style['--foil-reflection-y'] = `${lighting.reflectionY}%`
   style['--foil-spectrum-opacity'] = clamp(
-    materialResponse * (isMegaRainbow ? 0.34 : isReverseHolo ? 0.34 : isClassicHolo ? 0.28 : 0.24),
+    tuning.intensity * spectrumStrength * lightVisibility,
     0,
-    isMegaRainbow ? 0.24 : isReverseHolo ? 0.23 : isClassicHolo ? 0.2 : 0.16,
+    0.58,
   )
-  style['--foil-band-opacity'] = clamp(
-    materialResponse * (isMegaRainbow ? 0.24 : isReverseHolo ? 0.3 : isClassicHolo ? 0.25 : 0.22),
-    0,
-    isMegaRainbow ? 0.16 : isReverseHolo ? 0.2 : isClassicHolo ? 0.18 : 0.13,
-  )
+  style['--foil-band-opacity'] = clamp(tuning.intensity * bandStrength * lightVisibility, 0, 0.42)
   style['--foil-reflection-opacity'] = clamp(
-    glareResponse * (isReverseHolo ? 0.32 : isClassicHolo ? 0.28 : 0.22),
+    tuning.glare * reflectionStrength * glareVisibility,
     0,
-    isReverseHolo ? 0.2 : isClassicHolo ? 0.18 : 0.14,
+    reflectionStrength,
   )
-  style['--foil-glitter-opacity'] = clamp(materialResponse * 0.34, 0, 0.24)
+  style['--foil-metal-opacity'] = clamp(tuning.intensity * 0.22, 0, 0.2)
 }
 
 const clamp = (value: number, minimum: number, maximum: number): number =>

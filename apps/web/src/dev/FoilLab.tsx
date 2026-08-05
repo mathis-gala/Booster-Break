@@ -569,7 +569,6 @@ export function FoilLab() {
               isEvolved={sample.isEvolved}
               foilTuning={tuning}
               foilMask={activeCalibrationMask}
-              interactive={false}
               className="size-full rounded-[inherit] object-contain"
               containerClassName="foil-lab-card"
             />

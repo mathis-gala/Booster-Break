@@ -147,7 +147,7 @@ export const FOIL_PROFILES: Readonly<Record<FoilProfileName, FoilProfile>> = {
     name: 'double-rare',
     uniform: 3,
     bandAngle: 128,
-    bandFrequency: 7,
+    bandFrequency: 4.2,
     intensity: 0.9,
     glare: 0.68,
     textureScale: 0.88,
@@ -162,7 +162,7 @@ export const FOIL_PROFILES: Readonly<Record<FoilProfileName, FoilProfile>> = {
     name: 'illustration-rare',
     uniform: 4,
     bandAngle: 128,
-    bandFrequency: 7,
+    bandFrequency: 4.2,
     intensity: 0.86,
     glare: 0.62,
     textureScale: 0.95,
@@ -177,7 +177,7 @@ export const FOIL_PROFILES: Readonly<Record<FoilProfileName, FoilProfile>> = {
     name: 'ultra-rare',
     uniform: 5,
     bandAngle: 128,
-    bandFrequency: 8,
+    bandFrequency: 6.5,
     intensity: 0.88,
     glare: 0.64,
     textureScale: 1.2,
@@ -192,7 +192,7 @@ export const FOIL_PROFILES: Readonly<Record<FoilProfileName, FoilProfile>> = {
     name: 'ace-spec',
     uniform: 6,
     bandAngle: 128,
-    bandFrequency: 8,
+    bandFrequency: 6.5,
     intensity: 0.86,
     glare: 0.62,
     textureScale: 0.95,
@@ -207,7 +207,7 @@ export const FOIL_PROFILES: Readonly<Record<FoilProfileName, FoilProfile>> = {
     name: 'special-illustration',
     uniform: 7,
     bandAngle: 0,
-    bandFrequency: 4,
+    bandFrequency: 3.6,
     intensity: 0.86,
     glare: 0.62,
     textureScale: 1.2,
@@ -222,7 +222,7 @@ export const FOIL_PROFILES: Readonly<Record<FoilProfileName, FoilProfile>> = {
     name: 'swsh-gallery-vmax',
     uniform: 10,
     bandAngle: 128,
-    bandFrequency: 8,
+    bandFrequency: 6.5,
     intensity: 0.88,
     glare: 0.64,
     textureScale: 1.2,
@@ -237,7 +237,7 @@ export const FOIL_PROFILES: Readonly<Record<FoilProfileName, FoilProfile>> = {
     name: 'mega-hyper-rare',
     uniform: 8,
     bandAngle: 104,
-    bandFrequency: 2.1,
+    bandFrequency: 1.9,
     intensity: 0.82,
     glare: 0.52,
     textureScale: 0.6,
@@ -585,6 +585,14 @@ const resolveSwordShieldFoilProfile = (
 
     if (SWSH_GALLERY_VMAX_CARD_IDS.has(canonicalCardId)) {
       return FOIL_PROFILES['swsh-gallery-vmax']
+    }
+
+    if (
+      galleryCard.setId === 'swsh12.5gg' &&
+      galleryCard.number >= 35 &&
+      galleryCard.number <= 56
+    ) {
+      return FOIL_PROFILES['ultra-rare']
     }
 
     const trainerRange = SWSH_GALLERY_TRAINER_RANGES[galleryCard.setId]
