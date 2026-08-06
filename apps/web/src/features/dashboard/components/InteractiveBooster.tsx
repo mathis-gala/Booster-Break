@@ -1,4 +1,4 @@
-import { useCallback, useRef, useState } from 'react'
+import { useCallback, useEffect, useRef, useState } from 'react'
 
 import { m } from '@/paraglide/messages'
 import { BoosterTearRenderer } from '../webgl/booster-tear-renderer'
@@ -10,6 +10,7 @@ interface InteractiveBoosterProps {
   // Whether the player may start ripping right now (authenticated, off cooldown,
   // not already opening). Read live, so toggling it never remounts the canvas.
   canTear: boolean
+  autoTear: boolean
   onCut: () => void
   onProgressChange?: (progress: number) => void
 }
@@ -18,10 +19,12 @@ export function InteractiveBooster({
   imageUrl,
   setName,
   canTear,
+  autoTear,
   onCut,
   onProgressChange,
 }: InteractiveBoosterProps) {
   const cutRef = useRef(false)
+  const rendererRef = useRef<BoosterTearRenderer | undefined>(undefined)
   const [, setProgress] = useState(0)
   const [fallback, setFallback] = useState(false)
 
@@ -48,6 +51,7 @@ export function InteractiveBooster({
             },
             canTear: () => canTear,
           })
+          rendererRef.current = renderer
           await renderer.initialize()
           if (disposed) {
             renderer.dispose()
@@ -67,17 +71,23 @@ export function InteractiveBooster({
 
       return () => {
         disposed = true
+        if (rendererRef.current === renderer) rendererRef.current = undefined
         renderer?.dispose()
       }
     },
     [canTear, imageUrl, onCut, onProgressChange],
   )
 
+  useEffect(() => {
+    if (autoTear) rendererRef.current?.completeWithAnimation()
+  }, [autoTear])
+
   if (fallback) {
     return (
       <BoosterFallbackCut
         imageUrl={imageUrl}
         canTear={canTear}
+        autoTear={autoTear}
         onCut={() => {
           if (cutRef.current) return
           cutRef.current = true

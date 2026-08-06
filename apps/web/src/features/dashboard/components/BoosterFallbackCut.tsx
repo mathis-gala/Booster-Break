@@ -1,10 +1,11 @@
-import { useCallback, useRef, useState } from 'react'
+import { useCallback, useEffect, useRef, useState } from 'react'
 
 import { clamp } from '../webgl/number-utils'
 
 interface BoosterFallbackCutProps {
   imageUrl: string
   canTear: boolean
+  autoTear: boolean
   onCut: () => void
   onProgressChange?: (progress: number) => void
 }
@@ -12,6 +13,7 @@ interface BoosterFallbackCutProps {
 // Drag distance (as a fraction of width) needed to fully open without WebGL.
 const CUT_TRAVEL = 0.94
 const LAUNCH_MS = 980
+const AUTO_TEAR_MS = 320
 const TOP_STRIP_HEIGHT = 14
 
 /**
@@ -22,12 +24,14 @@ const TOP_STRIP_HEIGHT = 14
 export function BoosterFallbackCut({
   imageUrl,
   canTear,
+  autoTear,
   onCut,
   onProgressChange,
 }: BoosterFallbackCutProps) {
   const containerRef = useRef<HTMLDivElement | null>(null)
   const startXRef = useRef(0)
   const cutRef = useRef(false)
+  const progressRef = useRef(0)
   const [dragging, setDragging] = useState(false)
   const [launching, setLaunching] = useState(false)
   const [direction, setDirection] = useState<1 | -1>(1)
@@ -35,6 +39,7 @@ export function BoosterFallbackCut({
 
   const updateProgress = useCallback(
     (value: number) => {
+      progressRef.current = value
       setProgress(value)
       onProgressChange?.(value)
     },
@@ -80,10 +85,35 @@ export function BoosterFallbackCut({
     updateProgress(0)
   }, [updateProgress])
 
+  useEffect(() => {
+    if (!autoTear || !canTear || cutRef.current) return
+
+    setDirection(1)
+    setDragging(false)
+    const initialProgress = progressRef.current
+    const startedAt = performance.now()
+    let frame = 0
+
+    const advance = (now: number) => {
+      const elapsed = Math.min((now - startedAt) / AUTO_TEAR_MS, 1)
+      const eased = 1 - Math.pow(1 - elapsed, 3)
+      updateProgress(initialProgress + (1 - initialProgress) * eased)
+
+      if (elapsed < 1) {
+        frame = requestAnimationFrame(advance)
+      } else {
+        launch()
+      }
+    }
+
+    frame = requestAnimationFrame(advance)
+    return () => cancelAnimationFrame(frame)
+  }, [autoTear, canTear, launch, updateProgress])
+
   const hasVisibleCut = progress > 0.04 || launching
   const transformOrigin = direction > 0 ? '100% 14%' : '0% 14%'
   const rotation = direction * progress * 10
-  const launchRotation = direction * 13
+  const launchRotation = direction * 4
 
   const bodyStyle = hasVisibleCut
     ? {
@@ -95,7 +125,7 @@ export function BoosterFallbackCut({
     ? {
         clipPath: `inset(0 0 ${100 - TOP_STRIP_HEIGHT}% 0)`,
         transformOrigin,
-        transform: `translateY(-18%) translateX(${direction * 4}%) rotate(${launchRotation}deg) rotateX(28deg) scale(1.02)`,
+        transform: `translateY(-1%) translateX(${direction * 6}%) rotate(${launchRotation}deg) rotateX(28deg) scale(1.02)`,
         opacity: 1,
         transition: `transform ${LAUNCH_MS}ms cubic-bezier(0.22, 1, 0.36, 1)`,
       }

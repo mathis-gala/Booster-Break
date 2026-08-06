@@ -202,6 +202,7 @@ export function PackOpeningExperience({
   const [phase, setPhase] = useState<OpeningPhase>('tear')
   const [revealedCardIndex, setRevealedCardIndex] = useState(0)
   const [tearProgress, setTearProgress] = useState(0)
+  const [autoTearRequested, setAutoTearRequested] = useState(false)
   const [sampledArtwork, setSampledArtwork] = useState<{
     imageUrl: string
     color: string
@@ -252,6 +253,23 @@ export function PackOpeningExperience({
   const handleTearComplete = useCallback(() => {
     setPhase((currentPhase) => (currentPhase === 'tear' ? 'extract' : currentPhase))
   }, [])
+
+  const requestAutoTear = useCallback(() => {
+    setAutoTearRequested(true)
+  }, [])
+
+  useEffect(() => {
+    if (phase !== 'tear' || autoTearRequested) return
+
+    const handleKeyDown = (event: KeyboardEvent) => {
+      if (event.code !== 'Space') return
+      event.preventDefault()
+      requestAutoTear()
+    }
+
+    window.addEventListener('keydown', handleKeyDown)
+    return () => window.removeEventListener('keydown', handleKeyDown)
+  }, [autoTearRequested, phase, requestAutoTear])
 
   const handleCardDismissed = useCallback(() => {
     if (revealedCardIndex >= openPackResult.cards.length - 1) {
@@ -351,6 +369,7 @@ export function PackOpeningExperience({
                     imageUrl={openPackResult.set.boosterImageUrl ?? ''}
                     setName={openPackResult.set.name}
                     canTear
+                    autoTear={autoTearRequested}
                     onCut={handleTearComplete}
                     onProgressChange={setTearProgress}
                   />
@@ -371,7 +390,8 @@ export function PackOpeningExperience({
                 <motion.button
                   type="button"
                   className="mt-2 text-xs font-semibold text-white/45 underline-offset-4 transition hover:text-white/80 hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/80"
-                  onClick={handleTearComplete}
+                  onClick={requestAutoTear}
+                  disabled={autoTearRequested}
                   animate={{ opacity: isTearPhase ? 1 : 0 }}
                   tabIndex={isTearPhase ? 0 : -1}
                 >
