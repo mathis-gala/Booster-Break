@@ -4,19 +4,28 @@ import tailwindcss from '@tailwindcss/vite'
 import { paraglideVitePlugin } from '@inlang/paraglide-js'
 import path from 'node:path'
 
-const devFoilLabPlugin = (): Plugin => ({
-  name: 'dev-foil-lab',
+const devLabNames = new Set(['foils', 'opening'])
+
+const devLabsPlugin = (): Plugin => ({
+  name: 'dev-labs',
   apply: 'serve',
   configureServer(server) {
     server.middlewares.use((request, response, next) => {
       const [pathname, query] = request.url?.split('?', 2) ?? []
-      if (pathname?.endsWith('/dev/foils/')) {
+      const labMatch = pathname?.match(/\/dev\/([^/]+)\/?$/)
+      const labName = labMatch?.[1]
+      if (!labName || !devLabNames.has(labName)) {
+        next()
+        return
+      }
+
+      if (pathname?.endsWith('/')) {
         response.statusCode = 307
         response.setHeader('Location', `${pathname.slice(0, -1)}${query ? `?${query}` : ''}`)
         response.end()
         return
       }
-      if (pathname?.endsWith('/dev/foils')) {
+      if (pathname?.endsWith(`/dev/${labName}`)) {
         request.url = `${pathname}.html${query ? `?${query}` : ''}`
       }
       next()
@@ -51,7 +60,7 @@ export default defineConfig({
     }),
     react(),
     tailwindcss(),
-    devFoilLabPlugin(),
+    devLabsPlugin(),
     excludeDevModulesPlugin(),
   ],
   resolve: {

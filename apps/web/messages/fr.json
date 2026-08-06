@@ -129,6 +129,7 @@
   "packs_tear_skip": "Passer l’animation",
   "packs_reveal_instruction": "Glisse ou touche pour révéler la carte suivante",
   "packs_reveal_card_aria": "{name}, carte {current} sur {total}. Glisse ou appuie pour continuer.",
+  "packs_jackpot_reveal_in_progress": "Révélation spéciale de {name} en cours.",
   "packs_recap_instruction": "Touche une carte pour l’agrandir",
   "packs_finish_opening": "Terminer",
   "packs_pokemon_fallback": "Pokémon",

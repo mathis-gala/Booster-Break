@@ -347,3 +347,64 @@ body,
     background-position: 100% 80%;
   }
 }
+
+.card-reveal-particle {
+  position: absolute;
+  display: block;
+  filter: drop-shadow(0 0 5px rgb(var(--card-reveal-color) / 0.9));
+  transform-origin: center;
+  will-change: transform, opacity;
+}
+
+.card-reveal-glint::before,
+.card-reveal-glint::after {
+  position: absolute;
+  inset: 0;
+  margin: auto;
+  content: '';
+  border-radius: 999px;
+  background: linear-gradient(
+    90deg,
+    transparent,
+    rgb(var(--card-reveal-color) / 0.8) 28%,
+    white 50%,
+    rgb(var(--card-reveal-color) / 0.8) 72%,
+    transparent
+  );
+}
+
+.card-reveal-glint::before,
+.card-reveal-glint::after {
+  width: 100%;
+  height: 12%;
+}
+
+.card-reveal-glint::after {
+  transform: rotate(90deg) scaleX(0.62);
+}
+
+.card-reveal-streak {
+  border-radius: 999px;
+  background: linear-gradient(
+    90deg,
+    transparent,
+    rgb(var(--card-reveal-color) / 0.75) 24%,
+    white 58%,
+    transparent
+  );
+  box-shadow: 0 0 7px rgb(var(--card-reveal-color) / 0.75);
+}
+
+.card-reveal-mote {
+  border-radius: 999px;
+  background: white;
+  box-shadow:
+    0 0 4px white,
+    0 0 9px rgb(var(--card-reveal-color) / 0.92);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .card-reveal-particle {
+    will-change: opacity;
+  }
+}

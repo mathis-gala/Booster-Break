@@ -129,6 +129,7 @@
   "packs_tear_skip": "Skip animation",
   "packs_reveal_instruction": "Swipe or tap to reveal the next card",
   "packs_reveal_card_aria": "{name}, card {current} of {total}. Swipe or press to continue.",
+  "packs_jackpot_reveal_in_progress": "Special reveal for {name} in progress.",
   "packs_recap_instruction": "Tap a card to enlarge it",
   "packs_finish_opening": "Finish",
   "packs_pokemon_fallback": "Pokemon",
