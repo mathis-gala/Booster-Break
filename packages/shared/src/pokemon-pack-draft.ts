@@ -19,6 +19,14 @@ const RARE_RARITIES = ['Rare']
 const REVERSE_FOIL_RARITIES = [...COMMON_RARITIES, ...UNCOMMON_RARITIES, ...RARE_RARITIES]
 const SWSH_REVERSE_FOIL_RARITIES = [...REVERSE_FOIL_RARITIES, 'Holo Rare']
 
+const HISTORICAL_COMMON_CARD_SLOTS = 5
+const HISTORICAL_UNCOMMON_CARD_SLOTS = 3
+const HISTORICAL_REVERSE_OR_INSERT_SLOTS = 1
+const COSMIC_ECLIPSE_SET_ID = 'sm12'
+const COSMIC_ECLIPSE_CHARACTER_RARE_CHANCE = 100 / 12
+const HISTORICAL_HOLO_RARE_CHANCE = 25
+const HISTORICAL_HIT_CHANCE = 100 / 12
+
 const GOD_PACK_CHANCE = 0.16
 // Crown Zenith did not have this pack in English. This emulates the VSTAR Universe
 // nine-AR pack with its English GG equivalents at the observed estimate of 1 in 700.
@@ -258,6 +266,10 @@ export const drawPokemonPackCards = (
     return drawSwshPack(allCards, setId, enableGodPack)
   }
 
+  if (setId && isHistoricalSetId(setId)) {
+    return drawHistoricalPack(allCards, setId)
+  }
+
   const godPack = enableGodPack && !setId?.startsWith('me') ? drawGodPack(allCards) : undefined
 
   if (godPack) {
@@ -294,6 +306,133 @@ export const drawPokemonPackCards = (
 
   return { cards, isGodPack: false }
 }
+
+const drawHistoricalPack = (
+  allCards: PokemonCardSummary[],
+  setId: string,
+): PokemonPackDrawResult => {
+  const selectedCards = new Set<string>()
+  const setCards = allCards.filter((card) => card.setId === setId)
+  const cards = [
+    ...drawManyUnique(
+      getCardsByRarity(setCards, COMMON_RARITIES),
+      HISTORICAL_COMMON_CARD_SLOTS,
+      selectedCards,
+      'normal',
+    ),
+    ...drawManyUnique(
+      getCardsByRarity(setCards, UNCOMMON_RARITIES),
+      HISTORICAL_UNCOMMON_CARD_SLOTS,
+      selectedCards,
+      'normal',
+    ),
+    ...drawHistoricalReverseOrInsertSlot(setCards, setId, selectedCards),
+    ...drawHistoricalRareSlot(setCards, selectedCards),
+  ]
+
+  if (cards.length < PACK_CARD_COUNT) {
+    const fillerCards = getCardsByRarity(setCards, [...COMMON_RARITIES, ...UNCOMMON_RARITIES])
+    cards.push(
+      ...drawManyUnique(fillerCards, PACK_CARD_COUNT - cards.length, selectedCards, 'normal'),
+    )
+  }
+
+  return { cards, isGodPack: false }
+}
+
+const drawHistoricalReverseOrInsertSlot = (
+  cards: PokemonCardSummary[],
+  setId: string,
+  selectedCards: Set<string>,
+): PokemonCardSummary[] => {
+  if (
+    setId === COSMIC_ECLIPSE_SET_ID &&
+    Math.random() * 100 < COSMIC_ECLIPSE_CHARACTER_RARE_CHANCE
+  ) {
+    const characterRare = drawUniqueCard(cards.filter(isCosmicEclipseCharacterRare), selectedCards)
+
+    if (characterRare) {
+      return [withFinish(characterRare, 'holo')]
+    }
+  }
+
+  return drawManyUnique(
+    getHistoricalReverseCandidates(cards),
+    HISTORICAL_REVERSE_OR_INSERT_SLOTS,
+    selectedCards,
+    'reverse_holo',
+  )
+}
+
+const drawHistoricalRareSlot = (
+  cards: PokemonCardSummary[],
+  selectedCards: Set<string>,
+): PokemonCardSummary[] => {
+  const normalRares = cards.filter(isHistoricalNormalRare)
+  const explicitlyLabeledHoloRares = cards.filter((card) => {
+    const rarity = normalizeRarity(card.rarity)
+    return (rarity === 'rare holo' || rarity === 'holo rare') && !isHistoricalNamedHit(card)
+  })
+  const holoRares = explicitlyLabeledHoloRares.length > 0 ? explicitlyLabeledHoloRares : normalRares
+  const hits = cards.filter(isHistoricalHit)
+  const roll = Math.random() * 100
+  const category =
+    roll < HISTORICAL_HIT_CHANCE
+      ? { cards: hits, finish: 'holo' as const }
+      : roll < HISTORICAL_HIT_CHANCE + HISTORICAL_HOLO_RARE_CHANCE
+        ? { cards: holoRares, finish: 'holo' as const }
+        : { cards: normalRares, finish: 'normal' as const }
+  const selectedCard = drawUniqueCard(category.cards, selectedCards)
+  const fallbackCard = selectedCard ?? drawUniqueCard(normalRares, selectedCards)
+
+  if (fallbackCard) {
+    return [withFinish(fallbackCard, selectedCard ? category.finish : 'normal')]
+  }
+
+  const availableRare = drawUniqueCard([...holoRares, ...hits], selectedCards)
+  return availableRare ? [withFinish(availableRare, 'holo')] : []
+}
+
+const isCosmicEclipseCharacterRare = (card: PokemonCardSummary): boolean => {
+  const number = Number(card.number)
+  return number >= 237 && number <= 248
+}
+
+const isHistoricalNormalRare = (card: PokemonCardSummary): boolean =>
+  normalizeRarity(card.rarity) === 'rare' && !isHistoricalNamedHit(card)
+
+const isHistoricalHit = (card: PokemonCardSummary): boolean => {
+  if (card.setId === COSMIC_ECLIPSE_SET_ID && isCosmicEclipseCharacterRare(card)) {
+    return false
+  }
+
+  const rarity = normalizeRarity(card.rarity)
+  return (
+    isHistoricalNamedHit(card) ||
+    (rarity.length > 0 &&
+      !['common', 'commune', 'uncommon', 'peu commune', 'rare', 'rare holo', 'holo rare'].includes(
+        rarity,
+      ))
+  )
+}
+
+const isHistoricalNamedHit = (card: PokemonCardSummary): boolean => {
+  const name = normalizeRarity(card.name)
+  return /\b(?:ex|gx|break|legend)\b|\blv x\b/.test(name) || /[☆★]/.test(card.name)
+}
+
+const getHistoricalReverseCandidates = (cards: PokemonCardSummary[]): PokemonCardSummary[] => {
+  const advertisedCandidates = cards.filter((card) => card.finishes?.includes('reverse_holo'))
+
+  return advertisedCandidates.length > 0
+    ? advertisedCandidates
+    : getCardsByRarity(cards, REVERSE_FOIL_RARITIES)
+}
+
+const normalizeRarity = (rarity: string | undefined): string => (rarity ?? '').trim().toLowerCase()
+
+const isHistoricalSetId = (setId: string): boolean =>
+  /^(?:ecard|ex|dp|pl|hgss|bw|xy|sm)\d+(?:\.\d+)?$/i.test(setId)
 
 const drawSwshPack = (
   allCards: PokemonCardSummary[],

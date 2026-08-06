@@ -210,6 +210,63 @@ describe('drawPokemonPackCards', () => {
     expect(cards).toHaveLength(10)
   })
 
+  test.each(['ecard3', 'ex16', 'dp7', 'pl4', 'hgss4', 'bw11', 'xy12', 'sm11'])(
+    'draws one reverse slot and one independent rare slot for historical set %s',
+    (setId) => {
+      Math.random = () => 0.99
+
+      const { cards, isGodPack } = drawPokemonPackCards(makeHistoricalCards(setId), {
+        setId,
+      })
+
+      expect(isGodPack).toBe(false)
+      expect(cards).toHaveLength(10)
+      expect(cards.slice(0, 5).every((card) => card.rarity === 'Common')).toBe(true)
+      expect(cards.slice(5, 8).every((card) => card.rarity === 'Uncommon')).toBe(true)
+      expect(cards[8]?.finish).toBe('reverse_holo')
+      expect(cards[9]?.rarity).toBe('Rare')
+      expect(cards[9]?.finish).toBe('normal')
+      expect(cards.filter((card) => card.finish === 'reverse_holo')).toHaveLength(1)
+    },
+  )
+
+  test('draws historical holo rares and hits only from the final rare slot', () => {
+    const cards = makeHistoricalCards('xy12')
+    const cases = [
+      { rareRoll: 0.1, rarity: 'Rare Holo', id: 'holo-rare-0' },
+      { rareRoll: 0.01, rarity: 'Rare', id: 'hit-0' },
+    ] as const
+
+    for (const drawCase of cases) {
+      useRandomSequence([...Array<number>(9).fill(0), drawCase.rareRoll, 0])
+
+      const result = drawPokemonPackCards(cards, { setId: 'xy12' })
+
+      expect(result.cards[8]?.finish).toBe('reverse_holo')
+      expect(result.cards[9]?.id).toBe(drawCase.id)
+      expect(result.cards[9]?.rarity).toBe(drawCase.rarity)
+      expect(result.cards[9]?.finish).toBe('holo')
+    }
+  })
+
+  test('puts only Cosmic Eclipse character cards 237 through 248 in slot nine', () => {
+    const allCards = [
+      ...makeHistoricalCards('sm12'),
+      { ...makeCard('sm12-237', 'sm12', '237'), name: 'Torkoal' },
+      { ...makeCard('sm12-249', 'sm12', '249'), name: 'Vileplume GX' },
+    ]
+    useRandomSequence([...Array<number>(8).fill(0), 0.01, 0, 0.99, 0])
+
+    const { cards } = drawPokemonPackCards(allCards, { setId: 'sm12' })
+
+    expect(cards).toHaveLength(10)
+    expect(cards[8]?.id).toBe('sm12-237')
+    expect(cards[8]?.finish).toBe('holo')
+    expect(cards[9]?.rarity).toBe('Rare')
+    expect(cards[9]?.finish).toBe('normal')
+    expect(cards.some((card) => card.id === 'sm12-249')).toBe(false)
+  })
+
   test('draws Sword and Shield packs with five commons and one reverse slot', () => {
     Math.random = () => 0.99
 
@@ -525,6 +582,17 @@ const makeModernCards = (setId: string): PokemonCardSummary[] => [
   ...makeCards('ultra-rare', 'Ultra Rare', 2, ['holo'], setId),
   ...makeCards('special-illustration-rare', 'Special Illustration Rare', 2, ['holo'], setId),
   ...makeCards('mega-hyper-rare', 'Mega Hyper Rare', 1, ['holo'], setId),
+]
+
+const makeHistoricalCards = (setId: string): PokemonCardSummary[] => [
+  ...makeCards('common', 'Common', 6, ['normal'], setId),
+  ...makeCards('uncommon', 'Uncommon', 4, ['normal'], setId),
+  ...makeCards('rare', 'Rare', 2, ['normal'], setId),
+  ...makeCards('holo-rare', 'Rare Holo', 1, ['normal'], setId),
+  ...makeCards('hit', 'Rare', 1, ['normal'], setId).map((card) => ({
+    ...card,
+    name: 'Absol ex',
+  })),
 ]
 
 const useRandomSequence = (values: number[]): void => {

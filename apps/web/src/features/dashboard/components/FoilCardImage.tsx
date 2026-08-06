@@ -61,7 +61,7 @@ export function FoilCardImage({
   renderTilt = false,
 }: FoilCardImageProps) {
   const rootRef = useRef<HTMLSpanElement>(null)
-  const profile = resolveFoilProfile(finish, rarity, { cardId, supertype })
+  const profile = resolveFoilProfile(finish, rarity, { cardId, supertype, cardName: alt })
   const mask = resolveFoilMask(supertype, profile.name, isEvolved, cardId, foilMask)
   const tuning = resolveFoilTuning(profile, tuningOverrides)
   const seed = getCardFoilSeed(cardId)

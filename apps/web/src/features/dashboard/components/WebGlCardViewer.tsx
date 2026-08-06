@@ -86,6 +86,7 @@ export function WebGlCardViewer({
           renderer = new CardViewerRenderer(currentCanvas, {
             frontImageUrl,
             cardId,
+            cardName: alt,
             finish,
             rarity,
             supertype,
@@ -138,6 +139,7 @@ export function WebGlCardViewer({
       }
     },
     [
+      alt,
       cameraDistance,
       cardId,
       finish,

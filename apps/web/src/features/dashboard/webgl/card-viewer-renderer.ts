@@ -28,6 +28,7 @@ import { loadImageTexture } from './texture-loader'
 interface CardViewerRendererOptions {
   frontImageUrl: string
   cardId: string
+  cardName?: string
   finish?: CardFinish
   rarity?: string
   supertype?: string
@@ -97,6 +98,7 @@ export class CardViewerRenderer {
     this.profile = resolveFoilProfile(options.finish, options.rarity, {
       cardId: options.cardId,
       supertype: options.supertype,
+      cardName: options.cardName,
     })
     this.mask = resolveFoilMask(
       options.supertype,

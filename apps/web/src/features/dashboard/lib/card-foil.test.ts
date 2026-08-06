@@ -58,6 +58,28 @@ describe('foil profile resolution', () => {
   })
 
   test.each([
+    ['ecard3-001', 'Rare Holo', 'rare-holo'],
+    ['ex16-001', 'Rare Holo ex', 'illustration-rare'],
+    ['dp7-001', 'Rare Holo LV.X', 'illustration-rare'],
+    ['pl4-001', 'Rare Ultra', 'illustration-rare'],
+    ['hgss4-001', 'LEGEND', 'illustration-rare'],
+    ['bw11-001', 'Rare Holo EX', 'illustration-rare'],
+    ['xy12-001', 'Rare BREAK', 'illustration-rare'],
+    ['sm12-001', 'Rare Holo GX', 'illustration-rare'],
+  ] as const)('maps pre-SWSH card %s with rarity %s to %s', (cardId, rarity, expected) => {
+    expect(resolveFoilProfile('holo', rarity, { cardId }).name).toBe(expected)
+  })
+
+  test('recognizes legacy hits whose source rarity is only Rare', () => {
+    expect(
+      resolveFoilProfile('holo', 'Rare', { cardId: 'ex16-092', cardName: 'Absol ex' }).name,
+    ).toBe('illustration-rare')
+    expect(
+      resolveFoilProfile('holo', 'Rare', { cardId: 'xy12-016', cardName: 'Ninetales BREAK' }).name,
+    ).toBe('illustration-rare')
+  })
+
+  test.each([
     ['swsh12-001', 'Common', 'Pokémon', 'none'],
     ['swsh12-036', 'Holo Rare', 'Pokémon', 'swsh-holo-rare'],
     ['swsh12-007', 'Holo Rare V', 'Pokémon', 'illustration-rare'],
@@ -180,6 +202,21 @@ describe('foil masks', () => {
         left < artRight && right > artLeft && top < artBottom && bottom > artTop
       expect(overlapsArtwork).toBeFalse()
     }
+  })
+
+  test('uses full-card foil without frame boundaries for pre-SWSH reverses and holos', () => {
+    const reverseProfile = resolveFoilProfile('reverse_holo', 'Common', { cardId: 'xy12-001' })
+    const reverseMask = resolveFoilMask('Pokémon', reverseProfile.name, true, 'xy12-001')
+    const holoProfile = resolveFoilProfile('holo', 'Rare Holo', { cardId: 'sm12-001' })
+    const holoMask = resolveFoilMask('Pokémon', holoProfile.name, true, 'sm12-001')
+
+    expect(reverseMask).toEqual({ artwork: [0, 0, 0, 0], stock: [0, 0, 1, 1] })
+    expect(getMainFoilRegions(reverseProfile, reverseMask)).toEqual([[0, 0, 1, 1]])
+    expect(holoMask).toEqual({ artwork: [0, 0, 1, 1], stock: [0, 0, 1, 1] })
+    expect(getMainFoilRegions(holoProfile, holoMask)).toEqual([[0, 0, 1, 1]])
+    expect(getBorderFoilRegions(holoProfile, holoMask)).toEqual([])
+    expect(reverseMask.evolution).toBeUndefined()
+    expect(holoMask.evolution).toBeUndefined()
   })
 
   test('shares calibrated Pokemon and Trainer frames across classic holo profiles', () => {

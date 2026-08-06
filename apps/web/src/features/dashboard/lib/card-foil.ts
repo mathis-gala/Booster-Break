@@ -35,7 +35,7 @@ export interface FoilCardMetadata {
   isEvolved?: boolean
 }
 
-type FoilProfileContext = Pick<FoilCardMetadata, 'cardId' | 'supertype'>
+type FoilProfileContext = Pick<FoilCardMetadata, 'cardId' | 'supertype'> & { cardName?: string }
 
 export interface FoilProfile {
   name: FoilProfileName
@@ -354,6 +354,9 @@ const SWSH_GALLERY_TRAINER_RANGES: Readonly<
 export const isSwordShieldCardId = (cardId: string | undefined): boolean =>
   /^swsh\d+(?:\.\d+)?(?:tg|gg)?-/i.test(cardId ?? '')
 
+export const isPreSwordShieldCardId = (cardId: string | undefined): boolean =>
+  /^(?:ecard|ex|dp|pl|hgss|bw|xy|sm)\d+(?:\.\d+)?-/i.test(cardId ?? '')
+
 export const resolveFoilProfile = (
   finish: CardFinish | undefined,
   rarity: string | undefined,
@@ -368,6 +371,16 @@ export const resolveFoilProfile = (
   }
 
   const value = normalizeMetadataValue(rarity)
+
+  if (context && isPreSwordShieldCardId(context.cardId)) {
+    const cardName = normalizeMetadataValue(context.cardName)
+    const isNamedHit =
+      /\b(?:ex|gx|break|legend)\b|\blv x\b/.test(cardName) || /[☆★]/.test(context.cardName ?? '')
+
+    return ['rare', 'rare holo', 'holo rare'].includes(value) && !isNamedHit
+      ? FOIL_PROFILES['rare-holo']
+      : FOIL_PROFILES['illustration-rare']
+  }
 
   if (context && isSwordShieldCardId(context.cardId)) {
     return resolveSwordShieldFoilProfile(value, context)
@@ -436,6 +449,16 @@ export const resolveFoilMask = (
   override?: FoilMask,
 ): FoilMask => {
   const layout = resolveCardLayout(supertype)
+  const isPreSwordShield = isPreSwordShieldCardId(cardId)
+
+  if (isPreSwordShield && profileName === 'reverse-holo') {
+    return { artwork: [0, 0, 0, 0], stock: [0, 0, 1, 1] }
+  }
+
+  if (isPreSwordShield && profileName === 'rare-holo') {
+    return { artwork: [0, 0, 1, 1], stock: [0, 0, 1, 1] }
+  }
+
   const isSwordShield = isSwordShieldCardId(cardId)
   const mask =
     override ?? (isSwordShield ? SWSH_FOIL_LAYOUT_MASKS[layout] : FOIL_LAYOUT_MASKS[layout])
