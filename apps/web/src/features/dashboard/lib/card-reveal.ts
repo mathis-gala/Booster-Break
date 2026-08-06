@@ -187,14 +187,14 @@ const getParticleConfig = (
   switch (tier) {
     case 'rr':
       return {
-        count: 28,
-        minimumDistance: 30,
-        distanceVariance: 58,
+        count: 32,
+        minimumDistance: 34,
+        distanceVariance: 66,
         minimumDelay: 0,
-        delayVariance: 0.34,
-        minimumDuration: 0.9,
-        durationVariance: 0.55,
-        sizeVariance: 12,
+        delayVariance: 0.44,
+        minimumDuration: 1.15,
+        durationVariance: 0.7,
+        sizeVariance: 14,
         perimeterOrigins: true,
       }
     case 'ir':
@@ -211,14 +211,14 @@ const getParticleConfig = (
       }
     case 'sr':
       return {
-        count: 64,
-        minimumDistance: 42,
-        distanceVariance: 104,
+        count: 68,
+        minimumDistance: 46,
+        distanceVariance: 110,
         minimumDelay: 0,
-        delayVariance: 0.68,
-        minimumDuration: 1.15,
-        durationVariance: 0.85,
-        sizeVariance: 18,
+        delayVariance: 0.82,
+        minimumDuration: 1.45,
+        durationVariance: 1,
+        sizeVariance: 20,
         perimeterOrigins: true,
       }
     case 'ace-spec':

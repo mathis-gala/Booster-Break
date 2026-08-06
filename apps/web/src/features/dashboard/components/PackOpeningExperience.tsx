@@ -628,7 +628,7 @@ function CardStack({
             ref={cardRef}
             type="button"
             className={cn(
-              'absolute inset-0 z-30 touch-none select-none rounded-lg bg-transparent p-0 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/90 focus-visible:ring-offset-4 focus-visible:ring-offset-slate-950/70',
+              'absolute inset-0 z-30 touch-none select-none rounded-lg bg-transparent p-0 focus-visible:outline-none',
               !canDismiss || exitDirection
                 ? 'pointer-events-none'
                 : 'cursor-grab active:cursor-grabbing',
@@ -1058,36 +1058,67 @@ function RevealStageAccent({
 }) {
   if (tier === 'rr') {
     return (
-      <div className="pointer-events-none absolute -inset-[36%] z-[5]" aria-hidden="true">
-        {palette.slice(0, 3).map((paletteColor, index) => (
-          <motion.div
-            key={`${index}-${paletteColor}`}
-            className="absolute inset-[8%] rounded-full blur-2xl"
-            style={{
-              backgroundImage: `conic-gradient(from ${index * 120 + 20}deg, transparent 0deg 126deg, rgb(${paletteColor} / 0.46) 148deg, transparent 176deg 360deg)`,
-              maskImage:
-                'radial-gradient(ellipse at center, transparent 0 35%, black 52%, transparent 76%)',
-              WebkitMaskImage:
-                'radial-gradient(ellipse at center, transparent 0 35%, black 52%, transparent 76%)',
-            }}
-            initial={{ opacity: 0, scale: 0.72, rotate: -10 + index * 5 }}
-            animate={
-              shouldReduceMotion
-                ? { opacity: [0, 0.24, 0] }
-                : {
-                    opacity: [0, 0.44, 0.28, 0],
-                    scale: [0.72, 1, 1.12, 1.22],
-                    rotate: [-10 + index * 5, 14 + index * 7, 28 + index * 8],
-                  }
-            }
-            transition={{
-              delay: shouldReduceMotion ? 0 : index * 0.04,
-              duration: shouldReduceMotion ? 0.35 : 2.4,
-              times: shouldReduceMotion ? [0, 0.5, 1] : [0, 0.18, 0.64, 1],
-              ease: 'easeOut',
-            }}
-          />
-        ))}
+      <div className="pointer-events-none absolute -inset-[22%] z-[5]" aria-hidden="true">
+        <motion.div
+          className="absolute inset-[12%] rounded-full mix-blend-screen blur-3xl"
+          style={{
+            backgroundImage: `radial-gradient(circle, rgb(${palette[0]} / 0.46), transparent 68%)`,
+          }}
+          initial={{ opacity: 0, scale: 0.66 }}
+          animate={
+            shouldReduceMotion
+              ? { opacity: [0, 0.3, 0] }
+              : { opacity: [0, 0.58, 0.38, 0], scale: [0.66, 0.96, 1.07, 1.13] }
+          }
+          transition={{
+            duration: shouldReduceMotion ? 0.35 : 3.25,
+            times: shouldReduceMotion ? [0, 0.5, 1] : [0, 0.16, 0.7, 1],
+            ease: 'easeOut',
+          }}
+        />
+        {palette.slice(0, 3).map((paletteColor, index) => {
+          const direction = index % 2 === 0 ? 1 : -1
+          const initialRotation = (-18 + index * 7) * direction
+          const driftX = (index - 1) * 10
+          const driftY = index === 1 ? -8 : 6
+
+          return (
+            <motion.div
+              key={`${index}-${paletteColor}`}
+              className="absolute inset-0 rounded-full mix-blend-screen blur-2xl"
+              style={{
+                backgroundImage: `conic-gradient(from ${index * 120 + 12}deg, transparent 0deg 108deg, rgb(${paletteColor} / 0.66) 138deg, rgb(${paletteColor} / 0.22) 158deg, transparent 188deg 360deg)`,
+                maskImage:
+                  'radial-gradient(ellipse at center, transparent 0 30%, black 48%, transparent 76%)',
+                WebkitMaskImage:
+                  'radial-gradient(ellipse at center, transparent 0 30%, black 48%, transparent 76%)',
+              }}
+              initial={{ opacity: 0, scale: 0.68, rotate: initialRotation }}
+              animate={
+                shouldReduceMotion
+                  ? { opacity: [0, 0.28, 0] }
+                  : {
+                      opacity: [0, 0.64, 0.42, 0],
+                      scale: [0.68, 0.97 + index * 0.015, 1.07 + index * 0.015, 1.15],
+                      x: [0, driftX * -0.35, driftX * 0.4, driftX],
+                      y: [0, driftY * -0.3, driftY * 0.45, driftY],
+                      rotate: [
+                        initialRotation,
+                        (18 + index * 10) * direction,
+                        (38 + index * 12) * direction,
+                        (58 + index * 14) * direction,
+                      ],
+                    }
+              }
+              transition={{
+                delay: shouldReduceMotion ? 0 : index * 0.07,
+                duration: shouldReduceMotion ? 0.35 : 3.2 - index * 0.04,
+                times: shouldReduceMotion ? [0, 0.5, 1] : [0, 0.18, 0.68, 1],
+                ease: 'easeInOut',
+              }}
+            />
+          )
+        })}
       </div>
     )
   }
@@ -1117,65 +1148,97 @@ function RevealStageAccent({
 
   if (tier === 'ir') {
     return (
-      <div className="pointer-events-none absolute -inset-[38%] z-[5]" aria-hidden="true">
+      <div className="pointer-events-none absolute -inset-[46%] z-[5]" aria-hidden="true">
         <motion.div
-          className="absolute inset-0 rounded-full blur-3xl"
+          className="absolute -inset-[12%] blur-[72px]"
           style={{
-            backgroundImage: `conic-gradient(from 20deg, rgb(${palette[0]} / 0.56), rgb(${palette[1]} / 0.5), rgb(${palette[2]} / 0.58), rgb(${palette[0]} / 0.46), rgb(${palette[1]} / 0.52), rgb(${palette[2]} / 0.48), rgb(${palette[0]} / 0.56))`,
-            maskImage:
-              'radial-gradient(ellipse at center, transparent 0 34%, black 52%, transparent 76%)',
-            WebkitMaskImage:
-              'radial-gradient(ellipse at center, transparent 0 34%, black 52%, transparent 76%)',
+            backgroundImage: `radial-gradient(ellipse 34% 44% at 14% 28%, rgb(${palette[0]} / 0.62), rgb(${palette[0]} / 0.16) 48%, transparent 78%), radial-gradient(ellipse 42% 32% at 76% 12%, rgb(${palette[1]} / 0.58), rgb(${palette[1]} / 0.14) 50%, transparent 80%), radial-gradient(ellipse 32% 46% at 91% 64%, rgb(${palette[2]} / 0.62), rgb(${palette[2]} / 0.15) 48%, transparent 76%), radial-gradient(ellipse 43% 34% at 58% 92%, rgb(${palette[3]} / 0.58), rgb(${palette[3]} / 0.14) 52%, transparent 80%), radial-gradient(ellipse 35% 42% at 10% 76%, rgb(${palette[4]} / 0.62), rgb(${palette[4]} / 0.15) 48%, transparent 78%)`,
           }}
-          initial={{ opacity: 0, scale: 0.76, rotate: -12 }}
+          initial={{ opacity: 0, scale: 0.76, x: -10, y: 8, rotate: -12 }}
           animate={
             shouldReduceMotion
-              ? { opacity: [0, 0.28, 0] }
+              ? { opacity: [0, 0.3, 0] }
               : {
-                  opacity: [0, 0.58, 0.42, 0],
-                  scale: [0.76, 1, 1.12, 1.24],
-                  rotate: [-12, 16, 34, 52],
+                  opacity: [0, 0.72, 0.5, 0],
+                  scale: [0.76, 1, 1.08, 1.16],
+                  x: [-10, 11],
+                  y: [8, -9],
+                  rotate: [-12, 78],
                 }
           }
-          transition={{
-            duration: shouldReduceMotion ? 0.35 : 4.6,
-            times: shouldReduceMotion ? [0, 0.5, 1] : [0, 0.22, 0.76, 1],
-            ease: 'easeInOut',
-          }}
+          transition={
+            shouldReduceMotion
+              ? { duration: 0.35, times: [0, 0.5, 1], ease: 'easeInOut' }
+              : {
+                  opacity: {
+                    duration: 4.8,
+                    times: [0, 0.2, 0.76, 1],
+                    ease: 'easeInOut',
+                  },
+                  scale: {
+                    duration: 4.8,
+                    times: [0, 0.2, 0.76, 1],
+                    ease: 'easeInOut',
+                  },
+                  x: { duration: 4.8, ease: 'easeInOut' },
+                  y: { duration: 4.8, ease: 'easeInOut' },
+                  rotate: { duration: 4.8, ease: 'linear' },
+                }
+          }
         />
-        {palette.slice(0, 3).map((paletteColor, index) => {
+        {palette.map((paletteColor, index) => {
           const positions = [
-            { left: '-2%', top: '12%', width: '46%', height: '52%' },
-            { left: '58%', top: '4%', width: '42%', height: '48%' },
-            { left: '22%', top: '61%', width: '54%', height: '38%' },
+            { left: '-3%', top: '10%', width: '43%', height: '49%' },
+            { left: '58%', top: '3%', width: '41%', height: '46%' },
+            { left: '63%', top: '53%', width: '39%', height: '42%' },
+            { left: '5%', top: '57%', width: '44%', height: '40%' },
+            { left: '30%', top: '25%', width: '42%', height: '46%' },
           ] as const
           const position = positions[index]
+          const initialRotation = -16 + index * 8
+          const driftDirection = index % 2 === 0 ? 1 : -1
 
           return (
             <motion.div
               key={`ir-scatter-${index}-${paletteColor}`}
-              className="absolute rounded-full blur-2xl"
+              className="absolute rounded-full blur-3xl"
               style={{
                 ...position,
-                backgroundImage: `radial-gradient(ellipse, rgb(${paletteColor} / 0.76), rgb(${paletteColor} / 0.18) 46%, transparent 72%)`,
+                backgroundImage: `radial-gradient(ellipse, rgb(${paletteColor} / 0.68), rgb(${paletteColor} / 0.16) 48%, transparent 76%)`,
               }}
-              initial={{ opacity: 0, scale: 0.58 }}
+              initial={{ opacity: 0, scale: 0.58, rotate: initialRotation }}
               animate={
                 shouldReduceMotion
-                  ? { opacity: [0, 0.36, 0] }
+                  ? { opacity: [0, 0.3, 0] }
                   : {
-                      opacity: [0, 0.68, 0.46, 0],
-                      scale: [0.58, 1, 1.14, 1.3],
-                      x: [0, (index - 1) * 18, (1 - index) * 12],
-                      y: [0, index === 2 ? -16 : 12, index === 2 ? -28 : 22],
+                      opacity: [0, 0.58, 0.4, 0],
+                      scale: [0.58, 1, 1.12, 1.26],
+                      x: [0, driftDirection * 12, driftDirection * -6, driftDirection * 18],
+                      y: [0, index >= 2 ? -10 : 8, index >= 2 ? -18 : 14, index >= 2 ? -26 : 22],
+                      rotate: [initialRotation, initialRotation + 52 + index * 5],
                     }
               }
-              transition={{
-                delay: shouldReduceMotion ? 0 : index * 0.14,
-                duration: shouldReduceMotion ? 0.35 : 4.15,
-                times: shouldReduceMotion ? [0, 0.5, 1] : [0, 0.18, 0.72, 1],
-                ease: 'easeInOut',
-              }}
+              transition={
+                shouldReduceMotion
+                  ? { duration: 0.35, times: [0, 0.5, 1], ease: 'easeInOut' }
+                  : {
+                      opacity: {
+                        delay: index * 0.1,
+                        duration: 4.4,
+                        times: [0, 0.18, 0.72, 1],
+                        ease: 'easeInOut',
+                      },
+                      scale: {
+                        delay: index * 0.1,
+                        duration: 4.4,
+                        times: [0, 0.18, 0.72, 1],
+                        ease: 'easeInOut',
+                      },
+                      x: { delay: index * 0.1, duration: 4.4, ease: 'easeInOut' },
+                      y: { delay: index * 0.1, duration: 4.4, ease: 'easeInOut' },
+                      rotate: { delay: index * 0.1, duration: 4.4, ease: 'linear' },
+                    }
+              }
             />
           )
         })}
@@ -1185,53 +1248,67 @@ function RevealStageAccent({
 
   if (tier === 'sr') {
     return (
-      <div className="pointer-events-none absolute -inset-[44%] z-[5]" aria-hidden="true">
+      <div className="pointer-events-none absolute -inset-[28%] z-[5]" aria-hidden="true">
         <motion.div
-          className="absolute inset-[12%] rounded-full blur-3xl"
+          className="absolute inset-[12%] rounded-full mix-blend-screen blur-3xl"
           style={{
-            backgroundImage: `radial-gradient(circle, rgb(${color} / 0.42), transparent 68%)`,
+            backgroundImage: `radial-gradient(circle, rgb(${color} / 0.56), transparent 68%)`,
           }}
-          initial={{ opacity: 0, scale: 0.68 }}
+          initial={{ opacity: 0, scale: 0.64 }}
           animate={
             shouldReduceMotion
-              ? { opacity: [0, 0.36, 0] }
-              : { opacity: [0, 0.62, 0.42, 0], scale: [0.68, 1, 1.18, 1.3] }
+              ? { opacity: [0, 0.4, 0] }
+              : { opacity: [0, 0.76, 0.5, 0], scale: [0.64, 0.98, 1.1, 1.18] }
           }
           transition={{
-            duration: shouldReduceMotion ? 0.35 : 3.2,
-            times: shouldReduceMotion ? [0, 0.5, 1] : [0, 0.16, 0.66, 1],
+            duration: shouldReduceMotion ? 0.35 : 4.4,
+            times: shouldReduceMotion ? [0, 0.5, 1] : [0, 0.15, 0.7, 1],
             ease: 'easeOut',
           }}
         />
-        {palette.slice(0, 3).map((paletteColor, index) => (
-          <motion.div
-            key={`${index}-${paletteColor}`}
-            className="absolute inset-0 rounded-full blur-2xl"
-            style={{
-              backgroundImage: `conic-gradient(from ${index * 120 + 12}deg, transparent 0deg 112deg, rgb(${paletteColor} / 0.72) 138deg, rgb(${paletteColor} / 0.22) 154deg, transparent 182deg 360deg)`,
-              maskImage:
-                'radial-gradient(ellipse at center, transparent 0 30%, black 48%, transparent 76%)',
-              WebkitMaskImage:
-                'radial-gradient(ellipse at center, transparent 0 30%, black 48%, transparent 76%)',
-            }}
-            initial={{ opacity: 0, scale: 0.7, rotate: -16 + index * 7 }}
-            animate={
-              shouldReduceMotion
-                ? { opacity: [0, 0.34, 0] }
-                : {
-                    opacity: [0, 0.7, 0.48, 0],
-                    scale: [0.7, 1, 1.16, 1.32],
-                    rotate: [-16 + index * 7, 18 + index * 9, 38 + index * 11],
-                  }
-            }
-            transition={{
-              delay: shouldReduceMotion ? 0 : index * 0.08,
-              duration: shouldReduceMotion ? 0.35 : 3.05,
-              times: shouldReduceMotion ? [0, 0.5, 1] : [0, 0.18, 0.68, 1],
-              ease: 'easeInOut',
-            }}
-          />
-        ))}
+        {palette.slice(0, 3).map((paletteColor, index) => {
+          const direction = index % 2 === 0 ? 1 : -1
+          const initialRotation = (-20 + index * 8) * direction
+          const driftX = (index - 1) * 14
+          const driftY = index === 1 ? -11 : 8
+
+          return (
+            <motion.div
+              key={`${index}-${paletteColor}`}
+              className="absolute inset-0 rounded-full mix-blend-screen blur-2xl"
+              style={{
+                backgroundImage: `conic-gradient(from ${index * 120 + 12}deg, transparent 0deg 108deg, rgb(${paletteColor} / 0.86) 138deg, rgb(${paletteColor} / 0.29) 158deg, transparent 188deg 360deg)`,
+                maskImage:
+                  'radial-gradient(ellipse at center, transparent 0 30%, black 48%, transparent 76%)',
+                WebkitMaskImage:
+                  'radial-gradient(ellipse at center, transparent 0 30%, black 48%, transparent 76%)',
+              }}
+              initial={{ opacity: 0, scale: 0.68, rotate: initialRotation }}
+              animate={
+                shouldReduceMotion
+                  ? { opacity: [0, 0.38, 0] }
+                  : {
+                      opacity: [0, 0.82, 0.56, 0],
+                      scale: [0.68, 0.98 + index * 0.015, 1.1 + index * 0.015, 1.2],
+                      x: [0, driftX * -0.35, driftX * 0.4, driftX],
+                      y: [0, driftY * -0.3, driftY * 0.45, driftY],
+                      rotate: [
+                        initialRotation,
+                        (22 + index * 12) * direction,
+                        (48 + index * 14) * direction,
+                        (76 + index * 16) * direction,
+                      ],
+                    }
+              }
+              transition={{
+                delay: shouldReduceMotion ? 0 : index * 0.09,
+                duration: shouldReduceMotion ? 0.35 : 4.25 - index * 0.05,
+                times: shouldReduceMotion ? [0, 0.5, 1] : [0, 0.17, 0.7, 1],
+                ease: 'easeInOut',
+              }}
+            />
+          )
+        })}
       </div>
     )
   }

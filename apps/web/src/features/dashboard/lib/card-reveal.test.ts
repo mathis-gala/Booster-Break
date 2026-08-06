@@ -58,9 +58,9 @@ describe('reveal particles', () => {
     const second = createRevealParticles('me01-003', 'rr')
 
     expect(first).toEqual(second)
-    expect(first).toHaveLength(28)
+    expect(first).toHaveLength(32)
     expect(createRevealParticles('me01-133', 'ir')).toHaveLength(14)
-    expect(createRevealParticles('me01-155', 'sr')).toHaveLength(64)
+    expect(createRevealParticles('me01-155', 'sr')).toHaveLength(68)
     expect(createRevealParticles('sv08.5-116', 'ace-spec')).toHaveLength(25)
     expect(createRevealParticles('me01-177', 'jackpot')).toHaveLength(48)
     expect(createRevealParticles('me01-004', 'rr')).not.toEqual(first)

@@ -146,17 +146,17 @@ const PRESETS: Readonly<Record<OpeningPreset, PresetDefinition>> = {
   },
   rr: {
     label: 'RR / Double Rare',
-    description: 'A Double Rare in the final slot with the compact artwork-colored burst.',
+    description: 'A Double Rare in the final slot with a broader, longer artwork-colored burst.',
     finalCards: [RR_CARD],
   },
   ir: {
     label: 'IR / Illustration Rare',
-    description: 'An Illustration Rare with scattered artwork-colored light and particles.',
+    description: 'An Illustration Rare with a soft five-color artwork aura and scattered light.',
     finalCards: [IR_CARD],
   },
   sr: {
     label: 'SR / Ultra Rare',
-    description: 'An Ultra Rare with heavier particles and personalized artwork-color lighting.',
+    description: 'An Ultra Rare with extended particles and stronger artwork-color lighting.',
     finalCards: [SR_CARD],
   },
   'ace-spec': {
