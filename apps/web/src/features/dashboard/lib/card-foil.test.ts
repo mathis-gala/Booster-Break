@@ -228,8 +228,13 @@ describe('foil masks', () => {
       artwork: [0.075, 0.139, 0.925, 0.519],
       stock: [0.038, 0.07, 0.958, 0.97],
     })
+    expect(FOIL_LAYOUT_MASKS.energy).toEqual({
+      artwork: [0.037, 0.138, 0.96, 0.645],
+      stock: [0.035, 0.073, 0.96, 0.923],
+    })
     expect(resolveFoilMask('Pokémon', 'reverse-holo')).toBe(FOIL_LAYOUT_MASKS.pokemon)
     expect(resolveFoilMask('Dresseur', 'reverse-holo')).toBe(FOIL_LAYOUT_MASKS.trainer)
+    expect(resolveFoilMask('Énergie', 'rare-holo')).toBe(FOIL_LAYOUT_MASKS.energy)
     expect(resolveFoilMask('Pokémon', 'rare-holo')).toBe(FOIL_LAYOUT_MASKS.pokemon)
   })
 

@@ -262,8 +262,8 @@ export const FOIL_LAYOUT_MASKS: Readonly<Record<CardLayout, FoilMask>> = {
     stock: [0.038, 0.07, 0.958, 0.97],
   },
   energy: {
-    artwork: [0.074, 0.14, 0.926, 0.71],
-    stock: [0.052, 0.038, 0.948, 0.965],
+    artwork: [0.037, 0.138, 0.96, 0.645],
+    stock: [0.035, 0.073, 0.96, 0.923],
   },
 }
 

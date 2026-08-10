@@ -49,7 +49,7 @@ interface LabSettings {
   motion: boolean
 }
 
-type ReverseCalibrationLayout = Extract<CardLayout, 'pokemon' | 'trainer'>
+type ReverseCalibrationLayout = CardLayout
 
 interface MaskRectSettings {
   x: number
@@ -97,6 +97,14 @@ const samples: readonly FoilSample[] = [
     finish: 'reverse_holo',
     supertype: 'Pokémon',
     isEvolved: true,
+  },
+  {
+    label: 'CRI Holo Special Energy',
+    cardId: 'me04-086',
+    imageUrl: 'https://assets.tcgdex.net/fr/me/me04/086/high.png',
+    rarity: 'Rare',
+    finish: 'holo',
+    supertype: 'Énergie',
   },
   {
     label: 'Double Rare / RR',
@@ -255,9 +263,17 @@ const reverseCalibrationSamples: Readonly<Record<ReverseCalibrationLayout, FoilS
     finish: 'reverse_holo',
     supertype: 'Dresseur',
   },
+  energy: {
+    label: 'Special Energy frame',
+    cardId: 'me04-086',
+    imageUrl: 'https://assets.tcgdex.net/fr/me/me04/086/high.png',
+    rarity: 'Rare',
+    finish: 'holo',
+    supertype: 'Énergie',
+  },
 }
 
-const swshCalibrationSamples: Readonly<Record<ReverseCalibrationLayout, FoilSample>> = {
+const swshCalibrationSamples: Readonly<Partial<Record<ReverseCalibrationLayout, FoilSample>>> = {
   pokemon: {
     label: 'SWSH Pokémon frame',
     cardId: 'swsh12-002',
@@ -277,7 +293,12 @@ const swshCalibrationSamples: Readonly<Record<ReverseCalibrationLayout, FoilSamp
   },
 }
 
-const reverseCalibrationLayouts: readonly ReverseCalibrationLayout[] = ['pokemon', 'trainer']
+const reverseCalibrationLayouts: readonly ReverseCalibrationLayout[] = [
+  'pokemon',
+  'trainer',
+  'energy',
+]
+const swshCalibrationLayouts: readonly ReverseCalibrationLayout[] = ['pokemon', 'trainer']
 
 const defaultReverseMaskSettings: Readonly<Record<ReverseCalibrationLayout, ReverseMaskSettings>> =
   {
@@ -290,6 +311,10 @@ const defaultReverseMaskSettings: Readonly<Record<ReverseCalibrationLayout, Reve
       artwork: rectToSettings(FOIL_LAYOUT_MASKS.trainer.artwork),
       stock: rectToSettings(FOIL_LAYOUT_MASKS.trainer.stock),
     },
+    energy: {
+      artwork: rectToSettings(FOIL_LAYOUT_MASKS.energy.artwork),
+      stock: rectToSettings(FOIL_LAYOUT_MASKS.energy.stock),
+    },
   }
 
 const defaultSwshMaskSettings: Readonly<Record<ReverseCalibrationLayout, ReverseMaskSettings>> = {
@@ -301,6 +326,10 @@ const defaultSwshMaskSettings: Readonly<Record<ReverseCalibrationLayout, Reverse
   trainer: {
     artwork: rectToSettings(SWSH_FOIL_LAYOUT_MASKS.trainer.artwork),
     stock: rectToSettings(SWSH_FOIL_LAYOUT_MASKS.trainer.stock),
+  },
+  energy: {
+    artwork: rectToSettings(SWSH_FOIL_LAYOUT_MASKS.energy.artwork),
+    stock: rectToSettings(SWSH_FOIL_LAYOUT_MASKS.energy.stock),
   },
 }
 
@@ -335,10 +364,12 @@ export function FoilLab() {
   const reverseMasks: Record<ReverseCalibrationLayout, FoilMask> = {
     pokemon: settingsToMask('pokemon', reverseMaskSettings.pokemon),
     trainer: settingsToMask('trainer', reverseMaskSettings.trainer),
+    energy: settingsToMask('energy', reverseMaskSettings.energy),
   }
   const swshMasks: Record<ReverseCalibrationLayout, FoilMask> = {
     pokemon: settingsToMask('pokemon', swshMaskSettings.pokemon),
     trainer: settingsToMask('trainer', swshMaskSettings.trainer),
+    energy: settingsToMask('energy', swshMaskSettings.energy),
   }
   const sampleLayout = resolveCardLayout(sample.supertype)
   const sampleProfile = resolveFoilProfile(sample.finish, sample.rarity, sample)
@@ -347,12 +378,11 @@ export function FoilLab() {
     sampleProfile.name === 'rare-holo' ||
     sampleProfile.name === 'swsh-holo-rare' ||
     sampleProfile.name === 'reverse-holo'
-  const activeCalibrationMask =
-    usesFrameMask && sampleLayout !== 'energy'
-      ? isSwshSample
-        ? swshMasks[sampleLayout]
-        : reverseMasks[sampleLayout]
-      : undefined
+  const activeCalibrationMask = usesFrameMask
+    ? isSwshSample
+      ? swshMasks[sampleLayout]
+      : reverseMasks[sampleLayout]
+    : undefined
   const rotationX = useMotionValue(toRadians(settings.tiltX))
   const rotationY = useMotionValue(toRadians(settings.tiltY))
 
@@ -604,11 +634,12 @@ export function FoilLab() {
         </div>
       </section>
 
-      {sample.finish === 'reverse_holo' && !isSwshSample ? (
+      {usesFrameMask && !isSwshSample ? (
         <ReverseMaskCalibration
           kicker="Scarlet & Violet / mask calibration"
           title="Current-frame foil boundaries"
           description="Tune each printed frame, stock edge, and evolution bubble independently. The guide uses solid regions so optical movement cannot hide a boundary error."
+          layouts={reverseCalibrationLayouts}
           samples={reverseCalibrationSamples}
           settings={reverseMaskSettings}
           masks={reverseMasks}
@@ -623,6 +654,7 @@ export function FoilLab() {
           kicker="Sword & Shield / mask calibration"
           title="SWSH foil boundaries"
           description="These controls are isolated from the current-frame masks. They drive both SWSH Reverse Holo coverage and the illustration-only Holo Rare window."
+          layouts={swshCalibrationLayouts}
           samples={swshCalibrationSamples}
           settings={swshMaskSettings}
           masks={swshMasks}
@@ -640,6 +672,7 @@ function ReverseMaskCalibration({
   kicker,
   title,
   description,
+  layouts,
   samples: calibrationSamples,
   settings,
   masks,
@@ -651,7 +684,8 @@ function ReverseMaskCalibration({
   kicker: string
   title: string
   description: string
-  samples: Readonly<Record<ReverseCalibrationLayout, FoilSample>>
+  layouts: readonly ReverseCalibrationLayout[]
+  samples: Readonly<Partial<Record<ReverseCalibrationLayout, FoilSample>>>
   settings: Record<ReverseCalibrationLayout, ReverseMaskSettings>
   masks: Record<ReverseCalibrationLayout, FoilMask>
   tuning: FoilTuningOverrides
@@ -685,8 +719,10 @@ function ReverseMaskCalibration({
       </div>
 
       <div className="foil-reverse-calibration-grid">
-        {reverseCalibrationLayouts.map((layout) => {
+        {layouts.map((layout) => {
           const sample = calibrationSamples[layout]
+          if (!sample) return null
+
           const values = settings[layout]
           const mask = masks[layout]
 
@@ -965,6 +1001,10 @@ function cloneMaskSettings(
     trainer: {
       artwork: { ...settings.trainer.artwork },
       stock: { ...settings.trainer.stock },
+    },
+    energy: {
+      artwork: { ...settings.energy.artwork },
+      stock: { ...settings.energy.stock },
     },
   }
 }

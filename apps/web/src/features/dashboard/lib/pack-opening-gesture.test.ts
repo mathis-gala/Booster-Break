@@ -1,6 +1,17 @@
 import { describe, expect, it } from 'bun:test'
 
-import { getSwipeDismissDirection } from './pack-opening-gesture'
+import { getCardDismissalTransition, getSwipeDismissDirection } from './pack-opening-gesture'
+
+describe('getCardDismissalTransition', () => {
+  it('ignores a stale dismissal after the next card is already active', () => {
+    expect(getCardDismissalTransition(1, 0, 3)).toBeUndefined()
+  })
+
+  it('advances once and completes without moving beyond the final card', () => {
+    expect(getCardDismissalTransition(0, 0, 2)).toEqual({ nextIndex: 1, isComplete: false })
+    expect(getCardDismissalTransition(1, 1, 2)).toEqual({ nextIndex: 1, isComplete: true })
+  })
+})
 
 describe('getSwipeDismissDirection', () => {
   it('dismisses in either direction past the distance threshold', () => {

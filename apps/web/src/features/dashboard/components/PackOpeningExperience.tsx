@@ -31,7 +31,10 @@ import {
   type ParticleRevealTier,
   type RevealParticleKind,
 } from '../lib/card-reveal'
-import { getSwipeDismissDirection } from '../lib/pack-opening-gesture'
+import {
+  getCardDismissalTransition,
+  getSwipeDismissDirection,
+} from '../lib/pack-opening-gesture'
 import { FoilCardImage } from './FoilCardImage'
 import { InteractiveBooster } from './InteractiveBooster'
 import { WebGlCardViewer } from './WebGlCardViewer'
@@ -201,6 +204,7 @@ export function PackOpeningExperience({
 }: PackOpeningExperienceProps) {
   const [phase, setPhase] = useState<OpeningPhase>('tear')
   const [revealedCardIndex, setRevealedCardIndex] = useState(0)
+  const revealedCardIndexRef = useRef(0)
   const [tearProgress, setTearProgress] = useState(0)
   const [autoTearRequested, setAutoTearRequested] = useState(false)
   const [sampledArtwork, setSampledArtwork] = useState<{
@@ -210,6 +214,7 @@ export function PackOpeningExperience({
   }>()
   const shouldReduceMotion = useReducedMotion()
   const currentCard = openPackResult.cards[revealedCardIndex]
+  const isRecapVisible = phase === 'recap' || (phase === 'reveal' && !currentCard)
   const currentRevealTier = currentCard ? resolveCardRevealTier(currentCard) : 'standard'
   const currentImageUrl = currentCard?.imageLarge ?? currentCard?.imageSmall
   const isGodPack = openPackResult.isGodPack
@@ -271,14 +276,25 @@ export function PackOpeningExperience({
     return () => window.removeEventListener('keydown', handleKeyDown)
   }, [autoTearRequested, phase, requestAutoTear])
 
-  const handleCardDismissed = useCallback(() => {
-    if (revealedCardIndex >= openPackResult.cards.length - 1) {
-      setPhase('recap')
-      return
-    }
+  const handleCardDismissed = useCallback(
+    (dismissedIndex: number) => {
+      const transition = getCardDismissalTransition(
+        revealedCardIndexRef.current,
+        dismissedIndex,
+        openPackResult.cards.length,
+      )
+      if (!transition) return
 
-    setRevealedCardIndex((currentIndex) => currentIndex + 1)
-  }, [openPackResult.cards.length, revealedCardIndex])
+      if (transition.isComplete) {
+        setPhase((currentPhase) => (currentPhase === 'reveal' ? 'recap' : currentPhase))
+        return
+      }
+
+      revealedCardIndexRef.current = transition.nextIndex
+      setRevealedCardIndex(transition.nextIndex)
+    },
+    [openPackResult.cards.length],
+  )
 
   const isTearPhase = phase === 'tear'
   const isStackPhase = phase === 'tear' || phase === 'extract' || phase === 'reveal'
@@ -295,7 +311,7 @@ export function PackOpeningExperience({
         <DialogPrimitive.Popup
           className={cn(
             'fixed inset-0 z-50 text-white focus:outline-none',
-            phase === 'recap' ? 'overflow-y-auto' : 'overflow-hidden',
+            isRecapVisible ? 'overflow-y-auto' : 'overflow-hidden',
           )}
         >
           <div
@@ -401,7 +417,7 @@ export function PackOpeningExperience({
             ) : null}
           </AnimatePresence>
 
-          <AnimatePresence mode="wait">
+          <AnimatePresence initial={false}>
             {isStackPhase && currentCard ? (
               <CardStack
                 key="opening-card-stack"
@@ -421,7 +437,7 @@ export function PackOpeningExperience({
               />
             ) : null}
 
-            {phase === 'recap' ? (
+            {isRecapVisible ? (
               <PackRecap
                 key="pack-recap"
                 cards={openPackResult.cards}
@@ -451,7 +467,7 @@ interface CardStackProps {
   artworkPalette: CardArtworkPalette
   shouldReduceMotion: boolean
   onExtracted: () => void
-  onCardDismissed: () => void
+  onCardDismissed: (cardIndex: number) => void
 }
 
 function CardStack({
@@ -478,6 +494,10 @@ function CardStack({
   const isJackpotLocked =
     canInteract && activeRevealTier === 'jackpot' && completedJackpotKey !== activeCardKey
   const canDismiss = canInteract && !isJackpotLocked
+  const hasRevealEffects =
+    canInteract &&
+    isParticleRevealTier(activeRevealTier) &&
+    (activeRevealTier !== 'jackpot' || isJackpotLocked)
   const visibleCards = cards.slice(currentIndex, currentIndex + 3).map((card, offset) => ({
     card,
     absoluteIndex: currentIndex + offset,
@@ -492,6 +512,10 @@ function CardStack({
 
     if (canDismiss) cardRef.current?.focus({ preventScroll: true })
   }, [canDismiss, currentIndex, isJackpotLocked])
+
+  useEffect(() => {
+    isDismissingRef.current = false
+  }, [currentIndex])
 
   const handleJackpotComplete = useCallback((cardKey: string) => {
     setCompletedJackpotKey(cardKey)
@@ -510,13 +534,14 @@ function CardStack({
       })
 
       void movement.then(() => {
-        x.set(0)
-        setExitDirection(undefined)
-        isDismissingRef.current = false
-        onCardDismissed()
+        if (currentIndex < cards.length - 1) {
+          x.set(0)
+          setExitDirection(undefined)
+        }
+        onCardDismissed(currentIndex)
       })
     },
-    [canDismiss, onCardDismissed, shouldReduceMotion, x],
+    [canDismiss, cards.length, currentIndex, onCardDismissed, shouldReduceMotion, x],
   )
 
   return (
@@ -546,6 +571,14 @@ function CardStack({
             }
           : { duration: 0 }
       }
+      exit={{
+        opacity: 0,
+        scale: shouldReduceMotion ? 1 : 0.985,
+        transition: {
+          duration: shouldReduceMotion ? 0.1 : 0.28,
+          ease: 'easeOut',
+        },
+      }}
     >
       <motion.div
         className="relative z-10 aspect-63/88 w-[min(84vw,calc(71.6dvh-6.5rem),26rem)] will-change-transform sm:w-[min(54vw,calc(71.6dvh-6.5rem),26rem)]"
@@ -609,11 +642,8 @@ function CardStack({
             />
           ))}
 
-        {activeCard &&
-        canInteract &&
-        isParticleRevealTier(activeRevealTier) &&
-        (activeRevealTier !== 'jackpot' || isJackpotLocked) ? (
-          <>
+        <AnimatePresence initial={false}>
+          {activeCard && hasRevealEffects ? (
             <RevealStageAccent
               key={`${activeCardKey}-${activeRevealTier}-accent`}
               color={glowColor}
@@ -621,17 +651,22 @@ function CardStack({
               tier={activeRevealTier}
               shouldReduceMotion={shouldReduceMotion}
             />
-            {activeRevealTier === 'jackpot' && !shouldReduceMotion ? (
-              <RevealParticleBurst
-                key={`${activeCardKey}-${activeRevealTier}-opening-particles`}
-                cardId={activeCard.id}
-                color={glowColor}
-                palette={artworkPalette}
-                tier={activeRevealTier}
-                phase="opening"
-                shouldReduceMotion={false}
-              />
-            ) : null}
+          ) : null}
+          {activeCard &&
+          hasRevealEffects &&
+          activeRevealTier === 'jackpot' &&
+          !shouldReduceMotion ? (
+            <RevealParticleBurst
+              key={`${activeCardKey}-${activeRevealTier}-opening-particles`}
+              cardId={activeCard.id}
+              color={glowColor}
+              palette={artworkPalette}
+              tier={activeRevealTier}
+              phase="opening"
+              shouldReduceMotion={false}
+            />
+          ) : null}
+          {activeCard && hasRevealEffects ? (
             <RevealParticleBurst
               key={`${activeCardKey}-${activeRevealTier}-particles`}
               cardId={activeCard.id}
@@ -640,8 +675,8 @@ function CardStack({
               tier={activeRevealTier}
               shouldReduceMotion={shouldReduceMotion}
             />
-          </>
-        ) : null}
+          ) : null}
+        </AnimatePresence>
 
         {activeCard ? (
           <motion.button
@@ -1076,9 +1111,21 @@ function RevealStageAccent({
   tier: ParticleRevealTier
   shouldReduceMotion: boolean
 }) {
+  const presenceTransition = {
+    duration: shouldReduceMotion ? 0.1 : 0.26,
+    ease: 'easeOut' as const,
+  }
+
   if (tier === 'rr') {
     return (
-      <div className="pointer-events-none absolute -inset-[22%] z-[5]" aria-hidden="true">
+      <motion.div
+        className="pointer-events-none absolute -inset-[22%] z-[5]"
+        initial={{ opacity: 0 }}
+        animate={{ opacity: 1 }}
+        exit={{ opacity: 0 }}
+        transition={presenceTransition}
+        aria-hidden="true"
+      >
         <motion.div
           className="absolute inset-[12%] rounded-full mix-blend-screen blur-3xl"
           style={{
@@ -1139,13 +1186,20 @@ function RevealStageAccent({
             />
           )
         })}
-      </div>
+      </motion.div>
     )
   }
 
   if (tier === 'jackpot') {
     return (
-      <div className="pointer-events-none absolute -inset-[22%] z-[5]" aria-hidden="true">
+      <motion.div
+        className="pointer-events-none absolute -inset-[22%] z-[5]"
+        initial={{ opacity: 0 }}
+        animate={{ opacity: 1 }}
+        exit={{ opacity: 0 }}
+        transition={presenceTransition}
+        aria-hidden="true"
+      >
         {shouldReduceMotion ? (
           <motion.div
             className="absolute inset-[12%] rounded-full blur-3xl"
@@ -1162,13 +1216,20 @@ function RevealStageAccent({
             <JackpotHaloBurst palette={palette} phase="finale" />
           </>
         )}
-      </div>
+      </motion.div>
     )
   }
 
   if (tier === 'ir') {
     return (
-      <div className="pointer-events-none absolute -inset-[46%] z-[5]" aria-hidden="true">
+      <motion.div
+        className="pointer-events-none absolute -inset-[46%] z-[5]"
+        initial={{ opacity: 0 }}
+        animate={{ opacity: 1 }}
+        exit={{ opacity: 0 }}
+        transition={presenceTransition}
+        aria-hidden="true"
+      >
         <motion.div
           className="absolute -inset-[12%] blur-[72px]"
           style={{
@@ -1262,13 +1323,20 @@ function RevealStageAccent({
             />
           )
         })}
-      </div>
+      </motion.div>
     )
   }
 
   if (tier === 'sr') {
     return (
-      <div className="pointer-events-none absolute -inset-[28%] z-[5]" aria-hidden="true">
+      <motion.div
+        className="pointer-events-none absolute -inset-[28%] z-[5]"
+        initial={{ opacity: 0 }}
+        animate={{ opacity: 1 }}
+        exit={{ opacity: 0 }}
+        transition={presenceTransition}
+        aria-hidden="true"
+      >
         <motion.div
           className="absolute inset-[12%] rounded-full mix-blend-screen blur-3xl"
           style={{
@@ -1329,14 +1397,18 @@ function RevealStageAccent({
             />
           )
         })}
-      </div>
+      </motion.div>
     )
   }
 
   return (
-    <div
+    <motion.div
       className="pointer-events-none absolute -inset-[40%] z-[5]"
       style={{ '--card-reveal-accent': '255 38 156' } as CSSProperties}
+      initial={{ opacity: 0 }}
+      animate={{ opacity: 1 }}
+      exit={{ opacity: 0 }}
+      transition={presenceTransition}
       aria-hidden="true"
     >
       <motion.div
@@ -1361,7 +1433,7 @@ function RevealStageAccent({
           ease: 'easeOut',
         }}
       />
-    </div>
+    </motion.div>
   )
 }
 
@@ -1394,7 +1466,14 @@ function RevealParticleBurst({
   const peakOpacity = isOpeningBurst ? 0.9 : tier === 'ir' ? 0.72 : 1
 
   return (
-    <div className="pointer-events-none absolute -inset-[22%] z-20" aria-hidden="true">
+    <motion.div
+      className="pointer-events-none absolute -inset-[22%] z-20"
+      initial={{ opacity: 0 }}
+      animate={{ opacity: 1 }}
+      exit={{ opacity: 0 }}
+      transition={{ duration: shouldReduceMotion ? 0.1 : 0.24, ease: 'easeOut' }}
+      aria-hidden="true"
+    >
       {particles.map((particle) => (
         <motion.span
           key={particle.id}
@@ -1458,7 +1537,7 @@ function RevealParticleBurst({
           }}
         />
       ))}
-    </div>
+    </motion.div>
   )
 }
 
