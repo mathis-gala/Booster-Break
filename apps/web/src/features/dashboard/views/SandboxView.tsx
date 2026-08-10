@@ -7,6 +7,7 @@ import { PackBoosterStage } from '../components/PackBoosterStage'
 import { PackOpeningExperience } from '../components/PackOpeningExperience'
 import { BoosterPreviewDialog } from '../components/BoosterPreviewDialog'
 import { useSandboxPackOpenStatus } from '../hooks/usePackOpenStatusClock'
+import { useBoosterCarouselSelection } from '../hooks/useBoosterCarouselSelection'
 import { useLocale } from '@/features/i18n/useLocale'
 import { useOpenPokemonPackSandboxMutationOption } from '@/lib/mutations/pokemon'
 import {
@@ -25,7 +26,6 @@ export function SandboxView() {
   const [isOpeningExperienceOpen, setIsOpeningExperienceOpen] = useState(false)
   const [isPreparingReveal, setIsPreparingReveal] = useState(false)
   const [previewSetId, setPreviewSetId] = useState<string>()
-  const [activeSetIdOverride, setActiveSetIdOverride] = useState<string>()
   const [cooldownUntil, setCooldownUntil] = useState<string>()
 
   const sets = useQuery(useSandboxPokemonSetsQueryOption())
@@ -52,12 +52,8 @@ export function SandboxView() {
 
   const previewSet = sets.data?.find((set) => set.id === previewSetId)
 
-  const activeSetId =
-    activeSetIdOverride && boosterSets.some((set) => set.id === activeSetIdOverride)
-      ? activeSetIdOverride
-      : boosterSets[0]?.id
-
-  const activeSet = boosterSets.find((set) => set.id === activeSetId)
+  const { activeSet, activeSetId, isTravelling, selectSet } =
+    useBoosterCarouselSelection(boosterSets)
 
   return (
     <div className="w-full max-w-6xl">
@@ -65,7 +61,8 @@ export function SandboxView() {
         <div className="grid min-h-full gap-5 p-4 md:grid-cols-[1fr_1.1fr] md:p-5">
           <PackBoosterStage
             activeSet={activeSet}
-            boosterCount={boosterSets.length}
+            sets={boosterSets}
+            isSelectingSet={isTravelling}
             isOpening={openPack.isPending || isOpeningExperienceOpen}
             packOpenStatus={packOpenStatus}
             packOpenStatusIsPending={openPack.isPending || isPreparingReveal}
@@ -84,6 +81,7 @@ export function SandboxView() {
               selectedReadyLabel: ({ name }) => m.sandbox_selected_ready({ name }),
             }}
             onOpenPack={(setId) => openPack.mutate(setId)}
+            onSelectSet={selectSet}
           />
 
           <BoosterPickerPanel
@@ -92,7 +90,7 @@ export function SandboxView() {
             sets={boosterSets}
             setsIsPending={sets.isPending}
             onPreviewSet={setPreviewSetId}
-            onSelectSet={setActiveSetIdOverride}
+            onSelectSet={selectSet}
             title={m.sandbox_title()}
             description={m.sandbox_description()}
             loadingLabel={m.sandbox_loading()}
