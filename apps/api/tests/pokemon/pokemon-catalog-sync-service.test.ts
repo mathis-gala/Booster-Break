@@ -55,6 +55,7 @@ describe('PokemonCatalogSyncService', () => {
             series: 'Ecarlate et Violet',
           },
         },
+        2,
       ],
     })
     expect(calls[1]).toEqual({
@@ -77,6 +78,45 @@ describe('PokemonCatalogSyncService', () => {
         ],
       ]),
     )
+  })
+
+  test('merges supplemental gallery cards into their parent catalog set', async () => {
+    const set = makeSet('swsh12.5', 'Crown Zenith', 'Sword & Shield')
+    const gallerySet = makeSet('swsh12.5gg', 'Galarian Gallery', 'Sword & Shield')
+    const parentCard = makeCard('swsh12.5-001', 'Oddish', 'swsh12.5')
+    const galleryCard = makeCard('swsh12.5gg-GG26', 'Riolu', 'swsh12.5gg')
+    const calls: Array<{ name: string; args: unknown[] }> = []
+    const service = new PokemonCatalogSyncService({
+      pokemonClient: {
+        getCardsBySet: async (sourceSet) =>
+          sourceSet.id === gallerySet.id ? [galleryCard] : [parentCard],
+      },
+      localizedPokemonClients: {
+        fr: {
+          getSetById: async () => undefined,
+          getCardsByIds: async () => [],
+        },
+      },
+      pokemonRepository: {
+        upsertSet: async (...args) => {
+          calls.push({ name: 'upsertSet', args })
+        },
+        replaceSetCards: async (...args) => {
+          calls.push({ name: 'replaceSetCards', args })
+        },
+      },
+    })
+
+    const result = await service.syncSet(set, {
+      syncedAt: '2026-08-05T00:00:00.000Z',
+      boosterImageUrl: 'https://example.com/crown-zenith.png',
+      supplementalSets: [gallerySet],
+    })
+
+    expect(result).toEqual({ setId: 'swsh12.5', cards: 2 })
+    expect(calls[0]?.args[4]).toBe(4)
+    expect(calls[1]?.args[0]).toBe('swsh12.5')
+    expect(calls[1]?.args[1]).toEqual([parentCard, galleryCard])
   })
 
   test('keeps French set text optional when localization is missing', async () => {
@@ -128,12 +168,12 @@ const makeSet = (id: string, name: string, series: string): TcgDexSet =>
     cards: [],
   }) as unknown as TcgDexSet
 
-const makeCard = (id: string, name: string): TcgDexCard =>
+const makeCard = (id: string, name: string, setId = 'sv10'): TcgDexCard =>
   ({
     id,
     name,
     set: {
-      id: 'sv10',
+      id: setId,
     },
     localId: id.split('-')[1] ?? id,
     image: `https://example.com/${id}`,

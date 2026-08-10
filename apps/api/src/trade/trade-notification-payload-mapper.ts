@@ -32,6 +32,11 @@ const readOptionalString = (source: Prisma.JsonObject, key: string): string | un
   return typeof value === 'string' ? value : undefined
 }
 
+const readOptionalBoolean = (source: Prisma.JsonObject, key: string): boolean | undefined => {
+  const value = source[key]
+  return typeof value === 'boolean' ? value : undefined
+}
+
 const readNumber = (source: Prisma.JsonObject, key: string): number => {
   const value = source[key]
 
@@ -78,6 +83,9 @@ const toTradeNotificationCardPayload = (
   const imageLarge = readOptionalString(payload, 'imageLarge')
   const setId = readOptionalString(payload, 'setId')
   const number = readOptionalString(payload, 'number')
+  const rarity = readOptionalString(payload, 'rarity')
+  const supertype = readOptionalString(payload, 'supertype')
+  const isEvolved = readOptionalBoolean(payload, 'isEvolved')
 
   if (imageSmall) {
     cardPayload.imageSmall = imageSmall
@@ -93,6 +101,18 @@ const toTradeNotificationCardPayload = (
 
   if (number) {
     cardPayload.number = number
+  }
+
+  if (rarity) {
+    cardPayload.rarity = rarity
+  }
+
+  if (supertype) {
+    cardPayload.supertype = supertype
+  }
+
+  if (isEvolved !== undefined) {
+    cardPayload.isEvolved = isEvolved
   }
 
   return cardPayload
@@ -194,6 +214,9 @@ const toPrismaNotificationCardPayload = (
   ...(payload.imageLarge !== undefined ? { imageLarge: payload.imageLarge } : {}),
   ...(payload.setId !== undefined ? { setId: payload.setId } : {}),
   ...(payload.number !== undefined ? { number: payload.number } : {}),
+  ...(payload.rarity !== undefined ? { rarity: payload.rarity } : {}),
+  ...(payload.supertype !== undefined ? { supertype: payload.supertype } : {}),
+  ...(payload.isEvolved !== undefined ? { isEvolved: payload.isEvolved } : {}),
 })
 
 export const toPrismaNotificationPayload = (

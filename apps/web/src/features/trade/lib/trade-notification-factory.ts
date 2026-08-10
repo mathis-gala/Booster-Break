@@ -17,6 +17,9 @@ const toTradeNotificationCardPayload = (
   quantity: card.quantity,
   setId: card.card.setId,
   number: card.card.number,
+  rarity: card.card.rarity,
+  supertype: card.card.supertype,
+  isEvolved: card.card.isEvolved,
 })
 
 export const buildAcceptedOfferNotification = (
@@ -50,6 +53,9 @@ export const buildAcceptedOfferNotification = (
         quantity: 1,
         setId: auction.offeredCard.setId,
         number: auction.offeredCard.number,
+        rarity: auction.offeredCard.rarity,
+        supertype: auction.offeredCard.supertype,
+        isEvolved: auction.offeredCard.isEvolved,
       },
       exchangedCards: offer.cards.map(toTradeNotificationCardPayload),
     },

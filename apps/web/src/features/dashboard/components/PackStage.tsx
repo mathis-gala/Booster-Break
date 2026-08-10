@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react'
+import { useMemo } from 'react'
 import type {
   OpenPackResponse,
   PackOpenStatusResponse,
@@ -10,6 +10,7 @@ import { BoosterPickerPanel } from './BoosterPickerPanel'
 import { BoosterPreviewDialog } from './BoosterPreviewDialog'
 import { PackBoosterStage } from './PackBoosterStage'
 import { PackOpeningExperience } from './PackOpeningExperience'
+import { useBoosterCarouselSelection } from '../hooks/useBoosterCarouselSelection'
 
 interface PackStageProps {
   sets: PokemonSetSummary[]
@@ -50,32 +51,33 @@ export function PackStage({
   ownedSetPullCounts,
   previewOwnedCardIds,
 }: PackStageProps) {
-  const [selectedSetId, setSelectedSetId] = useState<string>()
   const boosterSets = useMemo(
     () =>
-      sets.filter((set): set is PokemonSetSummary & { boosterImageUrl: string } =>
-        Boolean(set.boosterImageUrl),
+      sets.filter(
+        (set): set is PokemonSetSummary & { boosterImageUrl: string } =>
+          Boolean(set.boosterImageUrl) && set.id !== 'me05',
       ),
     [sets],
   )
-  const activeSetId =
-    selectedSetId && boosterSets.some((set) => set.id === selectedSetId)
-      ? selectedSetId
-      : boosterSets[0]?.id
-  const activeSet = useMemo(
-    () => boosterSets.find((set) => set.id === activeSetId) ?? boosterSets[0],
-    [activeSetId, boosterSets],
-  )
+  const {
+    activeSet,
+    activeSetId,
+    isTravelling: isCarouselTravelling,
+    selectSet,
+  } = useBoosterCarouselSelection(boosterSets)
+
   return (
     <section className="min-w-0 rounded-lg border bg-card text-card-foreground">
       <div className="grid min-h-full gap-5 p-4 md:grid-cols-[1fr_1.1fr] md:p-5">
         <PackBoosterStage
           activeSet={activeSet}
-          boosterCount={boosterSets.length}
+          sets={boosterSets}
+          isSelectingSet={isCarouselTravelling}
           isOpening={openPackIsPending}
           packOpenStatus={packOpenStatus}
           packOpenStatusIsPending={packOpenStatusIsPending}
           onOpenPack={onOpenPack}
+          onSelectSet={selectSet}
         />
 
         <BoosterPickerPanel
@@ -84,7 +86,7 @@ export function PackStage({
           sets={boosterSets}
           setsIsPending={setsIsPending}
           onPreviewSet={onPreviewSet}
-          onSelectSet={setSelectedSetId}
+          onSelectSet={selectSet}
           ownedSetPullCounts={ownedSetPullCounts}
           hideSetCardTitle
         />

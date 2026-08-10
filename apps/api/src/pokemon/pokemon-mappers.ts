@@ -34,6 +34,7 @@ export const toSetWrite = (
   syncedAt: string,
   boosterImageUrl?: string,
   localizedText?: LocalizedSetText,
+  total = set.cardCount.total,
 ) => {
   const series = getSetSeriesName(set)
 
@@ -45,7 +46,7 @@ export const toSetWrite = (
     series,
     seriesEn: localizedText?.en?.series ?? series,
     seriesFr: localizedText?.fr?.series,
-    total: set.cardCount.total,
+    total,
     releaseDate: set.releaseDate,
     symbolUrl: getAssetUrl(set.symbol),
     logoUrl: getAssetUrl(set.logo),
@@ -113,6 +114,7 @@ export const toCardSummary = (
   number: card.localId,
   rarity: card.rarity ?? undefined,
   supertype: card.category ?? undefined,
+  isEvolved: getCardIsEvolved(card.rawJson),
   finishes: getAvailableFinishes(card.rawJson),
   finish,
   imageSmall: localizeTcgDexAssetUrl(card.imageSmall, locale),
@@ -198,4 +200,44 @@ const parseCardVariants = (
   } catch {
     return {}
   }
+}
+
+export const getCardIsEvolved = (rawJson: string): boolean | undefined => {
+  try {
+    const card = JSON.parse(rawJson) as { stage?: unknown; evolveFrom?: unknown }
+    return resolveCardIsEvolved(card.stage, card.evolveFrom)
+  } catch {
+    return undefined
+  }
+}
+
+export const resolveCardIsEvolved = (stage: unknown, evolveFrom: unknown): boolean | undefined => {
+  if (typeof evolveFrom === 'string' && evolveFrom.trim().length > 0) {
+    return true
+  }
+
+  if (typeof stage !== 'string') {
+    return undefined
+  }
+
+  const normalizedStage = stage
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .replace(/[^a-zA-Z0-9]+/g, '')
+    .toLowerCase()
+
+  if (normalizedStage === 'basic' || normalizedStage === 'debase') {
+    return false
+  }
+
+  if (
+    normalizedStage === 'stage1' ||
+    normalizedStage === 'stage2' ||
+    normalizedStage === 'niveau1' ||
+    normalizedStage === 'niveau2'
+  ) {
+    return true
+  }
+
+  return undefined
 }

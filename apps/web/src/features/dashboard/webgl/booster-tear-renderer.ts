@@ -76,6 +76,7 @@ export class BoosterTearRenderer {
   private currentFront = 0
   private progress = 0
   private isComplete = false
+  private isAutoTearing = false
   private completedAt = 0
   private launch = 0
   private flash = 0
@@ -152,6 +153,23 @@ export class BoosterTearRenderer {
     if (this.program) gl.deleteProgram(this.program)
   }
 
+  completeWithAnimation(): void {
+    if (this.isComplete || this.isAutoTearing) return
+    if (this.options.canTear && !this.options.canTear()) return
+
+    if (!this.cutEngaged) {
+      this.direction = 1
+      this.currentFront = 0
+      this.progress = 0
+    }
+
+    this.isAutoTearing = true
+    this.isTearing = true
+    this.hasStartedCut = true
+    this.cutEngaged = true
+    this.targetFront = this.direction > 0 ? 1 : 0
+  }
+
   // Raw 0..1 pointer position over the canvas.
   private canvasPointer(event: PointerEvent): { x: number; y: number } {
     const rect = this.canvas.getBoundingClientRect()
@@ -178,7 +196,7 @@ export class BoosterTearRenderer {
   }
 
   private readonly handlePointerDown = (event: PointerEvent): void => {
-    if (this.isComplete) return
+    if (this.isComplete || this.isAutoTearing) return
     if (this.options.canTear && !this.options.canTear()) return
     event.preventDefault()
     const { bx, by } = this.boosterPointer(event)
@@ -203,7 +221,7 @@ export class BoosterTearRenderer {
       x: -(y - 0.5) * 2 * (TILT_LIMIT * 0.6),
     }
 
-    if (!this.isTearing || this.isComplete) return
+    if (!this.isTearing || this.isComplete || this.isAutoTearing) return
 
     const aspect = Math.max(this.canvas.clientWidth / Math.max(this.canvas.clientHeight, 1), 0.1)
     const fillX = Math.min(1, BOOSTER_FILL * (BOOSTER_ASPECT / aspect))
@@ -235,7 +253,7 @@ export class BoosterTearRenderer {
       this.canvas.releasePointerCapture(event.pointerId)
     }
 
-    if (this.isComplete) return
+    if (this.isComplete || this.isAutoTearing) return
 
     // Released before fully cut -> recoil the strip closed.
     this.isTearing = false
@@ -302,6 +320,7 @@ export class BoosterTearRenderer {
     if (this.isComplete) return
 
     this.isComplete = true
+    this.isAutoTearing = false
     this.completedAt = performance.now()
     this.isTearing = false
     this.hasStartedCut = false
@@ -351,7 +370,7 @@ export class BoosterTearRenderer {
 
     setUniformMatrix(gl, this.program, 'uMvp', mvp)
     const visualProgress =
-      this.isTearing && this.hasStartedCut
+      this.isTearing && this.hasStartedCut && !this.isAutoTearing
         ? clamp(this.direction > 0 ? this.targetFront : 1 - this.targetFront, 0, 1)
         : this.progress
     setUniform1f(gl, this.program, 'uFrontX', this.currentFront)

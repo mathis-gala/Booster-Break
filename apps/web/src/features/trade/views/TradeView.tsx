@@ -464,7 +464,11 @@ export function TradeView() {
                                 ''
                               }
                               alt={selectedAuction.offeredCard.name}
+                              cardId={selectedAuction.offeredCard.id}
                               finish={selectedAuction.offeredCardFinish}
+                              rarity={selectedAuction.offeredCard.rarity}
+                              supertype={selectedAuction.offeredCard.supertype}
+                              isEvolved={selectedAuction.offeredCard.isEvolved}
                               className="aspect-63/88 w-full rounded-lg"
                             />
                           </button>

@@ -10,12 +10,17 @@ import type {
   UserCollectionResponse,
 } from '@tcg-collection/shared'
 import { DEFAULT_LOCALE } from '@tcg-collection/shared'
+import type { Set as TcgDexSet } from '@tcgdex/sdk'
 import { AuthService } from '../auth/auth-service'
 import type { AuthUser } from '../auth/types'
 import { PokemonRepository } from './pokemon-repository'
 import {
+  FEATURED_HISTORICAL_BOOSTER_SET_IDS,
+  isBoosterOpeningEnabled,
   PACK_OPEN_COOLDOWN_SECONDS,
+  PINNED_MODERN_BOOSTER_SET_IDS,
   POKEMON_SYNC_START_DATE,
+  REQUIRED_AVAILABLE_BOOSTER_SETS,
   SYNCED_BOOSTER_LIMIT,
 } from './pokemon-config'
 import type { PokemonPackDrawResult } from './pack-draft'
@@ -24,6 +29,7 @@ import { getBoosterChargeStatus, PackCooldownError } from './pack-cooldown'
 import { PokemonCatalogSyncService } from './pokemon-catalog-sync-service'
 import { ScrydexSealedClient } from './scrydex-sealed-client'
 import { TcgDexClient } from './tcgdex-client'
+import { getSwshGallerySetId } from './swsh-gallery'
 
 export interface PokemonServiceOptions {
   authService: AuthService
@@ -60,15 +66,21 @@ export class PokemonService {
   }
 
   async listSets(locale: SupportedLocale): Promise<PokemonSetSummary[]> {
-    const sets = await this.options.pokemonRepository.listSets(locale)
+    let sets = await this.options.pokemonRepository.listSets(locale)
+    const requiredSetsAreComplete = await Promise.all(
+      Object.entries(REQUIRED_AVAILABLE_BOOSTER_SETS).map(([setId, expectedTotal]) =>
+        this.options.pokemonRepository.hasCompleteSet(setId, expectedTotal),
+      ),
+    )
 
-    if (sets.length > 0) {
+    if (requiredSetsAreComplete.every(Boolean)) {
       return sets
     }
 
     await this.ensurePokemonDataSynced()
+    sets = await this.options.pokemonRepository.listSets(locale)
 
-    return this.options.pokemonRepository.listSets(locale)
+    return sets
   }
 
   async listCards(
@@ -133,6 +145,7 @@ export class PokemonService {
     )
     let cardCount = 0
     let setCount = 0
+    const syncedSetIds = new Set<string>()
 
     for (const set of recentSets) {
       if (setCount >= SYNCED_BOOSTER_LIMIT) {
@@ -145,10 +158,33 @@ export class PokemonService {
         continue
       }
 
-      const syncedSet = await this.catalogSyncService.syncSet(set, {
-        syncedAt,
-        boosterImageUrl,
-      })
+      const syncedSet = await this.syncCatalogSet(set, syncedAt, boosterImageUrl)
+      cardCount += syncedSet.cards
+      setCount += 1
+      syncedSetIds.add(set.id)
+    }
+
+    for (const setId of [
+      ...PINNED_MODERN_BOOSTER_SET_IDS,
+      ...FEATURED_HISTORICAL_BOOSTER_SET_IDS,
+    ]) {
+      if (syncedSetIds.has(setId)) {
+        continue
+      }
+
+      const set = await this.options.pokemonClient.getSetById(setId)
+
+      if (!set) {
+        continue
+      }
+
+      const boosterImageUrl = await this.options.sealedClient.getBoosterImageUrl(set)
+
+      if (!boosterImageUrl) {
+        continue
+      }
+
+      const syncedSet = await this.syncCatalogSet(set, syncedAt, boosterImageUrl)
       cardCount += syncedSet.cards
       setCount += 1
     }
@@ -165,6 +201,19 @@ export class PokemonService {
     await this.syncPokemonData()
   }
 
+  private async syncCatalogSet(set: TcgDexSet, syncedAt: string, boosterImageUrl: string) {
+    const gallerySetId = getSwshGallerySetId(set.id)
+    const gallerySet = gallerySetId
+      ? await this.options.pokemonClient.getSetById(gallerySetId)
+      : undefined
+
+    return this.catalogSyncService.syncSet(set, {
+      syncedAt,
+      boosterImageUrl,
+      supplementalSets: gallerySet ? [gallerySet] : [],
+    })
+  }
+
   async openPack(
     user: AuthUser,
     input: { setId?: string; locale?: SupportedLocale },
@@ -176,6 +225,13 @@ export class PokemonService {
       return {
         error: 'pokemon_sets_not_synced',
         message: 'Sync Pokemon sets before opening a booster.',
+      }
+    }
+
+    if (!isBoosterOpeningEnabled(setId)) {
+      return {
+        error: 'pack_unavailable',
+        message: 'This booster set is not available for opening yet.',
       }
     }
 
@@ -197,7 +253,7 @@ export class PokemonService {
       }
     }
 
-    const { cards, isGodPack } = await this.drawPackCards(setId, locale)
+    const { cards, isGodPack } = await this.drawPackCards(set.id, locale)
 
     if (cards.length === 0) {
       return {
@@ -252,7 +308,7 @@ export class PokemonService {
   ): Promise<PokemonPackDrawResult> {
     const allCards = await this.options.pokemonRepository.listCards(setId, locale)
 
-    return drawPokemonPackCards(allCards)
+    return drawPokemonPackCards(allCards, { setId })
   }
 }
 

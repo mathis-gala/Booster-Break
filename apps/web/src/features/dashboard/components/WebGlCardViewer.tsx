@@ -1,15 +1,22 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
 import type { CardFinish } from '@tcg-collection/shared'
-import { motion, type MotionValue, useMotionValue } from 'motion/react'
+import { motion, type MotionValue, useMotionValue, useReducedMotion } from 'motion/react'
 
 import { cn } from '@/lib/utils'
+import type { FoilMask, FoilTuningOverrides } from '../lib/card-foil'
 import { CardViewerRenderer } from '../webgl/card-viewer-renderer'
 import { FoilCardImage } from './FoilCardImage'
 
 interface WebGlCardViewerProps {
   frontImageUrl: string
   alt: string
+  cardId: string
   finish?: CardFinish
+  rarity?: string
+  supertype?: string
+  isEvolved?: boolean
+  foilTuning?: FoilTuningOverrides
+  foilMask?: FoilMask
   className?: string
   interactive?: boolean
   rotationX?: MotionValue<number>
@@ -24,7 +31,13 @@ interface WebGlCardViewerProps {
 export function WebGlCardViewer({
   frontImageUrl,
   alt,
+  cardId,
   finish,
+  rarity,
+  supertype,
+  isEvolved,
+  foilTuning,
+  foilMask,
   className,
   interactive = true,
   rotationX,
@@ -35,6 +48,9 @@ export function WebGlCardViewer({
   rendering = true,
   rotationLimit,
 }: WebGlCardViewerProps) {
+  const shouldReduceMotion = useReducedMotion() === true
+  const motionEnabled = foilTuning?.motion !== false && !shouldReduceMotion
+  const effectiveFoilTuning: FoilTuningOverrides = { ...foilTuning, motion: motionEnabled }
   const rendererRef = useRef<CardViewerRenderer | undefined>(undefined)
   const mountTokenRef = useRef(0)
   const rotationXRef = useRef(rotationX)
@@ -42,6 +58,8 @@ export function WebGlCardViewer({
   const onReadyRef = useRef(onReady)
   const interactiveRef = useRef(interactive)
   const renderingRef = useRef(rendering)
+  const foilTuningRef = useRef<FoilTuningOverrides>(effectiveFoilTuning)
+  const foilMaskRef = useRef(foilMask)
   const fallbackRotationX = useMotionValue(0)
   const fallbackRotationY = useMotionValue(0)
   const [fallbackReason, setFallbackReason] = useState<string>()
@@ -67,10 +85,23 @@ export function WebGlCardViewer({
         try {
           renderer = new CardViewerRenderer(currentCanvas, {
             frontImageUrl,
+            cardId,
+            cardName: alt,
             finish,
+            rarity,
+            supertype,
+            isEvolved,
+            foilTuning: foilTuningRef.current,
+            foilMask: foilMaskRef.current,
+            reduceMotion: shouldReduceMotion,
             interactive: interactiveRef.current,
             cameraDistance,
             rotationLimit,
+            onContextFailure: (reason) => {
+              if (!isDisposed && mountTokenRef.current === mountToken) {
+                setFallbackReason(reason)
+              }
+            },
           })
           rendererRef.current = renderer
           await renderer.initialize()
@@ -107,7 +138,18 @@ export function WebGlCardViewer({
         }
       }
     },
-    [cameraDistance, finish, frontImageUrl, rotationLimit],
+    [
+      alt,
+      cameraDistance,
+      cardId,
+      finish,
+      frontImageUrl,
+      isEvolved,
+      rarity,
+      rotationLimit,
+      shouldReduceMotion,
+      supertype,
+    ],
   )
 
   const syncExternalRotation = useCallback(() => {
@@ -140,6 +182,31 @@ export function WebGlCardViewer({
   }, [rendering])
 
   useEffect(() => {
+    foilMaskRef.current = foilMask
+    rendererRef.current?.setFoilMask(foilMask)
+  }, [foilMask])
+
+  useEffect(() => {
+    const nextTuning: FoilTuningOverrides = {
+      intensity: foilTuning?.intensity,
+      glare: foilTuning?.glare,
+      textureScale: foilTuning?.textureScale,
+      lightX: foilTuning?.lightX,
+      lightY: foilTuning?.lightY,
+      motion: motionEnabled,
+    }
+    foilTuningRef.current = nextTuning
+    rendererRef.current?.setFoilTuning(nextTuning)
+  }, [
+    foilTuning?.glare,
+    foilTuning?.intensity,
+    foilTuning?.lightX,
+    foilTuning?.lightY,
+    foilTuning?.textureScale,
+    motionEnabled,
+  ])
+
+  useEffect(() => {
     const unsubscribeX = rotationX?.on('change', syncExternalRotation)
     const unsubscribeY = rotationY?.on('change', syncExternalRotation)
 
@@ -153,7 +220,7 @@ export function WebGlCardViewer({
     return (
       <motion.span
         className={cn(
-          'relative block aspect-63/88 max-h-[95vh] w-full [&>span]:size-full',
+          'relative block aspect-63/88 w-full max-w-[calc(95vh*63/88)] [&>span]:size-full',
           className,
         )}
         style={{
@@ -165,8 +232,16 @@ export function WebGlCardViewer({
         <FoilCardImage
           src={frontImageUrl}
           alt={alt}
+          cardId={cardId}
           finish={finish}
-          className="size-full rounded-lg object-contain"
+          rarity={rarity}
+          supertype={supertype}
+          isEvolved={isEvolved}
+          foilTuning={effectiveFoilTuning}
+          foilMask={foilMask}
+          rotationX={rotationX}
+          rotationY={rotationY}
+          className="size-full rounded-lg object-fill"
         />
       </motion.span>
     )

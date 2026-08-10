@@ -73,7 +73,18 @@ export class ScrydexSealedClient {
   }
 }
 
-const knownBoosterImageExpansionIds = new Set(['me1', 'me2', 'me3', 'sv8', 'sv8pt5', 'sv9', 'sv10'])
+const knownBoosterImageExpansionIds = new Set([
+  'me1',
+  'me2',
+  'me3',
+  'me4',
+  'me5',
+  'sv8',
+  'sv8pt5',
+  'sv9',
+  'sv10',
+  'swsh12pt5',
+])
 
 const getKnownBoosterImageUrl = (expansionId: string): string | undefined => {
   if (
@@ -95,6 +106,12 @@ const toScrydexExpansionId = (tcgdexSetId: string): string | undefined => {
 
   if (historicalMatch) {
     return tcgdexSetId
+  }
+
+  const swordShieldSpecialMatch = /^swsh(\d+)\.5$/.exec(tcgdexSetId)
+
+  if (swordShieldSpecialMatch) {
+    return `swsh${Number(swordShieldSpecialMatch[1])}pt5`
   }
 
   const megaMatch = /^me0?(\d+)$/.exec(tcgdexSetId)

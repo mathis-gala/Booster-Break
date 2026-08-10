@@ -1,0 +1,621 @@
+:root {
+  color: #dce6e8;
+  background: #070b0c;
+  font-family: 'Geist Variable', sans-serif;
+}
+
+body {
+  min-height: 100vh;
+  background:
+    linear-gradient(rgb(255 255 255 / 0.025) 1px, transparent 1px),
+    linear-gradient(90deg, rgb(255 255 255 / 0.025) 1px, transparent 1px),
+    radial-gradient(circle at 74% 8%, rgb(31 101 105 / 0.2), transparent 34rem), #070b0c;
+  background-size:
+    32px 32px,
+    32px 32px,
+    auto;
+}
+
+.foil-lab-shell {
+  width: min(100%, 1580px);
+  min-height: 100vh;
+  margin: 0 auto;
+  padding: 30px clamp(16px, 3vw, 52px) 48px;
+}
+
+.foil-lab-header {
+  display: flex;
+  align-items: end;
+  justify-content: space-between;
+  gap: 24px;
+  padding-bottom: 20px;
+  border-bottom: 1px solid #304044;
+}
+
+.foil-lab-kicker {
+  margin: 0 0 7px;
+  color: #6fa7a9;
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  font-size: 0.68rem;
+  font-weight: 650;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+}
+
+.foil-lab-header h1 {
+  margin: 0;
+  color: #f1f5f4;
+  font-size: clamp(1.8rem, 4vw, 3.3rem);
+  font-weight: 620;
+  letter-spacing: -0.055em;
+  line-height: 0.96;
+}
+
+.foil-lab-status {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  color: #839194;
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  font-size: 0.68rem;
+  text-transform: uppercase;
+}
+
+.foil-lab-status span {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: #a87944;
+  box-shadow: 0 0 12px rgb(168 121 68 / 0.65);
+}
+
+.foil-lab-status[data-ready='true'] span {
+  background: #63c2a0;
+  box-shadow: 0 0 12px rgb(99 194 160 / 0.65);
+}
+
+.foil-lab-samples {
+  display: flex;
+  gap: 7px;
+  margin: 17px 0 20px;
+  padding-bottom: 7px;
+  overflow-x: auto;
+  scrollbar-color: #405155 transparent;
+}
+
+.foil-lab-samples button {
+  display: inline-flex;
+  flex: 0 0 auto;
+  align-items: center;
+  gap: 8px;
+  min-height: 34px;
+  padding: 0 11px;
+  border: 1px solid #29373a;
+  border-radius: 2px;
+  color: #8d9a9d;
+  background: #0b1112;
+  font-size: 0.72rem;
+  font-weight: 650;
+  transition:
+    border-color 120ms ease,
+    color 120ms ease,
+    background-color 120ms ease;
+}
+
+.foil-lab-samples button span {
+  color: #536467;
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  font-size: 0.62rem;
+}
+
+.foil-lab-samples button:hover,
+.foil-lab-samples button[aria-pressed='true'] {
+  border-color: #6da4a6;
+  color: #e1eeee;
+  background: #122022;
+}
+
+.foil-lab-workspace {
+  display: grid;
+  grid-template-columns: minmax(210px, 260px) minmax(0, 1fr);
+  gap: clamp(18px, 3vw, 44px);
+}
+
+.foil-lab-controls {
+  align-self: start;
+  padding: 17px;
+  border: 1px solid #304044;
+  border-radius: 3px;
+  background: rgb(9 15 16 / 0.86);
+  box-shadow: 0 22px 70px rgb(0 0 0 / 0.22);
+}
+
+.foil-lab-sample-meta {
+  margin: -17px -17px 18px;
+  padding: 15px 17px;
+  border-bottom: 1px solid #304044;
+  background: #0e1719;
+}
+
+.foil-lab-sample-meta p,
+.foil-lab-sample-meta span {
+  color: #688083;
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  font-size: 0.64rem;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.foil-lab-sample-meta h2 {
+  margin: 3px 0 5px;
+  color: #e8efef;
+  font-size: 1.04rem;
+  font-weight: 690;
+}
+
+.foil-lab-range {
+  display: grid;
+  gap: 7px;
+  margin-top: 14px;
+}
+
+.foil-lab-range > span {
+  display: flex;
+  justify-content: space-between;
+  color: #9ca9ab;
+  font-size: 0.7rem;
+  font-weight: 620;
+}
+
+.foil-lab-range output {
+  color: #74abad;
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+}
+
+.foil-lab-range input {
+  width: 100%;
+  height: 2px;
+  accent-color: #71a9ab;
+  cursor: ew-resize;
+}
+
+.foil-lab-toggle {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  margin-top: 20px;
+  padding-top: 16px;
+  border-top: 1px solid #253336;
+}
+
+.foil-lab-toggle span {
+  display: grid;
+}
+
+.foil-lab-toggle strong {
+  color: #aab6b8;
+  font-size: 0.72rem;
+}
+
+.foil-lab-toggle small {
+  color: #617174;
+  font-size: 0.64rem;
+}
+
+.foil-lab-toggle input {
+  width: 34px;
+  height: 18px;
+  accent-color: #71a9ab;
+}
+
+.foil-lab-comparison {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: clamp(10px, 2.4vw, 30px);
+  min-width: 0;
+}
+
+.foil-lab-renderer {
+  min-width: 0;
+}
+
+.foil-lab-renderer > header {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 10px;
+  padding-bottom: 8px;
+  border-bottom: 1px solid #263639;
+}
+
+.foil-lab-renderer h3 {
+  margin: 0;
+  color: #d8e4e5;
+  font-size: 0.76rem;
+  font-weight: 680;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.foil-lab-renderer header span {
+  color: #5e7073;
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  font-size: 0.6rem;
+}
+
+.foil-lab-stage {
+  position: relative;
+  display: grid;
+  min-height: min(71vh, 760px);
+  place-items: center;
+  padding: clamp(10px, 2vw, 24px);
+  border: 1px solid #263639;
+  border-radius: 3px;
+  background:
+    radial-gradient(circle at center, rgb(43 62 64 / 0.3), transparent 62%),
+    linear-gradient(135deg, #0a1011, #080c0d);
+  perspective: 1200px;
+  overflow: hidden;
+}
+
+.foil-lab-stage[data-tiltable='true'] {
+  touch-action: none;
+  user-select: none;
+  cursor: grab;
+}
+
+.foil-lab-stage[data-tiltable='true']:active {
+  cursor: grabbing;
+}
+
+.foil-lab-drag-hint {
+  position: absolute;
+  right: 10px;
+  bottom: 8px;
+  z-index: 2;
+  color: #597174;
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  font-size: 0.58rem;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  pointer-events: none;
+}
+
+.foil-lab-card {
+  aspect-ratio: 63 / 88;
+  width: min(100%, 430px);
+  border-radius: 3.6% / 2.6%;
+  filter: drop-shadow(0 28px 32px rgb(0 0 0 / 0.48));
+}
+
+.foil-reverse-calibration {
+  margin-top: 34px;
+  padding-top: 24px;
+  border-top: 1px solid #304044;
+}
+
+.foil-reverse-calibration-header {
+  display: flex;
+  align-items: end;
+  justify-content: space-between;
+  gap: 24px;
+}
+
+.foil-reverse-calibration-header h2 {
+  margin: 0;
+  color: #edf4f4;
+  font-size: clamp(1.35rem, 2.5vw, 2rem);
+  letter-spacing: -0.035em;
+}
+
+.foil-reverse-calibration-header > div > p:last-child {
+  max-width: 620px;
+  margin-top: 7px;
+  color: #75878a;
+  font-size: 0.72rem;
+}
+
+.foil-reverse-calibration-header button {
+  flex: 0 0 auto;
+  min-height: 34px;
+  padding: 0 12px;
+  border: 1px solid #40575a;
+  border-radius: 2px;
+  color: #a9b9bb;
+  background: #0b1213;
+  font-size: 0.68rem;
+  font-weight: 650;
+}
+
+.foil-reverse-calibration-legend {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 16px;
+  margin: 17px 0 13px;
+  color: #7d8e91;
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  font-size: 0.62rem;
+  text-transform: uppercase;
+}
+
+.foil-reverse-calibration-legend span {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.foil-reverse-calibration-legend span::before {
+  width: 9px;
+  height: 9px;
+  border: 1px solid rgb(255 255 255 / 0.3);
+  content: '';
+}
+
+.foil-reverse-calibration-legend [data-region='foil']::before {
+  background: #24c9c2;
+}
+
+.foil-reverse-calibration-legend [data-region='artwork']::before,
+.foil-reverse-calibration-legend [data-region='evolution']::before {
+  background: #f59a4a;
+}
+
+.foil-reverse-calibration-legend [data-region='evolution']::before {
+  border-radius: 50%;
+}
+
+.foil-reverse-calibration-legend [data-region='border']::before {
+  background: #313b3d;
+}
+
+.foil-reverse-calibration-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: clamp(14px, 2.2vw, 28px);
+}
+
+.foil-reverse-mask-editor {
+  min-width: 0;
+  padding: clamp(13px, 1.8vw, 20px);
+  border: 1px solid #2d3e41;
+  border-radius: 3px;
+  background: rgb(9 15 16 / 0.9);
+}
+
+.foil-reverse-mask-editor > header {
+  display: flex;
+  align-items: end;
+  justify-content: space-between;
+  gap: 12px;
+  padding-bottom: 11px;
+  border-bottom: 1px solid #263639;
+}
+
+.foil-reverse-mask-editor > header p {
+  color: #617a7d;
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  font-size: 0.6rem;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.foil-reverse-mask-editor > header h3 {
+  margin-top: 3px;
+  color: #dce8e9;
+  font-size: 0.9rem;
+}
+
+.foil-reverse-mask-editor > header code {
+  color: #6fb3b4;
+  font-size: 0.59rem;
+  white-space: nowrap;
+}
+
+.foil-reverse-mask-values {
+  display: grid;
+  justify-items: end;
+  gap: 3px;
+}
+
+.foil-reverse-mask-control-groups {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 10px;
+  margin: 13px 0 17px;
+}
+
+.foil-reverse-mask-control-groups > div {
+  min-width: 0;
+  padding: 10px;
+  border: 1px solid #263639;
+  background: rgb(5 10 11 / 0.42);
+}
+
+.foil-reverse-mask-control-groups h4 {
+  margin: 0 0 3px;
+  color: #7ea3a5;
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  font-size: 0.59rem;
+  letter-spacing: 0.07em;
+  text-transform: uppercase;
+}
+
+.foil-reverse-mask-control-groups .foil-reverse-evolution-controls {
+  grid-column: 1 / -1;
+}
+
+.foil-reverse-mask-controls {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 0 16px;
+}
+
+.foil-reverse-mask-previews {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 12px;
+}
+
+.foil-reverse-mask-previews figure {
+  display: grid;
+  align-content: start;
+  min-width: 0;
+  margin: 0;
+}
+
+.foil-reverse-mask-previews figcaption {
+  margin-bottom: 7px;
+  color: #64787b;
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  font-size: 0.57rem;
+  letter-spacing: 0.07em;
+  text-transform: uppercase;
+}
+
+.foil-reverse-mask-guide,
+.foil-reverse-calibration-card {
+  aspect-ratio: 63 / 88;
+  width: 100%;
+  border-radius: 3.6% / 2.6%;
+  overflow: hidden;
+}
+
+.foil-reverse-mask-guide {
+  position: relative;
+  background: #050808;
+  box-shadow: 0 16px 28px rgb(0 0 0 / 0.34);
+}
+
+.foil-reverse-mask-guide img {
+  position: absolute;
+  z-index: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: fill;
+}
+
+.foil-reverse-mask-guide-active,
+.foil-reverse-mask-guide-stock,
+.foil-reverse-mask-guide-artwork,
+.foil-reverse-mask-guide-evolution {
+  position: absolute;
+  pointer-events: none;
+}
+
+.foil-reverse-mask-guide-active {
+  z-index: 1;
+  background: rgb(25 224 214 / 0.34);
+  mix-blend-mode: screen;
+}
+
+.foil-reverse-mask-guide-stock {
+  z-index: 2;
+  border: 1px solid #52f5eb;
+  box-shadow: 0 0 0 999px rgb(3 7 8 / 0.62);
+}
+
+.foil-reverse-mask-guide-artwork {
+  z-index: 3;
+  display: grid;
+  border: 2px solid #ffab5f;
+  background: rgb(245 140 54 / 0.16);
+  place-items: center;
+}
+
+.foil-reverse-mask-guide-evolution {
+  z-index: 4;
+  display: grid;
+  border: 2px solid #ffab5f;
+  border-radius: 50%;
+  background: rgb(245 140 54 / 0.22);
+  place-items: center;
+}
+
+.foil-reverse-mask-guide-artwork b,
+.foil-reverse-mask-guide-evolution b {
+  padding: 3px 5px;
+  color: #fff1e3;
+  background: rgb(78 37 10 / 0.84);
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  font-size: clamp(0.48rem, 0.8vw, 0.64rem);
+  letter-spacing: 0.08em;
+}
+
+.foil-reverse-calibration-card {
+  filter: drop-shadow(0 16px 28px rgb(0 0 0 / 0.34));
+}
+
+@media (max-width: 760px) {
+  .foil-lab-shell {
+    padding: 20px 10px 28px;
+  }
+
+  .foil-lab-header {
+    align-items: start;
+    flex-direction: column;
+    gap: 13px;
+  }
+
+  .foil-lab-workspace {
+    grid-template-columns: 1fr;
+  }
+
+  .foil-lab-controls {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 0 14px;
+  }
+
+  .foil-lab-sample-meta,
+  .foil-lab-toggle {
+    grid-column: 1 / -1;
+  }
+
+  .foil-lab-comparison {
+    gap: 8px;
+  }
+
+  .foil-lab-renderer > header {
+    align-items: start;
+    flex-direction: column;
+    gap: 3px;
+  }
+
+  .foil-lab-renderer header span {
+    display: none;
+  }
+
+  .foil-lab-stage {
+    min-height: 290px;
+    padding: 7px;
+  }
+
+  .foil-reverse-calibration-header {
+    align-items: start;
+    flex-direction: column;
+    gap: 12px;
+  }
+
+  .foil-reverse-calibration-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .foil-reverse-mask-editor > header {
+    align-items: start;
+    flex-direction: column;
+  }
+
+  .foil-reverse-mask-values {
+    justify-items: start;
+  }
+
+  .foil-reverse-mask-control-groups {
+    grid-template-columns: 1fr;
+  }
+
+  .foil-reverse-mask-control-groups .foil-reverse-evolution-controls {
+    grid-column: auto;
+  }
+}

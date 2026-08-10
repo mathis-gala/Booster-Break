@@ -39,7 +39,7 @@ void main() {
     float stripT = smoothstep(uBaseline, 1.0, aUv.y);
     vec2 pivot = vec2(uDir > 0.0 ? uHalfWidth : -uHalfWidth, uBaselineY);
     vec2 rel = pos.xy - pivot;
-    float detachAngle = -uDir * (detach * 0.24 + uLaunch * 0.28);
+    float detachAngle = -uDir * (detach * 0.24);
     float detachCos = cos(detachAngle);
     float detachSin = sin(detachAngle);
 
@@ -47,7 +47,9 @@ void main() {
     pos.y = pivot.y + rel.x * detachSin + rel.y * detachCos;
     pos.z += detach * stripT * 0.06;
 
-    float launchAngle = -uDir * (uLaunch * 0.34);
+    // Keep the far corner inside the viewport while preserving a clear tumble.
+    // This rotation compounds with detachAngle around the same pivot.
+    float launchAngle = -uDir * (uLaunch * 0.16);
     float launchCos = cos(launchAngle);
     float launchSin = sin(launchAngle);
     vec2 launchRel = pos.xy - pivot;

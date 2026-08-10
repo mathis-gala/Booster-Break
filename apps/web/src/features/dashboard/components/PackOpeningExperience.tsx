@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useRef, useState } from 'react'
+import { useCallback, useEffect, useRef, useState, type CSSProperties } from 'react'
 import { Dialog as DialogPrimitive } from '@base-ui/react/dialog'
 import type { OpenPackResponse, OpenedPackCard } from '@tcg-collection/shared'
 import { MoveHorizontalIcon, ScissorsIcon, SparklesIcon } from 'lucide-react'
@@ -6,6 +6,7 @@ import {
   AnimatePresence,
   animate,
   motion,
+  type MotionStyle,
   type MotionValue,
   useMotionValue,
   useReducedMotion,
@@ -15,16 +16,177 @@ import { Button } from '@/components/ui/button'
 import { cn } from '@/lib/utils'
 import { m } from '@/paraglide/messages'
 import {
+  DEFAULT_CARD_ARTWORK_PALETTE,
   DEFAULT_CARD_GLOW_COLOR,
   getCachedCardArtworkColor,
+  getCachedCardArtworkPalette,
   getCardArtworkAverageColor,
+  getCardArtworkPalette,
+  type CardArtworkPalette,
 } from '../lib/card-art-color'
-import { getSwipeDismissDirection } from '../lib/pack-opening-gesture'
+import {
+  createRevealParticles,
+  resolveCardRevealTier,
+  type CardRevealTier,
+  type ParticleRevealTier,
+  type RevealParticleKind,
+} from '../lib/card-reveal'
+import { getCardDismissalTransition, getSwipeDismissDirection } from '../lib/pack-opening-gesture'
 import { FoilCardImage } from './FoilCardImage'
 import { InteractiveBooster } from './InteractiveBooster'
 import { WebGlCardViewer } from './WebGlCardViewer'
 
 type OpeningPhase = 'tear' | 'extract' | 'reveal' | 'recap'
+
+const JACKPOT_DURATION_SECONDS = 21
+const JACKPOT_COLOR_BURST_SECONDS = 3.4
+const JACKPOT_ZOOM_START_SECONDS = 4.4
+const JACKPOT_RECENTER_SECONDS = 17.6
+const JACKPOT_FINALE_START_SECONDS = 18.7
+const JACKPOT_FINALE_DURATION_SECONDS = JACKPOT_DURATION_SECONDS - JACKPOT_FINALE_START_SECONDS
+
+function createJackpotMotion(
+  cardWidth: number,
+  cardHeight: number,
+): {
+  times: number[]
+  scale: number[]
+  x: number[]
+  y: number[]
+  rotationX: number[]
+  rotationY: number[]
+} {
+  const times = [0, JACKPOT_ZOOM_START_SECONDS / JACKPOT_DURATION_SECONDS]
+  const scale = [1, 1]
+  const x = [0, 0]
+  const y = [0, 0]
+  const rotationX = [0, 0]
+  const rotationY = [0, 0]
+  const fullCard = { scale: 1, x: 0, y: 0, rotationX: 0, rotationY: 0 }
+  const zoomLeadIn = {
+    scale: 1.2,
+    x: 0,
+    y: cardHeight * 0.12,
+    rotationX: 0.01,
+    rotationY: -0.01,
+  }
+  const header = {
+    scale: 2.05,
+    x: 0,
+    y: cardHeight * 0.78,
+    rotationX: 0.04,
+    rotationY: -0.06,
+  }
+  const upperArtwork = {
+    scale: 2.3,
+    x: cardWidth * 0.08,
+    y: cardHeight * 0.53,
+    rotationX: -0.12,
+    rotationY: 0.18,
+  }
+  const artworkCenter = {
+    scale: 2.4,
+    x: cardWidth * -0.08,
+    y: cardHeight * 0.24,
+    rotationX: 0.14,
+    rotationY: -0.22,
+  }
+  const rulesText = {
+    scale: 2.2,
+    x: cardWidth * 0.04,
+    y: cardHeight * -0.16,
+    rotationX: -0.06,
+    rotationY: 0.12,
+  }
+  const attacks = {
+    scale: 2.3,
+    x: cardWidth * -0.05,
+    y: cardHeight * -0.38,
+    rotationX: 0.08,
+    rotationY: -0.12,
+  }
+  const lowerCard = {
+    scale: 1.9,
+    x: 0,
+    y: cardHeight * -0.46,
+    rotationX: -0.02,
+    rotationY: 0.04,
+  }
+  const centeredCard = { scale: 1.35, x: 0, y: 0, rotationX: 0, rotationY: 0 }
+  type MotionPoint = typeof fullCard & { time: number }
+  type MotionProperty = Exclude<keyof MotionPoint, 'time'>
+  const scanPoints: MotionPoint[] = [
+    { ...fullCard, time: JACKPOT_ZOOM_START_SECONDS },
+    { ...zoomLeadIn, time: 5.1 },
+    { ...header, time: 6.2 },
+    { ...upperArtwork, time: 8.4 },
+    { ...artworkCenter, time: 10.6 },
+    { ...rulesText, time: 12.8 },
+    { ...attacks, time: 14.8 },
+    { ...lowerCard, time: 16.4 },
+    { ...centeredCard, time: JACKPOT_RECENTER_SECONDS },
+  ]
+
+  const getTangent = (index: number, property: MotionProperty): number => {
+    if (index === 0 || index === scanPoints.length - 1) return 0
+
+    const previous = scanPoints[index - 1]
+    const next = scanPoints[index + 1]
+    return (next[property] - previous[property]) / (next.time - previous.time)
+  }
+
+  for (let segment = 0; segment < scanPoints.length - 1; segment += 1) {
+    const from = scanPoints[segment]
+    const to = scanPoints[segment + 1]
+    const segmentDuration = to.time - from.time
+    const steps = Math.max(1, Math.round(segmentDuration * 30))
+
+    for (let step = 1; step <= steps; step += 1) {
+      const progress = step / steps
+      const squared = progress * progress
+      const cubed = squared * progress
+      const h00 = 2 * cubed - 3 * squared + 1
+      const h10 = cubed - 2 * squared + progress
+      const h01 = -2 * cubed + 3 * squared
+      const h11 = cubed - squared
+      const interpolate = (property: MotionProperty) =>
+        h00 * from[property] +
+        h10 * segmentDuration * getTangent(segment, property) +
+        h01 * to[property] +
+        h11 * segmentDuration * getTangent(segment + 1, property)
+
+      times.push((from.time + segmentDuration * progress) / JACKPOT_DURATION_SECONDS)
+      scale.push(interpolate('scale'))
+      x.push(interpolate('x'))
+      y.push(interpolate('y'))
+      rotationX.push(interpolate('rotationX'))
+      rotationY.push(interpolate('rotationY'))
+    }
+  }
+
+  const finalZoomDuration = JACKPOT_FINALE_START_SECONDS - JACKPOT_RECENTER_SECONDS
+  const finalZoomSteps = Math.round(finalZoomDuration * 30)
+  for (let step = 1; step <= finalZoomSteps; step += 1) {
+    const progress = step / finalZoomSteps
+    const eased = progress * progress * (3 - 2 * progress)
+
+    times.push((JACKPOT_RECENTER_SECONDS + finalZoomDuration * progress) / JACKPOT_DURATION_SECONDS)
+    scale.push(centeredCard.scale + (fullCard.scale - centeredCard.scale) * eased)
+    x.push(0)
+    y.push(0)
+    rotationX.push(0)
+    rotationY.push(0)
+  }
+
+  times.push(1)
+  scale.push(fullCard.scale)
+  x.push(0)
+  y.push(0)
+  rotationX.push(0)
+  rotationY.push(0)
+
+  return { times, scale, x, y, rotationX, rotationY }
+}
 
 interface PackOpeningExperienceProps {
   openPackResult: OpenPackResponse
@@ -39,20 +201,36 @@ export function PackOpeningExperience({
 }: PackOpeningExperienceProps) {
   const [phase, setPhase] = useState<OpeningPhase>('tear')
   const [revealedCardIndex, setRevealedCardIndex] = useState(0)
+  const revealedCardIndexRef = useRef(0)
   const [tearProgress, setTearProgress] = useState(0)
-  const [sampledGlow, setSampledGlow] = useState<{
+  const [autoTearRequested, setAutoTearRequested] = useState(false)
+  const [sampledArtwork, setSampledArtwork] = useState<{
     imageUrl: string
     color: string
+    palette: CardArtworkPalette
   }>()
   const shouldReduceMotion = useReducedMotion()
   const currentCard = openPackResult.cards[revealedCardIndex]
+  const isRecapVisible = phase === 'recap' || (phase === 'reveal' && !currentCard)
+  const currentRevealTier = currentCard ? resolveCardRevealTier(currentCard) : 'standard'
   const currentImageUrl = currentCard?.imageLarge ?? currentCard?.imageSmall
   const isGodPack = openPackResult.isGodPack
   const newCardCount = openPackResult.cards.filter((card) => card.isNew).length
   const glowColor = currentImageUrl
     ? (getCachedCardArtworkColor(currentImageUrl) ??
-      (sampledGlow?.imageUrl === currentImageUrl ? sampledGlow.color : DEFAULT_CARD_GLOW_COLOR))
+      (sampledArtwork?.imageUrl === currentImageUrl
+        ? sampledArtwork.color
+        : DEFAULT_CARD_GLOW_COLOR))
     : DEFAULT_CARD_GLOW_COLOR
+  const artworkPalette = currentImageUrl
+    ? (getCachedCardArtworkPalette(currentImageUrl) ??
+      (sampledArtwork?.imageUrl === currentImageUrl
+        ? sampledArtwork.palette
+        : DEFAULT_CARD_ARTWORK_PALETTE))
+    : DEFAULT_CARD_ARTWORK_PALETTE
+  const glowStrength = getGlowStrength(currentRevealTier)
+  const glowChannels = glowColor.split(' ').join(', ')
+  const ambientGlowBackground = `radial-gradient(circle at 50% 38%, rgba(${glowChannels}, ${glowStrength.primary}), transparent 44%), radial-gradient(circle at 15% 85%, rgba(${glowChannels}, ${glowStrength.secondary}), transparent 36%)`
 
   useEffect(() => {
     for (const card of openPackResult.cards) {
@@ -65,8 +243,11 @@ export function PackOpeningExperience({
     if (!currentImageUrl) return
 
     let isCurrent = true
-    void getCardArtworkAverageColor(currentImageUrl).then((color) => {
-      if (isCurrent) setSampledGlow({ imageUrl: currentImageUrl, color })
+    void Promise.all([
+      getCardArtworkAverageColor(currentImageUrl),
+      getCardArtworkPalette(currentImageUrl),
+    ]).then(([color, palette]) => {
+      if (isCurrent) setSampledArtwork({ imageUrl: currentImageUrl, color, palette })
     })
 
     return () => {
@@ -77,14 +258,42 @@ export function PackOpeningExperience({
     setPhase((currentPhase) => (currentPhase === 'tear' ? 'extract' : currentPhase))
   }, [])
 
-  const handleCardDismissed = useCallback(() => {
-    if (revealedCardIndex >= openPackResult.cards.length - 1) {
-      setPhase('recap')
-      return
+  const requestAutoTear = useCallback(() => {
+    setAutoTearRequested(true)
+  }, [])
+
+  useEffect(() => {
+    if (phase !== 'tear' || autoTearRequested) return
+
+    const handleKeyDown = (event: KeyboardEvent) => {
+      if (event.code !== 'Space') return
+      event.preventDefault()
+      requestAutoTear()
     }
 
-    setRevealedCardIndex((currentIndex) => currentIndex + 1)
-  }, [openPackResult.cards.length, revealedCardIndex])
+    window.addEventListener('keydown', handleKeyDown)
+    return () => window.removeEventListener('keydown', handleKeyDown)
+  }, [autoTearRequested, phase, requestAutoTear])
+
+  const handleCardDismissed = useCallback(
+    (dismissedIndex: number) => {
+      const transition = getCardDismissalTransition(
+        revealedCardIndexRef.current,
+        dismissedIndex,
+        openPackResult.cards.length,
+      )
+      if (!transition) return
+
+      if (transition.isComplete) {
+        setPhase((currentPhase) => (currentPhase === 'reveal' ? 'recap' : currentPhase))
+        return
+      }
+
+      revealedCardIndexRef.current = transition.nextIndex
+      setRevealedCardIndex(transition.nextIndex)
+    },
+    [openPackResult.cards.length],
+  )
 
   const isTearPhase = phase === 'tear'
   const isStackPhase = phase === 'tear' || phase === 'extract' || phase === 'reveal'
@@ -101,7 +310,7 @@ export function PackOpeningExperience({
         <DialogPrimitive.Popup
           className={cn(
             'fixed inset-0 z-50 text-white focus:outline-none',
-            phase === 'recap' ? 'overflow-y-auto' : 'overflow-hidden',
+            isRecapVisible ? 'overflow-y-auto' : 'overflow-hidden',
           )}
         >
           <div
@@ -112,19 +321,27 @@ export function PackOpeningExperience({
             className="pointer-events-none fixed inset-0 bg-linear-to-b from-slate-950/20 to-slate-950/75"
             aria-hidden="true"
           />
+          <motion.div
+            className="pointer-events-none fixed inset-0"
+            initial={false}
+            animate={{ backgroundImage: ambientGlowBackground }}
+            transition={{
+              backgroundImage: {
+                duration: shouldReduceMotion ? 0.1 : 0.62,
+                ease: [0.32, 0.72, 0, 1],
+              },
+            }}
+            aria-hidden="true"
+          />
           <AnimatePresence initial={false}>
-            <motion.div
-              key={`${currentCard?.id ?? openPackResult.set.id}-${glowColor}`}
-              className="pointer-events-none fixed inset-0"
-              style={{
-                backgroundImage: `radial-gradient(circle at 50% 38%, rgb(${glowColor} / 0.3), transparent 44%), radial-gradient(circle at 15% 85%, rgb(${glowColor} / 0.12), transparent 36%)`,
-              }}
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-              exit={{ opacity: 0 }}
-              transition={{ duration: shouldReduceMotion ? 0.1 : 0.5 }}
-              aria-hidden="true"
-            />
+            {phase === 'reveal' && currentCard && currentRevealTier === 'jackpot' ? (
+              <JackpotBackdrop
+                key={`${currentCard.id}-${revealedCardIndex}`}
+                color={glowColor}
+                palette={artworkPalette}
+                shouldReduceMotion={Boolean(shouldReduceMotion)}
+              />
+            ) : null}
           </AnimatePresence>
 
           <DialogPrimitive.Title id="pack-opening-title" className="sr-only">
@@ -165,6 +382,7 @@ export function PackOpeningExperience({
                     imageUrl={openPackResult.set.boosterImageUrl ?? ''}
                     setName={openPackResult.set.name}
                     canTear
+                    autoTear={autoTearRequested}
                     onCut={handleTearComplete}
                     onProgressChange={setTearProgress}
                   />
@@ -185,7 +403,8 @@ export function PackOpeningExperience({
                 <motion.button
                   type="button"
                   className="mt-2 text-xs font-semibold text-white/45 underline-offset-4 transition hover:text-white/80 hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/80"
-                  onClick={handleTearComplete}
+                  onClick={requestAutoTear}
+                  disabled={autoTearRequested}
                   animate={{ opacity: isTearPhase ? 1 : 0 }}
                   tabIndex={isTearPhase ? 0 : -1}
                 >
@@ -195,7 +414,7 @@ export function PackOpeningExperience({
             ) : null}
           </AnimatePresence>
 
-          <AnimatePresence mode="wait">
+          <AnimatePresence initial={false}>
             {isStackPhase && currentCard ? (
               <CardStack
                 key="opening-card-stack"
@@ -205,6 +424,8 @@ export function PackOpeningExperience({
                 isExtracting={phase === 'extract'}
                 isWaitingForTear={phase === 'tear'}
                 isGodPack={isGodPack}
+                glowColor={glowColor}
+                artworkPalette={artworkPalette}
                 shouldReduceMotion={Boolean(shouldReduceMotion)}
                 onExtracted={() =>
                   setPhase((currentPhase) => (currentPhase === 'extract' ? 'reveal' : currentPhase))
@@ -213,7 +434,7 @@ export function PackOpeningExperience({
               />
             ) : null}
 
-            {phase === 'recap' ? (
+            {isRecapVisible ? (
               <PackRecap
                 key="pack-recap"
                 cards={openPackResult.cards}
@@ -239,9 +460,11 @@ interface CardStackProps {
   isExtracting: boolean
   isWaitingForTear: boolean
   isGodPack: boolean
+  glowColor: string
+  artworkPalette: CardArtworkPalette
   shouldReduceMotion: boolean
   onExtracted: () => void
-  onCardDismissed: () => void
+  onCardDismissed: (cardIndex: number) => void
 }
 
 function CardStack({
@@ -251,6 +474,8 @@ function CardStack({
   isExtracting,
   isWaitingForTear,
   isGodPack,
+  glowColor,
+  artworkPalette,
   shouldReduceMotion,
   onExtracted,
   onCardDismissed,
@@ -258,8 +483,18 @@ function CardStack({
   const cardRef = useRef<HTMLButtonElement>(null)
   const isDismissingRef = useRef(false)
   const [exitDirection, setExitDirection] = useState<-1 | 1>()
+  const [completedJackpotKey, setCompletedJackpotKey] = useState<string>()
   const x = useMotionValue(0)
   const activeCard = cards[currentIndex]
+  const activeCardKey = activeCard ? `${activeCard.id}-${currentIndex}` : undefined
+  const activeRevealTier = activeCard ? resolveCardRevealTier(activeCard) : 'standard'
+  const isJackpotLocked =
+    canInteract && activeRevealTier === 'jackpot' && completedJackpotKey !== activeCardKey
+  const canDismiss = canInteract && !isJackpotLocked
+  const hasRevealEffects =
+    canInteract &&
+    isParticleRevealTier(activeRevealTier) &&
+    (activeRevealTier !== 'jackpot' || isJackpotLocked)
   const visibleCards = cards.slice(currentIndex, currentIndex + 3).map((card, offset) => ({
     card,
     absoluteIndex: currentIndex + offset,
@@ -267,12 +502,25 @@ function CardStack({
   }))
 
   useEffect(() => {
-    if (canInteract) cardRef.current?.focus({ preventScroll: true })
-  }, [canInteract, currentIndex])
+    if (isJackpotLocked) {
+      cardRef.current?.blur()
+      return
+    }
+
+    if (canDismiss) cardRef.current?.focus({ preventScroll: true })
+  }, [canDismiss, currentIndex, isJackpotLocked])
+
+  useEffect(() => {
+    isDismissingRef.current = false
+  }, [currentIndex])
+
+  const handleJackpotComplete = useCallback((cardKey: string) => {
+    setCompletedJackpotKey(cardKey)
+  }, [])
 
   const dismiss = useCallback(
     (direction: -1 | 1) => {
-      if (!canInteract || isDismissingRef.current) return
+      if (!canDismiss || isDismissingRef.current) return
       isDismissingRef.current = true
       setExitDirection(direction)
 
@@ -283,13 +531,14 @@ function CardStack({
       })
 
       void movement.then(() => {
-        x.set(0)
-        setExitDirection(undefined)
-        isDismissingRef.current = false
-        onCardDismissed()
+        if (currentIndex < cards.length - 1) {
+          x.set(0)
+          setExitDirection(undefined)
+        }
+        onCardDismissed(currentIndex)
       })
     },
-    [canInteract, onCardDismissed, shouldReduceMotion, x],
+    [canDismiss, cards.length, currentIndex, onCardDismissed, shouldReduceMotion, x],
   )
 
   return (
@@ -319,9 +568,17 @@ function CardStack({
             }
           : { duration: 0 }
       }
+      exit={{
+        opacity: 0,
+        scale: shouldReduceMotion ? 1 : 0.985,
+        transition: {
+          duration: shouldReduceMotion ? 0.1 : 0.28,
+          ease: 'easeOut',
+        },
+      }}
     >
       <motion.div
-        className="relative aspect-63/88 w-[min(84vw,calc(71.6dvh-6.5rem),26rem)] will-change-transform sm:w-[min(54vw,calc(71.6dvh-6.5rem),26rem)]"
+        className="relative z-10 aspect-63/88 w-[min(84vw,calc(71.6dvh-6.5rem),26rem)] will-change-transform sm:w-[min(54vw,calc(71.6dvh-6.5rem),26rem)]"
         initial={false}
         animate={
           isWaitingForTear
@@ -368,30 +625,69 @@ function CardStack({
             <OpeningCardSurface
               key={`${card.id}-${absoluteIndex}`}
               card={card}
+              cardKey={`${card.id}-${absoluteIndex}`}
               depth={depth}
               exitDirection={depth === 0 ? exitDirection : undefined}
               isActive={depth === 0}
               isBackCard={depth === visibleCards.length - 1}
               isGodPack={isGodPack}
-              showBadge={canInteract}
+              isJackpotCinematic={isJackpotLocked}
+              showBadge={canDismiss}
               shouldReduceMotion={shouldReduceMotion}
               x={x}
+              onJackpotComplete={handleJackpotComplete}
             />
           ))}
+
+        <AnimatePresence initial={false}>
+          {activeCard && hasRevealEffects ? (
+            <RevealStageAccent
+              key={`${activeCardKey}-${activeRevealTier}-accent`}
+              color={glowColor}
+              palette={artworkPalette}
+              tier={activeRevealTier}
+              shouldReduceMotion={shouldReduceMotion}
+            />
+          ) : null}
+          {activeCard &&
+          hasRevealEffects &&
+          activeRevealTier === 'jackpot' &&
+          !shouldReduceMotion ? (
+            <RevealParticleBurst
+              key={`${activeCardKey}-${activeRevealTier}-opening-particles`}
+              cardId={activeCard.id}
+              color={glowColor}
+              palette={artworkPalette}
+              tier={activeRevealTier}
+              phase="opening"
+              shouldReduceMotion={false}
+            />
+          ) : null}
+          {activeCard && hasRevealEffects ? (
+            <RevealParticleBurst
+              key={`${activeCardKey}-${activeRevealTier}-particles`}
+              cardId={activeCard.id}
+              color={glowColor}
+              palette={artworkPalette}
+              tier={activeRevealTier}
+              shouldReduceMotion={shouldReduceMotion}
+            />
+          ) : null}
+        </AnimatePresence>
 
         {activeCard ? (
           <motion.button
             ref={cardRef}
             type="button"
             className={cn(
-              'absolute inset-0 z-30 touch-none select-none rounded-lg bg-transparent p-0 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/90 focus-visible:ring-offset-4 focus-visible:ring-offset-slate-950/70',
-              !canInteract || exitDirection
+              'absolute inset-0 z-30 touch-none select-none rounded-lg bg-transparent p-0 focus-visible:outline-none',
+              !canDismiss || exitDirection
                 ? 'pointer-events-none'
                 : 'cursor-grab active:cursor-grabbing',
             )}
-            tabIndex={canInteract ? 0 : -1}
+            tabIndex={canDismiss ? 0 : -1}
             style={{ x }}
-            drag={canInteract && !exitDirection ? 'x' : false}
+            drag={canDismiss && !exitDirection ? 'x' : false}
             dragConstraints={{ left: 0, right: 0 }}
             dragElastic={0.84}
             dragMomentum={false}
@@ -418,17 +714,25 @@ function CardStack({
               total: cards.length,
               name: activeCard.name,
             })}
+            aria-disabled={!canDismiss}
+            data-reveal-tier={activeRevealTier}
           />
         ) : null}
       </motion.div>
 
+      <span className="sr-only" aria-live="polite">
+        {isJackpotLocked
+          ? m.packs_jackpot_reveal_in_progress({ name: activeCard?.name ?? '' })
+          : ''}
+      </span>
+
       <motion.div
-        className="pointer-events-none absolute bottom-[max(1.25rem,env(safe-area-inset-bottom))] left-1/2 flex -translate-x-1/2 flex-col items-center gap-1.5 text-center"
+        className="pointer-events-none absolute bottom-[max(1.25rem,env(safe-area-inset-bottom))] left-1/2 z-20 flex -translate-x-1/2 flex-col items-center gap-1.5 text-center"
         initial={false}
         animate={
           shouldReduceMotion
-            ? { opacity: canInteract ? 1 : 0 }
-            : { opacity: canInteract ? 1 : 0, y: canInteract ? 0 : 10 }
+            ? { opacity: canDismiss ? 1 : 0 }
+            : { opacity: canDismiss ? 1 : 0, y: canDismiss ? 0 : 10 }
         }
       >
         <p className="text-sm font-black tabular-nums text-white/86" aria-live="polite">
@@ -445,28 +749,104 @@ function CardStack({
 
 interface OpeningCardSurfaceProps {
   card: OpenedPackCard
+  cardKey: string
   depth: number
   exitDirection?: -1 | 1
   isActive: boolean
   isBackCard: boolean
   isGodPack: boolean
+  isJackpotCinematic: boolean
   showBadge: boolean
   shouldReduceMotion: boolean
   x: MotionValue<number>
+  onJackpotComplete: (cardKey: string) => void
 }
 
 function OpeningCardSurface({
   card,
+  cardKey,
   depth,
   exitDirection,
   isActive,
   isBackCard,
   isGodPack,
+  isJackpotCinematic,
   showBadge,
   shouldReduceMotion,
   x,
+  onJackpotComplete,
 }: OpeningCardSurfaceProps) {
   const imageUrl = card.imageLarge ?? card.imageSmall
+  const cinematicCardRef = useRef<HTMLDivElement>(null)
+  const cinematicScale = useMotionValue(1)
+  const cinematicX = useMotionValue(0)
+  const cinematicY = useMotionValue(0)
+  const rotationX = useMotionValue(0)
+  const rotationY = useMotionValue(0)
+
+  useEffect(() => {
+    if (!isActive || !isJackpotCinematic) return
+
+    if (shouldReduceMotion) {
+      const timeout = window.setTimeout(() => onJackpotComplete(cardKey), 800)
+      return () => window.clearTimeout(timeout)
+    }
+
+    const duration = JACKPOT_DURATION_SECONDS
+    const cardElement = cinematicCardRef.current
+    const jackpotMotion = createJackpotMotion(
+      cardElement?.offsetWidth ?? 400,
+      cardElement?.offsetHeight ?? 560,
+    )
+    const animations = [
+      animate(cinematicScale, jackpotMotion.scale, {
+        duration,
+        times: jackpotMotion.times,
+        ease: 'linear',
+      }),
+      animate(cinematicX, jackpotMotion.x, {
+        duration,
+        times: jackpotMotion.times,
+        ease: 'linear',
+      }),
+      animate(cinematicY, jackpotMotion.y, {
+        duration,
+        times: jackpotMotion.times,
+        ease: 'linear',
+      }),
+      animate(rotationX, jackpotMotion.rotationX, {
+        duration,
+        times: jackpotMotion.times,
+        ease: 'linear',
+      }),
+      animate(rotationY, jackpotMotion.rotationY, {
+        duration,
+        times: jackpotMotion.times,
+        ease: 'linear',
+      }),
+    ]
+    let isCurrent = true
+
+    void Promise.all(animations).then(() => {
+      if (isCurrent) onJackpotComplete(cardKey)
+    })
+
+    return () => {
+      isCurrent = false
+      for (const animation of animations) animation.stop()
+    }
+  }, [
+    cardKey,
+    cinematicScale,
+    cinematicX,
+    cinematicY,
+    isActive,
+    isJackpotCinematic,
+    onJackpotComplete,
+    rotationX,
+    rotationY,
+    shouldReduceMotion,
+  ])
 
   return (
     <motion.div
@@ -477,9 +857,9 @@ function OpeningCardSurface({
       initial={false}
       animate={{
         y: depth * 5,
-        scale: 1,
+        scale: isJackpotCinematic && !isActive ? 0.97 : 1,
         rotate: 0,
-        opacity: 1,
+        opacity: isJackpotCinematic && !isActive ? 0.06 : 1,
       }}
       transition={
         shouldReduceMotion ? { duration: 0 } : { type: 'spring', stiffness: 320, damping: 28 }
@@ -503,36 +883,715 @@ function OpeningCardSurface({
             : { type: 'spring', stiffness: 340, damping: 28 }
         }
       >
-        {card.isNew && isActive && showBadge ? (
-          <NewCardBadge className="-top-10" shouldReduceMotion={shouldReduceMotion} />
-        ) : null}
+        <motion.div
+          ref={cinematicCardRef}
+          className="relative size-full rounded-lg will-change-transform"
+          style={{ x: cinematicX, y: cinematicY, scale: cinematicScale }}
+        >
+          {card.isNew && isActive && showBadge ? (
+            <NewCardBadge className="-top-10" shouldReduceMotion={shouldReduceMotion} />
+          ) : null}
 
-        {imageUrl && !shouldReduceMotion ? (
-          <WebGlCardViewer
-            frontImageUrl={imageUrl}
-            alt={card.name}
-            finish={card.finish}
-            interactive={false}
-            cameraDistance={5.65}
-            className={cn(
-              'pointer-events-none size-full max-h-none rounded-lg',
-              isBackCard && 'drop-shadow-[0_24px_24px_rgb(0_0_0/0.38)]',
-              isGodPack && isBackCard && 'drop-shadow-[0_0_30px_rgb(251_191_36/0.42)]',
-            )}
-          />
-        ) : imageUrl ? (
-          <FoilCardImage
-            src={imageUrl}
-            alt={card.name}
-            finish={card.finish}
-            className="size-full rounded-lg object-cover"
-          />
-        ) : (
-          <span className="block size-full rounded-lg bg-slate-800" aria-hidden="true" />
-        )}
+          {imageUrl && !shouldReduceMotion ? (
+            <WebGlCardViewer
+              frontImageUrl={imageUrl}
+              alt={card.name}
+              cardId={card.id}
+              finish={card.finish}
+              rarity={card.rarity}
+              supertype={card.supertype}
+              isEvolved={card.isEvolved}
+              interactive={false}
+              rotationX={rotationX}
+              rotationY={rotationY}
+              cameraDistance={5.65}
+              className={cn(
+                'pointer-events-none size-full max-h-none rounded-lg',
+                isBackCard && 'drop-shadow-[0_24px_24px_rgb(0_0_0/0.38)]',
+                isGodPack && isBackCard && 'drop-shadow-[0_0_30px_rgb(251_191_36/0.42)]',
+              )}
+            />
+          ) : imageUrl ? (
+            <FoilCardImage
+              src={imageUrl}
+              alt={card.name}
+              cardId={card.id}
+              finish={card.finish}
+              rarity={card.rarity}
+              supertype={card.supertype}
+              isEvolved={card.isEvolved}
+              className="size-full rounded-lg object-cover"
+            />
+          ) : (
+            <span className="block size-full rounded-lg bg-slate-800" aria-hidden="true" />
+          )}
+        </motion.div>
       </motion.div>
     </motion.div>
   )
+}
+
+function JackpotBackdrop({
+  color,
+  palette,
+  shouldReduceMotion,
+}: {
+  color: string
+  palette: CardArtworkPalette
+  shouldReduceMotion: boolean
+}) {
+  const duration = shouldReduceMotion ? 0.8 : JACKPOT_DURATION_SECONDS
+
+  return (
+    <motion.div
+      className="pointer-events-none fixed inset-0 z-0 overflow-hidden bg-slate-950"
+      initial={{ opacity: 0 }}
+      animate={{
+        opacity: 1,
+        transition: { duration: shouldReduceMotion ? 0.1 : 0.28, ease: 'easeOut' },
+      }}
+      exit={{
+        opacity: 0,
+        transition: { duration: shouldReduceMotion ? 0.1 : 0.65, ease: 'easeInOut' },
+      }}
+      aria-hidden="true"
+    >
+      <motion.div
+        className="absolute -inset-[18%] blur-xl"
+        style={{
+          backgroundImage: `radial-gradient(ellipse 52% 64% at 12% 34%, rgb(${palette[0]} / 0.76), transparent 74%), radial-gradient(ellipse 54% 66% at 88% 30%, rgb(${palette[1]} / 0.7), transparent 76%), radial-gradient(ellipse 70% 46% at 52% 94%, rgb(${palette[2]} / 0.72), transparent 78%), radial-gradient(ellipse 42% 50% at 48% 12%, rgb(${palette[3]} / 0.48), transparent 70%), radial-gradient(ellipse 45% 55% at 72% 70%, rgb(${palette[4]} / 0.44), transparent 72%), linear-gradient(132deg, transparent 28%, rgb(${color} / 0.32) 50%, transparent 72%)`,
+        }}
+        initial={{ opacity: 0, scale: 1.06 }}
+        animate={
+          shouldReduceMotion
+            ? { opacity: [0, 0.5, 0.46] }
+            : {
+                opacity: [0.34, 0.62, 0.56, 0.52, 0.64, 0.58],
+                scale: [1.06, 1.03, 1.01, 1.03, 1.05, 1.04],
+              }
+        }
+        transition={{
+          duration,
+          times: shouldReduceMotion
+            ? [0, 0.5, 1]
+            : [
+                0,
+                JACKPOT_COLOR_BURST_SECONDS / JACKPOT_DURATION_SECONDS,
+                (JACKPOT_COLOR_BURST_SECONDS + 0.5) / JACKPOT_DURATION_SECONDS,
+                JACKPOT_ZOOM_START_SECONDS / JACKPOT_DURATION_SECONDS,
+                JACKPOT_FINALE_START_SECONDS / JACKPOT_DURATION_SECONDS,
+                1,
+              ],
+          ease: 'easeInOut',
+        }}
+      />
+      {!shouldReduceMotion ? (
+        <>
+          <motion.div
+            className="absolute -inset-[8%] mix-blend-screen blur-xl"
+            style={{
+              backgroundImage: `radial-gradient(ellipse at center, rgb(${palette[0]} / 0.72), transparent 74%)`,
+            }}
+            initial={{ opacity: 0, scale: 0.72 }}
+            animate={{
+              opacity: [0, 0.9, 0.7, 0],
+              scale: [0.72, 1, 1.18, 1.3],
+            }}
+            transition={{
+              duration: JACKPOT_COLOR_BURST_SECONDS,
+              times: [0, 0.22, 0.72, 1],
+              ease: 'easeInOut',
+            }}
+          />
+          <motion.div
+            className="absolute -inset-[8%] mix-blend-screen blur-xl"
+            style={{
+              backgroundImage: `radial-gradient(ellipse at center, rgb(${palette[0]} / 0.68), transparent 72%)`,
+            }}
+            initial={{ opacity: 0, scale: 0.9 }}
+            animate={{
+              opacity: [0, 0.82, 0.52, 0],
+              scale: [0.9, 1, 1.06, 1.12],
+            }}
+            transition={{
+              delay: JACKPOT_FINALE_START_SECONDS,
+              duration: JACKPOT_FINALE_DURATION_SECONDS,
+              times: [0, 0.18, 0.68, 1],
+              ease: 'easeOut',
+            }}
+          />
+        </>
+      ) : null}
+      <div className="absolute inset-0 bg-slate-950/12" />
+    </motion.div>
+  )
+}
+
+function JackpotHaloBurst({
+  palette,
+  phase,
+}: {
+  palette: CardArtworkPalette
+  phase: 'opening' | 'finale'
+}) {
+  const isOpening = phase === 'opening'
+  const delay = isOpening ? 0 : JACKPOT_FINALE_START_SECONDS
+  const duration = isOpening ? JACKPOT_COLOR_BURST_SECONDS : JACKPOT_FINALE_DURATION_SECONDS
+  const times = isOpening ? [0, 0.2, 0.72, 1] : [0, 0.18, 0.68, 1]
+  const phaseDirection = isOpening ? 1 : -1
+
+  return (
+    <>
+      <motion.div
+        className="absolute inset-[12%] rounded-full mix-blend-screen blur-3xl"
+        style={{
+          backgroundImage: `radial-gradient(circle, rgb(${palette[0]} / 0.64), transparent 68%)`,
+        }}
+        initial={{ opacity: 0, scale: 0.62 }}
+        animate={{
+          opacity: isOpening ? [0, 0.8, 0.54, 0] : [0, 0.86, 0.56, 0],
+          scale: [0.62, 0.98, 1.1, 1.17],
+        }}
+        transition={{ delay, duration, times, ease: 'easeOut' }}
+      />
+      {palette.slice(0, 3).map((paletteColor, index) => {
+        const direction = phaseDirection * (index % 2 === 0 ? 1 : -1)
+        const initialRotation = (-20 + index * 8) * direction
+        const driftX = (index - 1) * 14
+        const driftY = index === 1 ? -11 : 8
+
+        return (
+          <motion.div
+            key={`jackpot-${phase}-halo-${index}-${paletteColor}`}
+            className="absolute inset-0 rounded-full mix-blend-screen blur-2xl"
+            style={{
+              backgroundImage: `conic-gradient(from ${index * 120 + 12}deg, transparent 0deg 108deg, rgb(${paletteColor} / 0.92) 138deg, rgb(${paletteColor} / 0.32) 158deg, transparent 188deg 360deg)`,
+              maskImage:
+                'radial-gradient(ellipse at center, transparent 0 30%, black 48%, transparent 76%)',
+              WebkitMaskImage:
+                'radial-gradient(ellipse at center, transparent 0 30%, black 48%, transparent 76%)',
+            }}
+            initial={{ opacity: 0, scale: 0.68, rotate: initialRotation }}
+            animate={{
+              opacity: [0, 0.88, 0.62, 0],
+              scale: [0.68, 0.98 + index * 0.015, 1.09 + index * 0.015, 1.17],
+              x: [0, driftX * -0.35, driftX * 0.4, driftX],
+              y: [0, driftY * -0.3, driftY * 0.45, driftY],
+              rotate: [
+                initialRotation,
+                (22 + index * 12) * direction,
+                (48 + index * 14) * direction,
+                (72 + index * 16) * direction,
+              ],
+            }}
+            transition={{
+              delay: delay + index * (isOpening ? 0.08 : 0.04),
+              duration: duration - index * 0.04,
+              times,
+              ease: 'easeInOut',
+            }}
+          />
+        )
+      })}
+    </>
+  )
+}
+
+function RevealStageAccent({
+  color,
+  palette,
+  tier,
+  shouldReduceMotion,
+}: {
+  color: string
+  palette: CardArtworkPalette
+  tier: ParticleRevealTier
+  shouldReduceMotion: boolean
+}) {
+  const presenceTransition = {
+    duration: shouldReduceMotion ? 0.1 : 0.26,
+    ease: 'easeOut' as const,
+  }
+
+  if (tier === 'rr') {
+    return (
+      <motion.div
+        className="pointer-events-none absolute -inset-[22%] z-[5]"
+        initial={{ opacity: 0 }}
+        animate={{ opacity: 1 }}
+        exit={{ opacity: 0 }}
+        transition={presenceTransition}
+        aria-hidden="true"
+      >
+        <motion.div
+          className="absolute inset-[12%] rounded-full mix-blend-screen blur-3xl"
+          style={{
+            backgroundImage: `radial-gradient(circle, rgb(${palette[0]} / 0.46), transparent 68%)`,
+          }}
+          initial={{ opacity: 0, scale: 0.66 }}
+          animate={
+            shouldReduceMotion
+              ? { opacity: [0, 0.3, 0] }
+              : { opacity: [0, 0.58, 0.38, 0], scale: [0.66, 0.96, 1.07, 1.13] }
+          }
+          transition={{
+            duration: shouldReduceMotion ? 0.35 : 3.25,
+            times: shouldReduceMotion ? [0, 0.5, 1] : [0, 0.16, 0.7, 1],
+            ease: 'easeOut',
+          }}
+        />
+        {palette.slice(0, 3).map((paletteColor, index) => {
+          const direction = index % 2 === 0 ? 1 : -1
+          const initialRotation = (-18 + index * 7) * direction
+          const driftX = (index - 1) * 10
+          const driftY = index === 1 ? -8 : 6
+
+          return (
+            <motion.div
+              key={`${index}-${paletteColor}`}
+              className="absolute inset-0 rounded-full mix-blend-screen blur-2xl"
+              style={{
+                backgroundImage: `conic-gradient(from ${index * 120 + 12}deg, transparent 0deg 108deg, rgb(${paletteColor} / 0.66) 138deg, rgb(${paletteColor} / 0.22) 158deg, transparent 188deg 360deg)`,
+                maskImage:
+                  'radial-gradient(ellipse at center, transparent 0 30%, black 48%, transparent 76%)',
+                WebkitMaskImage:
+                  'radial-gradient(ellipse at center, transparent 0 30%, black 48%, transparent 76%)',
+              }}
+              initial={{ opacity: 0, scale: 0.68, rotate: initialRotation }}
+              animate={
+                shouldReduceMotion
+                  ? { opacity: [0, 0.28, 0] }
+                  : {
+                      opacity: [0, 0.64, 0.42, 0],
+                      scale: [0.68, 0.97 + index * 0.015, 1.07 + index * 0.015, 1.15],
+                      x: [0, driftX * -0.35, driftX * 0.4, driftX],
+                      y: [0, driftY * -0.3, driftY * 0.45, driftY],
+                      rotate: [
+                        initialRotation,
+                        (18 + index * 10) * direction,
+                        (38 + index * 12) * direction,
+                        (58 + index * 14) * direction,
+                      ],
+                    }
+              }
+              transition={{
+                delay: shouldReduceMotion ? 0 : index * 0.07,
+                duration: shouldReduceMotion ? 0.35 : 3.2 - index * 0.04,
+                times: shouldReduceMotion ? [0, 0.5, 1] : [0, 0.18, 0.68, 1],
+                ease: 'easeInOut',
+              }}
+            />
+          )
+        })}
+      </motion.div>
+    )
+  }
+
+  if (tier === 'jackpot') {
+    return (
+      <motion.div
+        className="pointer-events-none absolute -inset-[22%] z-[5]"
+        initial={{ opacity: 0 }}
+        animate={{ opacity: 1 }}
+        exit={{ opacity: 0 }}
+        transition={presenceTransition}
+        aria-hidden="true"
+      >
+        {shouldReduceMotion ? (
+          <motion.div
+            className="absolute inset-[12%] rounded-full blur-3xl"
+            style={{
+              backgroundImage: `radial-gradient(circle, rgb(${palette[0]} / 0.42), transparent 68%)`,
+            }}
+            initial={{ opacity: 0 }}
+            animate={{ opacity: [0, 0.42, 0] }}
+            transition={{ duration: 0.7, times: [0, 0.5, 1] }}
+          />
+        ) : (
+          <>
+            <JackpotHaloBurst palette={palette} phase="opening" />
+            <JackpotHaloBurst palette={palette} phase="finale" />
+          </>
+        )}
+      </motion.div>
+    )
+  }
+
+  if (tier === 'ir') {
+    return (
+      <motion.div
+        className="pointer-events-none absolute -inset-[46%] z-[5]"
+        initial={{ opacity: 0 }}
+        animate={{ opacity: 1 }}
+        exit={{ opacity: 0 }}
+        transition={presenceTransition}
+        aria-hidden="true"
+      >
+        <motion.div
+          className="absolute -inset-[12%] blur-[72px]"
+          style={{
+            backgroundImage: `radial-gradient(ellipse 34% 44% at 14% 28%, rgb(${palette[0]} / 0.62), rgb(${palette[0]} / 0.16) 48%, transparent 78%), radial-gradient(ellipse 42% 32% at 76% 12%, rgb(${palette[1]} / 0.58), rgb(${palette[1]} / 0.14) 50%, transparent 80%), radial-gradient(ellipse 32% 46% at 91% 64%, rgb(${palette[2]} / 0.62), rgb(${palette[2]} / 0.15) 48%, transparent 76%), radial-gradient(ellipse 43% 34% at 58% 92%, rgb(${palette[3]} / 0.58), rgb(${palette[3]} / 0.14) 52%, transparent 80%), radial-gradient(ellipse 35% 42% at 10% 76%, rgb(${palette[4]} / 0.62), rgb(${palette[4]} / 0.15) 48%, transparent 78%)`,
+          }}
+          initial={{ opacity: 0, scale: 0.76, x: -10, y: 8, rotate: -12 }}
+          animate={
+            shouldReduceMotion
+              ? { opacity: [0, 0.3, 0] }
+              : {
+                  opacity: [0, 0.72, 0.5, 0],
+                  scale: [0.76, 1, 1.08, 1.16],
+                  x: [-10, 11],
+                  y: [8, -9],
+                  rotate: [-12, 78],
+                }
+          }
+          transition={
+            shouldReduceMotion
+              ? { duration: 0.35, times: [0, 0.5, 1], ease: 'easeInOut' }
+              : {
+                  opacity: {
+                    duration: 4.8,
+                    times: [0, 0.2, 0.76, 1],
+                    ease: 'easeInOut',
+                  },
+                  scale: {
+                    duration: 4.8,
+                    times: [0, 0.2, 0.76, 1],
+                    ease: 'easeInOut',
+                  },
+                  x: { duration: 4.8, ease: 'easeInOut' },
+                  y: { duration: 4.8, ease: 'easeInOut' },
+                  rotate: { duration: 4.8, ease: 'linear' },
+                }
+          }
+        />
+        {palette.map((paletteColor, index) => {
+          const positions = [
+            { left: '-3%', top: '10%', width: '43%', height: '49%' },
+            { left: '58%', top: '3%', width: '41%', height: '46%' },
+            { left: '63%', top: '53%', width: '39%', height: '42%' },
+            { left: '5%', top: '57%', width: '44%', height: '40%' },
+            { left: '30%', top: '25%', width: '42%', height: '46%' },
+          ] as const
+          const position = positions[index]
+          const initialRotation = -16 + index * 8
+          const driftDirection = index % 2 === 0 ? 1 : -1
+
+          return (
+            <motion.div
+              key={`ir-scatter-${index}-${paletteColor}`}
+              className="absolute rounded-full blur-3xl"
+              style={{
+                ...position,
+                backgroundImage: `radial-gradient(ellipse, rgb(${paletteColor} / 0.68), rgb(${paletteColor} / 0.16) 48%, transparent 76%)`,
+              }}
+              initial={{ opacity: 0, scale: 0.58, rotate: initialRotation }}
+              animate={
+                shouldReduceMotion
+                  ? { opacity: [0, 0.3, 0] }
+                  : {
+                      opacity: [0, 0.58, 0.4, 0],
+                      scale: [0.58, 1, 1.12, 1.26],
+                      x: [0, driftDirection * 12, driftDirection * -6, driftDirection * 18],
+                      y: [0, index >= 2 ? -10 : 8, index >= 2 ? -18 : 14, index >= 2 ? -26 : 22],
+                      rotate: [initialRotation, initialRotation + 52 + index * 5],
+                    }
+              }
+              transition={
+                shouldReduceMotion
+                  ? { duration: 0.35, times: [0, 0.5, 1], ease: 'easeInOut' }
+                  : {
+                      opacity: {
+                        delay: index * 0.1,
+                        duration: 4.4,
+                        times: [0, 0.18, 0.72, 1],
+                        ease: 'easeInOut',
+                      },
+                      scale: {
+                        delay: index * 0.1,
+                        duration: 4.4,
+                        times: [0, 0.18, 0.72, 1],
+                        ease: 'easeInOut',
+                      },
+                      x: { delay: index * 0.1, duration: 4.4, ease: 'easeInOut' },
+                      y: { delay: index * 0.1, duration: 4.4, ease: 'easeInOut' },
+                      rotate: { delay: index * 0.1, duration: 4.4, ease: 'linear' },
+                    }
+              }
+            />
+          )
+        })}
+      </motion.div>
+    )
+  }
+
+  if (tier === 'sr') {
+    return (
+      <motion.div
+        className="pointer-events-none absolute -inset-[28%] z-[5]"
+        initial={{ opacity: 0 }}
+        animate={{ opacity: 1 }}
+        exit={{ opacity: 0 }}
+        transition={presenceTransition}
+        aria-hidden="true"
+      >
+        <motion.div
+          className="absolute inset-[12%] rounded-full mix-blend-screen blur-3xl"
+          style={{
+            backgroundImage: `radial-gradient(circle, rgb(${color} / 0.56), transparent 68%)`,
+          }}
+          initial={{ opacity: 0, scale: 0.64 }}
+          animate={
+            shouldReduceMotion
+              ? { opacity: [0, 0.4, 0] }
+              : { opacity: [0, 0.76, 0.5, 0], scale: [0.64, 0.98, 1.1, 1.18] }
+          }
+          transition={{
+            duration: shouldReduceMotion ? 0.35 : 4.4,
+            times: shouldReduceMotion ? [0, 0.5, 1] : [0, 0.15, 0.7, 1],
+            ease: 'easeOut',
+          }}
+        />
+        {palette.slice(0, 3).map((paletteColor, index) => {
+          const direction = index % 2 === 0 ? 1 : -1
+          const initialRotation = (-20 + index * 8) * direction
+          const driftX = (index - 1) * 14
+          const driftY = index === 1 ? -11 : 8
+
+          return (
+            <motion.div
+              key={`${index}-${paletteColor}`}
+              className="absolute inset-0 rounded-full mix-blend-screen blur-2xl"
+              style={{
+                backgroundImage: `conic-gradient(from ${index * 120 + 12}deg, transparent 0deg 108deg, rgb(${paletteColor} / 0.86) 138deg, rgb(${paletteColor} / 0.29) 158deg, transparent 188deg 360deg)`,
+                maskImage:
+                  'radial-gradient(ellipse at center, transparent 0 30%, black 48%, transparent 76%)',
+                WebkitMaskImage:
+                  'radial-gradient(ellipse at center, transparent 0 30%, black 48%, transparent 76%)',
+              }}
+              initial={{ opacity: 0, scale: 0.68, rotate: initialRotation }}
+              animate={
+                shouldReduceMotion
+                  ? { opacity: [0, 0.38, 0] }
+                  : {
+                      opacity: [0, 0.82, 0.56, 0],
+                      scale: [0.68, 0.98 + index * 0.015, 1.1 + index * 0.015, 1.2],
+                      x: [0, driftX * -0.35, driftX * 0.4, driftX],
+                      y: [0, driftY * -0.3, driftY * 0.45, driftY],
+                      rotate: [
+                        initialRotation,
+                        (22 + index * 12) * direction,
+                        (48 + index * 14) * direction,
+                        (76 + index * 16) * direction,
+                      ],
+                    }
+              }
+              transition={{
+                delay: shouldReduceMotion ? 0 : index * 0.09,
+                duration: shouldReduceMotion ? 0.35 : 4.25 - index * 0.05,
+                times: shouldReduceMotion ? [0, 0.5, 1] : [0, 0.17, 0.7, 1],
+                ease: 'easeInOut',
+              }}
+            />
+          )
+        })}
+      </motion.div>
+    )
+  }
+
+  return (
+    <motion.div
+      className="pointer-events-none absolute -inset-[40%] z-[5]"
+      style={{ '--card-reveal-accent': '255 38 156' } as CSSProperties}
+      initial={{ opacity: 0 }}
+      animate={{ opacity: 1 }}
+      exit={{ opacity: 0 }}
+      transition={presenceTransition}
+      aria-hidden="true"
+    >
+      <motion.div
+        className="absolute inset-[8%] rounded-full blur-2xl"
+        style={{
+          backgroundImage:
+            'conic-gradient(from 30deg, transparent, rgb(var(--card-reveal-accent) / 0.78), transparent 24%, transparent 48%, rgb(255 171 220 / 0.68), transparent 70%)',
+        }}
+        initial={{ opacity: 0, scale: 0.64, rotate: -18 }}
+        animate={
+          shouldReduceMotion
+            ? { opacity: [0, 0.5, 0] }
+            : {
+                opacity: [0, 0.82, 0.58, 0],
+                scale: [0.64, 1, 1.18, 1.32],
+                rotate: [-18, 18, 42, 58],
+              }
+        }
+        transition={{
+          duration: shouldReduceMotion ? 0.35 : 1.7,
+          times: shouldReduceMotion ? [0, 0.5, 1] : [0, 0.16, 0.65, 1],
+          ease: 'easeOut',
+        }}
+      />
+    </motion.div>
+  )
+}
+
+function RevealParticleBurst({
+  cardId,
+  color,
+  palette,
+  tier,
+  phase = 'finale',
+  shouldReduceMotion,
+}: {
+  cardId: string
+  color: string
+  palette: CardArtworkPalette
+  tier: ParticleRevealTier
+  phase?: 'opening' | 'finale'
+  shouldReduceMotion: boolean
+}) {
+  const isOpeningBurst = tier === 'jackpot' && phase === 'opening'
+  const particles = createRevealParticles(cardId, tier).slice(
+    0,
+    isOpeningBurst
+      ? 28
+      : shouldReduceMotion
+        ? tier === 'jackpot' || tier === 'sr'
+          ? 12
+          : 8
+        : undefined,
+  )
+  const peakOpacity = isOpeningBurst ? 0.9 : tier === 'ir' ? 0.72 : 1
+
+  return (
+    <motion.div
+      className="pointer-events-none absolute -inset-[22%] z-20"
+      initial={{ opacity: 0 }}
+      animate={{ opacity: 1 }}
+      exit={{ opacity: 0 }}
+      transition={{ duration: shouldReduceMotion ? 0.1 : 0.24, ease: 'easeOut' }}
+      aria-hidden="true"
+    >
+      {particles.map((particle) => (
+        <motion.span
+          key={particle.id}
+          className={cn('card-reveal-particle', getParticleClassName(particle.kind))}
+          style={
+            {
+              left: `${particle.left}%`,
+              top: `${particle.top}%`,
+              width: particle.size,
+              height:
+                particle.kind === 'streak' ? Math.max(1, particle.size * 0.08) : particle.size,
+              rotate: particle.rotation,
+              '--card-reveal-color': getParticleColor(tier, color, palette, particle.colorSlot),
+            } as MotionStyle & { '--card-reveal-color': string }
+          }
+          initial={{ opacity: 0, scale: 0.2, x: 0, y: 0 }}
+          animate={
+            shouldReduceMotion
+              ? {
+                  opacity: [0, tier === 'ir' ? 0.38 : 0.8, 0],
+                  scale: [0.7, 1, 0.85],
+                }
+              : {
+                  opacity: [0, peakOpacity, peakOpacity * 0.82, 0],
+                  scale: isOpeningBurst
+                    ? [0.2, 0.72, 1.04, 0.38]
+                    : tier === 'ir'
+                      ? [0.2, 0.7, 1.02, 0.45]
+                      : [0.2, 0.85, 1.2, 0.45],
+                  x: [
+                    0,
+                    particle.travelX * (isOpeningBurst ? 0.12 : 0.18),
+                    particle.travelX * (isOpeningBurst ? 0.42 : 0.62),
+                    particle.travelX * (isOpeningBurst ? 0.72 : 1),
+                  ],
+                  y: [
+                    0,
+                    particle.travelY * (isOpeningBurst ? 0.12 : 0.18),
+                    particle.travelY * (isOpeningBurst ? 0.42 : 0.62),
+                    particle.travelY * (isOpeningBurst ? 0.72 : 1),
+                  ],
+                }
+          }
+          transition={{
+            delay: shouldReduceMotion
+              ? 0
+              : isOpeningBurst
+                ? 0.06 + (particle.id % 8) * 0.07
+                : particle.delay,
+            duration: shouldReduceMotion
+              ? 0.35
+              : isOpeningBurst
+                ? 2 + (particle.id % 4) * 0.14
+                : particle.duration,
+            times: shouldReduceMotion
+              ? [0, 0.5, 1]
+              : isOpeningBurst
+                ? [0, 0.16, 0.7, 1]
+                : [0, 0.18, 0.58, 1],
+            ease: 'easeOut',
+          }}
+        />
+      ))}
+    </motion.div>
+  )
+}
+
+const getParticleClassName = (kind: RevealParticleKind): string => {
+  switch (kind) {
+    case 'glint':
+      return 'card-reveal-glint'
+    case 'streak':
+      return 'card-reveal-streak'
+    case 'mote':
+      return 'card-reveal-mote'
+  }
+}
+
+const ACE_SPEC_PARTICLE_COLORS = [
+  '255 255 255',
+  '255 186 225',
+  '255 92 181',
+  '255 38 156',
+  '216 27 117',
+] as const
+
+const getParticleColor = (
+  tier: ParticleRevealTier,
+  artworkColor: string,
+  artworkPalette: CardArtworkPalette,
+  colorSlot: number,
+): string => {
+  if (tier === 'rr' || tier === 'ir' || tier === 'sr') {
+    return artworkPalette[colorSlot % artworkPalette.length]
+  }
+  if (tier === 'ace-spec') {
+    return ACE_SPEC_PARTICLE_COLORS[colorSlot % ACE_SPEC_PARTICLE_COLORS.length]
+  }
+  if (tier === 'jackpot') {
+    return colorSlot === 0 ? '255 255 255' : artworkPalette[(colorSlot - 1) % 3]
+  }
+  return artworkColor
+}
+
+const isParticleRevealTier = (tier: CardRevealTier): tier is ParticleRevealTier =>
+  tier !== 'standard' && tier !== 'holo'
+
+const getGlowStrength = (tier: CardRevealTier): { primary: number; secondary: number } => {
+  switch (tier) {
+    case 'holo':
+      return { primary: 0.38, secondary: 0.17 }
+    case 'ir':
+      return { primary: 0.36, secondary: 0.16 }
+    case 'sr':
+    case 'ace-spec':
+      return { primary: 0.4, secondary: 0.18 }
+    case 'jackpot':
+      return { primary: 0.42, secondary: 0.2 }
+    default:
+      return { primary: 0.3, secondary: 0.12 }
+  }
 }
 
 interface PackRecapProps {
@@ -757,7 +1816,11 @@ function PackRecap({
                   <WebGlCardViewer
                     frontImageUrl={imageUrl}
                     alt={card.name}
+                    cardId={card.id}
                     finish={card.finish}
+                    rarity={card.rarity}
+                    supertype={card.supertype}
+                    isEvolved={card.isEvolved}
                     interactive={isSelected && zoomInteractionReady}
                     rendering={renderAllRecapCards || activeRendererIndex === index}
                     resetOnInteractiveDisable

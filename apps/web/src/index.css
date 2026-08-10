@@ -173,204 +173,238 @@ body,
   }
 }
 
-.holo-foil {
-  background-image:
-    linear-gradient(
-      118deg,
-      rgb(255 255 255 / 0) 0 15%,
-      rgb(255 255 255 / 0.48) 24%,
-      rgb(255 255 255 / 0) 34% 100%
-    ),
-    linear-gradient(
-      58deg,
-      rgb(56 189 248 / 0.24),
-      rgb(236 72 153 / 0.22),
-      rgb(250 204 21 / 0.2),
-      rgb(74 222 128 / 0.16),
-      rgb(56 189 248 / 0.24)
-    );
-  background-position:
-    0 0,
-    0 0;
-  background-size:
-    240% 100%,
-    220% 220%;
-  filter: brightness(1.12) contrast(1.04) saturate(1.18);
-  mix-blend-mode: screen;
-  opacity: 0.42;
+.foil-card {
+  clip-path: inset(0 round 3.6% / 2.6%);
+  isolation: isolate;
+  transform-origin: center;
+  transition: transform 180ms ease-out;
 }
 
-.holo-glint {
-  background-image:
-    linear-gradient(
-      104deg,
-      rgb(255 255 255 / 0) 16%,
-      rgb(255 255 255 / 0.58) 39%,
-      rgb(255 255 255 / 0) 60%
-    ),
-    repeating-linear-gradient(
-      74deg,
-      rgb(255 255 255 / 0) 0 18px,
-      rgb(255 255 255 / 0.1) 19px 20px,
-      rgb(255 255 255 / 0) 21px 40px
-    );
-  background-position:
-    0 0,
-    0 0;
-  background-size:
-    230% 100%,
-    60px 60px;
-  mix-blend-mode: screen;
-  opacity: 0.36;
+.foil-card > img {
+  display: block;
 }
 
-@media (prefers-reduced-motion: no-preference) {
-  .holo-foil {
-    animation: holo-foil 3.4s ease-in-out infinite alternate;
-  }
-
-  .holo-glint {
-    animation: holo-glint 2.3s ease-in-out infinite alternate;
-  }
+.foil-material {
+  border-radius: inherit;
+  overflow: hidden;
+  z-index: 1;
 }
 
-@keyframes holo-foil {
-  0% {
-    opacity: 0.42;
-    background-position:
-      0 0,
-      0 0;
-  }
-
-  50% {
-    opacity: 0.58;
-    background-position:
-      120% 0,
-      100% 45%;
-  }
-
-  100% {
-    opacity: 0.42;
-    background-position:
-      240% 0,
-      220% 220%;
-  }
+.foil-spectrum,
+.foil-bands,
+.foil-texture,
+.foil-reflection {
+  transition: opacity 140ms ease-out;
 }
 
-@keyframes holo-glint {
-  0% {
-    background-position:
-      0 0,
-      0 0;
-  }
-
-  100% {
-    background-position:
-      230% 0,
-      60px 60px;
-  }
-}
-
-.reverse-holo-foil {
-  background-image:
-    repeating-linear-gradient(
-      45deg,
-      rgb(255 255 255 / 0) 0 17px,
-      rgb(255 255 255 / 0.28) 18px 19px,
-      rgb(255 255 255 / 0) 20px 36px
-    ),
-    repeating-linear-gradient(
-      135deg,
-      rgb(255 255 255 / 0) 0 17px,
-      rgb(255 255 255 / 0.22) 18px 19px,
-      rgb(255 255 255 / 0) 20px 36px
-    ),
-    linear-gradient(
-      118deg,
-      rgb(255 255 255 / 0) 0 17%,
-      rgb(255 255 255 / 0.46) 24%,
-      rgb(255 255 255 / 0) 34% 100%
-    ),
-    linear-gradient(
-      64deg,
-      rgb(125 211 252 / 0.1),
-      rgb(244 114 182 / 0.09),
-      rgb(253 224 71 / 0.09),
-      rgb(134 239 172 / 0.08),
-      rgb(125 211 252 / 0.1)
-    );
-  background-position:
-    0 0,
-    9px 9px,
-    0 0,
-    0 0;
-  background-size:
-    36px 36px,
-    36px 36px,
-    240% 100%,
-    220% 220%;
-  filter: brightness(1.16) contrast(1.16) saturate(0.82);
-  mix-blend-mode: screen;
-  opacity: 0.32;
-}
-
-.reverse-holo-sweep {
-  background: linear-gradient(
-    105deg,
-    rgb(255 255 255 / 0) 18%,
-    rgb(255 255 255 / 0.48) 41%,
-    rgb(255 255 255 / 0) 61%
+.foil-bands {
+  background-image: repeating-linear-gradient(
+    var(--foil-band-angle),
+    transparent 0 7%,
+    rgb(94 226 244 / 0.34) 9%,
+    rgb(255 255 255 / 0.94) 11.5%,
+    rgb(238 135 255 / 0.34) 14%,
+    transparent 17% 25%
   );
-  background-size: 230% 100%;
+  background-position: 100% 0;
+  background-repeat: no-repeat;
+  background-size: 250% 250%;
+  filter: saturate(1.2);
   mix-blend-mode: screen;
-  opacity: 0.26;
+  opacity: var(--foil-band-opacity);
+}
+
+.foil-spectrum {
+  background-image: repeating-linear-gradient(
+    var(--foil-band-angle),
+    transparent 0 2.5%,
+    rgb(39 219 241 / 0.9) 4.5%,
+    rgb(75 119 255 / 0.92) 7%,
+    rgb(184 89 246 / 0.94) 9.5%,
+    rgb(255 92 169 / 0.92) 12%,
+    rgb(255 185 71 / 0.9) 14.5%,
+    rgb(88 224 138 / 0.9) 17%,
+    rgb(39 219 241 / 0.86) 19%,
+    transparent 21.5% 25%
+  );
+  background-position: 0 0;
+  background-repeat: no-repeat;
+  background-size: 250% 250%;
+  filter: contrast(1.08) saturate(1.42);
+  mix-blend-mode: screen;
+  opacity: var(--foil-spectrum-opacity);
+}
+
+.foil-card[data-foil-profile='mega-hyper-rare'] .foil-spectrum {
+  background-image: repeating-linear-gradient(
+    var(--foil-band-angle),
+    transparent 0 2%,
+    rgb(38 207 241 / 0.96) 4%,
+    rgb(108 91 255 / 0.98) 7%,
+    rgb(229 76 211 / 0.98) 10%,
+    rgb(255 159 65 / 0.96) 13%,
+    rgb(84 223 128 / 0.96) 16%,
+    rgb(38 207 241 / 0.94) 18.5%,
+    transparent 21% 24%
+  );
+  filter: contrast(1.08) saturate(1.55);
+}
+
+.foil-card[data-foil-profile='reverse-holo'] .foil-spectrum {
+  filter: contrast(1.04) saturate(1.18);
+}
+
+.foil-card[data-foil-profile='rare-holo'] .foil-spectrum {
+  filter: contrast(1.08) saturate(1.45);
+}
+
+.foil-card[data-foil-profile='swsh-holo-rare'] .foil-spectrum {
+  filter: contrast(1.08) saturate(1.45);
+}
+
+.foil-texture {
+  background-position: var(--foil-texture-x) var(--foil-texture-y);
+}
+
+.foil-metal {
+  background-repeat: repeat;
+  background-size: var(--foil-metal-size) auto;
+  filter: contrast(1.35) brightness(1.18);
+  mix-blend-mode: screen;
+  opacity: var(--foil-metal-opacity);
+}
+
+.foil-reflection {
+  background-image: radial-gradient(
+    ellipse 42% 32% at center,
+    rgb(255 255 255 / 0.72) 0%,
+    rgb(219 235 239 / 0.24) 34%,
+    transparent 76%
+  );
+  background-position: 0 20%;
+  background-repeat: no-repeat;
+  background-size: 180% 180%;
+  mix-blend-mode: screen;
+  opacity: var(--foil-reflection-opacity);
 }
 
 @media (prefers-reduced-motion: no-preference) {
-  .reverse-holo-foil {
-    animation: reverse-holo-foil 4.2s ease-in-out infinite alternate;
+  .foil-card[data-foil-motion='true'] .foil-spectrum {
+    animation: foil-spectrum-drift var(--foil-motion-duration) ease-in-out infinite alternate;
   }
 
-  .reverse-holo-sweep {
-    animation: reverse-holo-sweep 2.7s ease-in-out infinite alternate;
-  }
-}
-
-@keyframes reverse-holo-foil {
-  0% {
-    opacity: 0.28;
-    background-position:
-      0 0,
-      9px 9px,
-      0 0,
-      0 0;
+  .foil-card[data-foil-motion='true'] .foil-bands {
+    animation: foil-band-drift calc(var(--foil-motion-duration) * 0.76) ease-in-out infinite
+      alternate;
   }
 
-  50% {
-    opacity: 0.4;
-    background-position:
-      18px 18px,
-      27px 27px,
-      120% 0,
-      100% 42%;
+  .foil-card[data-foil-motion='true'] .foil-reflection {
+    animation: foil-light-drift calc(var(--foil-motion-duration) * 0.9) ease-in-out infinite
+      alternate;
   }
 
-  100% {
-    opacity: 0.28;
-    background-position:
-      36px 36px,
-      45px 45px,
-      240% 0,
-      220% 220%;
+  .foil-card[data-foil-motion='true'] :is(.foil-spectrum, .foil-bands, .foil-reflection) {
+    animation-delay: var(--foil-motion-delay);
   }
 }
 
-@keyframes reverse-holo-sweep {
+@media (prefers-reduced-motion: reduce) {
+  .foil-card,
+  .foil-spectrum,
+  .foil-bands,
+  .foil-texture,
+  .foil-reflection {
+    transition: none;
+  }
+}
+
+@keyframes foil-spectrum-drift {
   0% {
     background-position: 0 0;
   }
 
   100% {
-    background-position: 230% 0;
+    background-position: 100% 100%;
+  }
+}
+
+@keyframes foil-band-drift {
+  0% {
+    background-position: 100% 0;
+  }
+
+  100% {
+    background-position: 0 100%;
+  }
+}
+
+@keyframes foil-light-drift {
+  0% {
+    background-position: 0 20%;
+  }
+
+  100% {
+    background-position: 100% 80%;
+  }
+}
+
+.card-reveal-particle {
+  position: absolute;
+  display: block;
+  filter: drop-shadow(0 0 5px rgb(var(--card-reveal-color) / 0.9));
+  transform-origin: center;
+  will-change: transform, opacity;
+}
+
+.card-reveal-glint::before,
+.card-reveal-glint::after {
+  position: absolute;
+  inset: 0;
+  margin: auto;
+  content: '';
+  border-radius: 999px;
+  background: linear-gradient(
+    90deg,
+    transparent,
+    rgb(var(--card-reveal-color) / 0.8) 28%,
+    white 50%,
+    rgb(var(--card-reveal-color) / 0.8) 72%,
+    transparent
+  );
+}
+
+.card-reveal-glint::before,
+.card-reveal-glint::after {
+  width: 100%;
+  height: 12%;
+}
+
+.card-reveal-glint::after {
+  transform: rotate(90deg) scaleX(0.62);
+}
+
+.card-reveal-streak {
+  border-radius: 999px;
+  background: linear-gradient(
+    90deg,
+    transparent,
+    rgb(var(--card-reveal-color) / 0.75) 24%,
+    white 58%,
+    transparent
+  );
+  box-shadow: 0 0 7px rgb(var(--card-reveal-color) / 0.75);
+}
+
+.card-reveal-mote {
+  border-radius: 999px;
+  background: white;
+  box-shadow:
+    0 0 4px white,
+    0 0 9px rgb(var(--card-reveal-color) / 0.92);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .card-reveal-particle {
+    will-change: opacity;
   }
 }

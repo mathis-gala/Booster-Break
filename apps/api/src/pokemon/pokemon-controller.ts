@@ -9,6 +9,7 @@ import { PokemonSandboxService } from './pokemon-sandbox-service'
 import { isPokemonServiceError, PokemonService } from './pokemon-service'
 import { ScrydexSealedClient } from './scrydex-sealed-client'
 import { TcgDexClient } from './tcgdex-client'
+import { proxyTcgDexCardAsset } from './tcgdex-asset-proxy'
 import {
   cardsQuerySchema,
   collectionQuerySchema,
@@ -54,6 +55,7 @@ export const createPokemonController = ({
 
   const publicRoutes = new Elysia()
     .use(localePlugin)
+    .get('/assets/*', ({ params }) => proxyTcgDexCardAsset(params['*']))
     .get(
       '/sets',
       async ({ locale, query }) => ({

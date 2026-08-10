@@ -4,10 +4,20 @@ export const createProgram = (
   fragmentSource: string,
 ): WebGLProgram => {
   const vertexShader = compileShader(gl, gl.VERTEX_SHADER, vertexSource)
-  const fragmentShader = compileShader(gl, gl.FRAGMENT_SHADER, fragmentSource)
+  let fragmentShader: WebGLShader
+
+  try {
+    fragmentShader = compileShader(gl, gl.FRAGMENT_SHADER, fragmentSource)
+  } catch (error) {
+    gl.deleteShader(vertexShader)
+    throw error
+  }
+
   const program = gl.createProgram()
 
   if (!program) {
+    gl.deleteShader(vertexShader)
+    gl.deleteShader(fragmentShader)
     throw new Error('Unable to create WebGL program')
   }
 

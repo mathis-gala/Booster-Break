@@ -26,6 +26,7 @@ export interface PokemonCatalogSyncServiceOptions {
 export interface SyncPokemonCatalogSetOptions {
   syncedAt: string
   boosterImageUrl?: string
+  supplementalSets?: TcgDexSet[]
 }
 
 export interface SyncPokemonCatalogSetResult {
@@ -38,24 +39,35 @@ export class PokemonCatalogSyncService {
 
   async syncSet(
     set: TcgDexSet,
-    { syncedAt, boosterImageUrl }: SyncPokemonCatalogSetOptions,
+    { syncedAt, boosterImageUrl, supplementalSets = [] }: SyncPokemonCatalogSetOptions,
   ): Promise<SyncPokemonCatalogSetResult> {
     const localizedSet = await this.localizedClient.getSetById(set.id)
 
-    await this.options.pokemonRepository.upsertSet(set, syncedAt, boosterImageUrl, {
-      en: {
-        name: set.name,
-        series: getSetSeriesName(set),
+    await this.options.pokemonRepository.upsertSet(
+      set,
+      syncedAt,
+      boosterImageUrl,
+      {
+        en: {
+          name: set.name,
+          series: getSetSeriesName(set),
+        },
+        fr: localizedSet
+          ? {
+              name: localizedSet.name,
+              series: getSetSeriesName(localizedSet),
+            }
+          : undefined,
       },
-      fr: localizedSet
-        ? {
-            name: localizedSet.name,
-            series: getSetSeriesName(localizedSet),
-          }
-        : undefined,
-    })
+      set.cardCount.total +
+        supplementalSets.reduce((total, item) => total + item.cardCount.total, 0),
+    )
 
-    const cards = await this.options.pokemonClient.getCardsBySet(set)
+    const cards = (
+      await Promise.all(
+        [set, ...supplementalSets].map((item) => this.options.pokemonClient.getCardsBySet(item)),
+      )
+    ).flat()
     const localizedCards = await this.localizedClient.getCardsByIds(cards.map((card) => card.id))
     const localizedCardNames = new Map(
       localizedCards.map((card) => [

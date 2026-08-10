@@ -40,7 +40,7 @@ if (!set) {
   process.exit(1)
 }
 
-const allCards = await repository.listCards(resolvedSetId, locale)
+const allCards = await repository.listCards(set.id, locale)
 
 if (allCards.length === 0) {
   console.error(`No cards available for set: ${resolvedSetId}`)
@@ -52,7 +52,7 @@ let drawnCards = 0
 let newCards = 0
 
 for (let i = 0; i < count; i += 1) {
-  const { cards } = drawPokemonPackCards(allCards)
+  const { cards } = drawPokemonPackCards(allCards, { setId: set.id })
 
   if (cards.length === 0) {
     continue

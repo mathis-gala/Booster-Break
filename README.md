@@ -221,11 +221,13 @@ The response includes a `token` and `link` to share with the user.
 
 ## Pokemon TCG Data
 
-The API uses Prisma with Postgres for persistence and automatically syncs Pokemon booster sets
-released from 2024 onward from TCGdex when the local catalog is empty. Card images are stored as
-remote asset URLs, and multilingual catalog support is available through the TCGdex SDK language
-setting. Real booster-pack artwork is resolved separately through Scrydex sealed product images
-when available; sets without booster artwork are hidden from the pack opener.
+The API uses Prisma with Postgres for persistence and automatically syncs the eight most recent
+Pokemon booster sets released from 2024 onward, plus the featured Crown Zenith set, from TCGdex
+when required catalog entries are missing. Crown Zenith's Galarian Gallery is merged into its parent
+set. Card images are stored as remote asset URLs, and multilingual catalog support is available
+through the TCGdex SDK language setting. Real booster-pack artwork is resolved separately through
+Scrydex sealed product images when available; sets without booster artwork are hidden from the pack
+opener.
 
 Optional Scrydex credentials can improve sealed product matching:
 

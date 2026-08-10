@@ -3,7 +3,9 @@
   "private": true,
   "type": "module",
   "exports": {
-    ".": "./src/index.ts"
+    ".": "./src/index.ts",
+    "./pack-draft": "./src/pokemon-pack-draft.ts",
+    "./swsh-gallery": "./src/pokemon-swsh-gallery.ts"
   },
   "scripts": {
     "dev": "tsc --noEmit --watch",

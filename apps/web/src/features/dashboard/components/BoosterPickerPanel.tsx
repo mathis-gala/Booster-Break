@@ -2,6 +2,7 @@ import { CheckIcon, EyeIcon, LoaderCircleIcon, PackageOpenIcon, StarIcon } from 
 import type { PokemonSetSummary } from '@tcg-collection/shared'
 
 import { buttonVariants } from '@/components/ui/button'
+import { useLocale } from '@/features/i18n/useLocale'
 import { m } from '@/paraglide/messages'
 
 interface BoosterPickerPanelProps {
@@ -97,23 +98,49 @@ function BoosterChoiceGrid({
   onPreviewSet,
   onSelectSet,
 }: BoosterChoiceGridProps) {
+  const { locale } = useLocale()
+  const seriesSections = groupSetsBySeries(sets)
+
   return (
     <fieldset className="grid gap-2 pt-2">
       <legend className="text-sm font-black text-muted-foreground">
         {m.packs_choose_booster()}
       </legend>
       {sets.length > 0 ? (
-        <div className="grid grid-cols-2 gap-2 p-1">
-          {sets.map((set) => (
-            <BoosterChoiceCard
-              key={set.id}
-              isActive={activeSetId === set.id}
-              set={set}
-              ownedSetPullCount={ownedSetPullCounts?.get(set.id) ?? 0}
-              hideSetTitle={hideSetCardTitle}
-              onPreviewSet={onPreviewSet}
-              onSelectSet={onSelectSet}
-            />
+        <div className="grid gap-5 p-1">
+          {seriesSections.map((section) => (
+            <section key={section.id} className="grid gap-2">
+              <h3 className="flex min-h-10 items-center pb-1">
+                {getSeriesLogoUrl(section.id, locale) ? (
+                  <img
+                    src={getSeriesLogoUrl(section.id, locale)}
+                    alt={section.name}
+                    className={
+                      section.id === 'swsh'
+                        ? 'max-h-24 max-w-64 object-contain object-left'
+                        : 'max-h-9 max-w-36 object-contain object-left'
+                    }
+                  />
+                ) : (
+                  <span className="text-xs font-black uppercase tracking-wide text-muted-foreground">
+                    {section.name}
+                  </span>
+                )}
+              </h3>
+              <div className="grid grid-cols-2 gap-2">
+                {section.sets.map((set) => (
+                  <BoosterChoiceCard
+                    key={set.id}
+                    isActive={activeSetId === set.id}
+                    set={set}
+                    ownedSetPullCount={ownedSetPullCounts?.get(set.id) ?? 0}
+                    hideSetTitle={hideSetCardTitle}
+                    onPreviewSet={onPreviewSet}
+                    onSelectSet={onSelectSet}
+                  />
+                ))}
+              </div>
+            </section>
           ))}
         </div>
       ) : setsIsPending ? (
@@ -128,6 +155,52 @@ function BoosterChoiceGrid({
       )}
     </fieldset>
   )
+}
+
+const groupSetsBySeries = (
+  sets: Array<PokemonSetSummary & { boosterImageUrl: string }>,
+): Array<{
+  id: string
+  name: string
+  sets: Array<PokemonSetSummary & { boosterImageUrl: string }>
+}> => {
+  const sections = new Map<
+    string,
+    {
+      id: string
+      name: string
+      sets: Array<PokemonSetSummary & { boosterImageUrl: string }>
+    }
+  >()
+
+  for (const set of sets) {
+    const id = getSeriesId(set.id) ?? set.series
+    const section = sections.get(id)
+
+    if (section) {
+      section.sets.push(set)
+    } else {
+      sections.set(id, { id, name: set.series, sets: [set] })
+    }
+  }
+
+  return Array.from(sections.values())
+}
+
+const getSeriesId = (setId: string): string | undefined => {
+  return /^(swsh|sv|me)/.exec(setId)?.[1]
+}
+
+const getSeriesLogoUrl = (seriesId: string, locale: string): string | undefined => {
+  const firstSetId = {
+    me: 'me01',
+    sv: 'sv01',
+    swsh: 'swsh1',
+  }[seriesId]
+
+  return firstSetId
+    ? `https://assets.tcgdex.net/${locale}/${seriesId}/${firstSetId}/logo.png`
+    : undefined
 }
 
 interface BoosterChoiceCardProps {

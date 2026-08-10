@@ -47,6 +47,7 @@ export interface PokemonCardSummary {
   number: string
   rarity?: string
   supertype?: string
+  isEvolved?: boolean
   finishes?: CardFinish[]
   finish?: CardFinish
   imageSmall?: string
@@ -315,6 +316,9 @@ export interface TradeNotificationCardPayload {
   quantity: number
   setId?: string
   number?: string
+  rarity?: string
+  supertype?: string
+  isEvolved?: boolean
 }
 
 export type TradeOfferAcceptedNotificationRecipientRole = 'auction_creator' | 'offer_proposer'
@@ -401,9 +405,11 @@ export type TradeErrorCode =
 export {
   getFinishRank,
   getPackRarityChance,
+  getSetPackRarityChance,
   getRarityRank,
   getRarityWeight,
   normalizeRarity,
+  canonicalizeRarity,
   isRareOrBetter,
   pokemonRarityOrder,
 } from './pokemon-rarity'
