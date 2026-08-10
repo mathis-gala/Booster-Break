@@ -1,97 +1,115 @@
-import { useMemo, useState } from 'react'
-import { useQuery } from '@tanstack/react-query'
+import { useState } from 'react'
+import type { ReactNode } from 'react'
+import { BookOpenIcon, RecycleIcon } from 'lucide-react'
 import type { CollectionSort } from '@tcg-collection/shared'
 
 import { CollectionPanel } from '../components/CollectionPanel'
+import { CollectionRecyclePanel } from '../../recycle/components/CollectionRecyclePanel'
+import type { RecycleSelection } from '../../recycle/lib/recycle-utils'
 import { useLocale } from '@/features/i18n/useLocale'
-import {
-  usePokemonCollectionAllQueryOption,
-  usePokemonCollectionQueryOption,
-} from '@/lib/queries/pokemon'
-import { matchesCardNameSearch } from '../lib/card-search'
+import { cn } from '@/lib/utils'
+import { m } from '@/paraglide/messages'
+import { useBrowseCollection } from '../hooks/useBrowseCollection'
+
+type CollectionMode = 'browse' | 'recycle'
+
+interface CollectionModeToggleProps {
+  mode: CollectionMode
+  onChange: (mode: CollectionMode) => void
+}
+
+interface ModeButtonProps {
+  isActive: boolean
+  icon: ReactNode
+  label: string
+  onClick: () => void
+}
 
 export function CollectionView() {
   useLocale()
-  const [page, setPage] = useState(1)
-  const [sort, setSort] = useState<CollectionSort>('recent')
-  const [searchQuery, setSearchQuery] = useState('')
-  const [selectedSetId, setSelectedSetId] = useState<string>()
-  const pageSize = 24
-  const isSearching = searchQuery.trim().length > 0
-  const collection = useQuery(
-    usePokemonCollectionQueryOption(
-      {
-        page,
-        pageSize,
-        sort,
-        setId: selectedSetId,
-      },
-      {
-        keepPreviousData: true,
-        enabled: !isSearching,
-      },
-    ),
-  )
-  const searchableCollection = useQuery(
-    usePokemonCollectionAllQueryOption(
-      {
-        sort,
-        setId: selectedSetId,
-      },
-      {
-        enabled: isSearching,
-      },
-    ),
-  )
-  const sets = collection.data?.sets ?? searchableCollection.data?.sets ?? []
-  const searchMatches = useMemo(
-    () =>
-      (searchableCollection.data?.cards ?? []).filter((card) =>
-        matchesCardNameSearch(card, searchQuery),
-      ),
-    [searchQuery, searchableCollection.data?.cards],
-  )
-  const searchPageCount = Math.max(1, Math.ceil(searchMatches.length / pageSize))
-  const searchPage = Math.min(Math.max(page, 1), searchPageCount)
-  const searchCards = useMemo(() => {
-    const start = (searchPage - 1) * pageSize
-
-    return searchMatches.slice(start, start + pageSize)
-  }, [pageSize, searchMatches, searchPage])
-  const cards = isSearching ? searchCards : (collection.data?.cards ?? [])
-  const total = isSearching ? searchMatches.length : (collection.data?.pagination.total ?? 0)
-  const totalCards = isSearching
-    ? searchMatches.reduce((count, card) => count + card.quantity, 0)
-    : (collection.data?.pagination.totalCards ?? 0)
+  const [mode, setMode] = useState<CollectionMode>('browse')
+  const browse = useBrowseCollection(mode === 'browse')
+  const [recyclePage, setRecyclePage] = useState(1)
+  const [recycleSort, setRecycleSort] = useState<CollectionSort>('recent')
+  const [recycleSearchQuery, setRecycleSearchQuery] = useState('')
+  const [recycleSelection, setRecycleSelection] = useState<RecycleSelection>({})
 
   return (
-    <div className="flex w-full justify-center">
-      <CollectionPanel
-        cards={cards}
-        isPending={isSearching ? searchableCollection.isPending : collection.isPending}
-        fitContent
-        page={isSearching ? searchPage : (collection.data?.pagination.page ?? page)}
-        pageCount={isSearching ? searchPageCount : (collection.data?.pagination.pageCount ?? 1)}
-        total={total}
-        totalCards={totalCards}
-        sort={sort}
-        searchQuery={searchQuery}
-        sets={sets}
-        selectedSetId={selectedSetId}
-        onSortChange={(nextSort) => {
-          setSort(nextSort)
-          setPage(1)
-        }}
-        onSearchChange={(nextSearchQuery) => {
-          setSearchQuery(nextSearchQuery)
-          setPage(1)
-        }}
-        onSetChange={(nextSetId) => {
-          setSelectedSetId(nextSetId)
-          setPage(1)
-        }}
-        onPageChange={setPage}
+    <div className="flex w-full flex-col items-center gap-4">
+      <CollectionModeToggle mode={mode} onChange={setMode} />
+
+      {mode === 'recycle' ? (
+        <div className="flex w-full justify-center">
+          <CollectionRecyclePanel
+            page={recyclePage}
+            sort={recycleSort}
+            searchQuery={recycleSearchQuery}
+            selection={recycleSelection}
+            onPageChange={setRecyclePage}
+            onSortChange={setRecycleSort}
+            onSearchChange={setRecycleSearchQuery}
+            onSelectionChange={setRecycleSelection}
+          />
+        </div>
+      ) : (
+        <div className="flex w-full justify-center">
+          <CollectionPanel
+            cards={browse.cards}
+            isPending={browse.isPending}
+            fitContent
+            page={browse.page}
+            pageCount={browse.pageCount}
+            total={browse.total}
+            totalCards={browse.totalCards}
+            sort={browse.sort}
+            searchQuery={browse.searchQuery}
+            sets={browse.sets}
+            selectedSetId={browse.selectedSetId}
+            onSortChange={browse.onSortChange}
+            onSearchChange={browse.onSearchChange}
+            onSetChange={browse.onSetChange}
+            onPageChange={browse.onPageChange}
+          />
+        </div>
+      )}
+    </div>
+  )
+}
+
+function CollectionModeToggle({ mode, onChange }: CollectionModeToggleProps) {
+  return (
+    <div className="inline-flex rounded-xl border border-border bg-background p-1">
+      <ModeButton
+        isActive={mode === 'browse'}
+        icon={<BookOpenIcon className="size-4" aria-hidden="true" />}
+        label={m.nav_collection()}
+        onClick={() => onChange('browse')}
+      />
+      <ModeButton
+        isActive={mode === 'recycle'}
+        icon={<RecycleIcon className="size-4" aria-hidden="true" />}
+        label={m.nav_recycle()}
+        onClick={() => onChange('recycle')}
       />
     </div>
+  )
+}
+
+function ModeButton({ isActive, icon, label, onClick }: ModeButtonProps) {
+  return (
+    <button
+      type="button"
+      aria-pressed={isActive}
+      className={cn(
+        'flex cursor-pointer items-center gap-1.5 rounded-lg px-3 py-1.5 text-sm font-black transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring',
+        isActive
+          ? 'bg-sidebar text-sidebar-foreground'
+          : 'text-muted-foreground hover:text-foreground',
+      )}
+      onClick={onClick}
+    >
+      {icon}
+      {label}
+    </button>
   )
 }

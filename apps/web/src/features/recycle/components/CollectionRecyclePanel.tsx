@@ -1,0 +1,118 @@
+import { useMemo } from 'react'
+import type { Dispatch, SetStateAction } from 'react'
+import { useQuery } from '@tanstack/react-query'
+import type { CollectionSort } from '@tcg-collection/shared'
+import { RECYCLE_COST } from '@tcg-collection/shared'
+
+import { CollectionPanel } from '@/features/dashboard/components/CollectionPanel'
+import { matchesCardNameSearch } from '@/features/dashboard/lib/card-search'
+import { usePokemonCollectionAllQueryOption } from '@/lib/queries/pokemon'
+import { m } from '@/paraglide/messages'
+
+import { RecycleActionBar } from './RecycleActionBar'
+import { RecycleAnimationOverlay } from './RecycleAnimationOverlay'
+import { RecycleRaritySections } from './RecycleRaritySections'
+import { useRecycleEngine } from '../hooks/useRecycleEngine'
+import {
+  groupCardsByRarity,
+  paginateRarityGroups,
+  type RecycleSelection,
+} from '../lib/recycle-utils'
+
+const PAGE_SIZE = 24
+
+interface CollectionRecyclePanelProps {
+  page: number
+  sort: CollectionSort
+  searchQuery: string
+  selection: RecycleSelection
+  onPageChange: (page: number) => void
+  onSortChange: (sort: CollectionSort) => void
+  onSearchChange: (searchQuery: string) => void
+  onSelectionChange: Dispatch<SetStateAction<RecycleSelection>>
+}
+
+export function CollectionRecyclePanel({
+  page,
+  sort,
+  searchQuery,
+  selection,
+  onPageChange,
+  onSortChange,
+  onSearchChange,
+  onSelectionChange,
+}: CollectionRecyclePanelProps) {
+  const collection = useQuery(usePokemonCollectionAllQueryOption({ sort, source: 'owned' }))
+  const allCards = useMemo(() => collection.data?.cards ?? [], [collection.data?.cards])
+
+  const engine = useRecycleEngine(allCards, selection, onSelectionChange)
+
+  const isSearching = searchQuery.trim().length > 0
+  const filtered = useMemo(
+    () =>
+      isSearching ? allCards.filter((card) => matchesCardNameSearch(card, searchQuery)) : allCards,
+    [allCards, isSearching, searchQuery],
+  )
+  const displayGroups = useMemo(() => groupCardsByRarity(filtered), [filtered])
+  const { segments, pageCount, currentPage } = paginateRarityGroups(displayGroups, page, PAGE_SIZE)
+  const totalCards = useMemo(
+    () => filtered.reduce((count, card) => count + card.quantity, 0),
+    [filtered],
+  )
+
+  return (
+    <>
+      <CollectionPanel
+        cards={filtered}
+        isPending={collection.isPending}
+        fitContent
+        page={currentPage}
+        pageCount={pageCount}
+        total={filtered.length}
+        totalCards={totalCards}
+        sort={sort}
+        searchQuery={searchQuery}
+        hideRaritySort
+        title={m.recycle_title()}
+        subtitle={m.recycle_description({ cost: RECYCLE_COST })}
+        toolbar={
+          <RecycleActionBar
+            selectedCount={engine.selectedCount}
+            rewardCount={engine.rewardCount}
+            autoSurplus={engine.autoSurplus}
+            isBusy={engine.isBusy}
+            onUnselectAll={engine.clearSelection}
+            onAuto={engine.handleAuto}
+            onRecycle={engine.handleRecycle}
+          />
+        }
+        renderGrid={() => (
+          <RecycleRaritySections
+            segments={segments}
+            selection={engine.selection}
+            onChange={engine.updateSelection}
+            rewardForRank={engine.rewardForRank}
+          />
+        )}
+        onSortChange={(nextSort) => {
+          onSortChange(nextSort)
+          onPageChange(1)
+        }}
+        onSearchChange={(nextSearchQuery) => {
+          onSearchChange(nextSearchQuery)
+          onPageChange(1)
+        }}
+        onPageChange={onPageChange}
+      />
+
+      {engine.animation ? (
+        <RecycleAnimationOverlay
+          batches={engine.animation.batches}
+          rewards={engine.animation.rewards}
+          setNameById={engine.setNameById}
+          onClose={engine.closeAnimation}
+        />
+      ) : null}
+    </>
+  )
+}

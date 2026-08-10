@@ -31,7 +31,7 @@ function ToastItem({ toastMessage }: { toastMessage: ToastMessage }) {
   return (
     <div
       className={cn(
-        'flex items-start gap-3 rounded-lg border bg-card p-3 text-card-foreground shadow-xl shadow-foreground/10',
+        'flex items-center gap-3 rounded-lg border bg-card p-3 text-card-foreground shadow-xl shadow-foreground/10',
         toastMessage.tone === 'error' &&
           'border-destructive/35 bg-[oklch(0.985_0.012_27)] text-foreground',
         toastMessage.tone === 'success' &&
@@ -40,7 +40,7 @@ function ToastItem({ toastMessage }: { toastMessage: ToastMessage }) {
     >
       <div
         className={cn(
-          'mt-1 size-2 shrink-0 rounded-full',
+          'size-2 shrink-0 rounded-full',
           toastMessage.tone === 'success' ? 'bg-[oklch(0.58_0.13_145)]' : 'bg-destructive',
         )}
         aria-hidden="true"

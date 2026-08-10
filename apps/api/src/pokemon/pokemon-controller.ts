@@ -9,6 +9,7 @@ import { localePlugin, resolveLocaleOverride } from '../i18n/locale'
 import { PokemonRepository } from './pokemon-repository'
 import { PokemonSandboxService } from './pokemon-sandbox-service'
 import { isPokemonServiceError, PokemonService } from './pokemon-service'
+import { RecycleService } from './recycle-service'
 import { ScrydexSealedClient } from './scrydex-sealed-client'
 import { TcgDexClient } from './tcgdex-client'
 import {
@@ -16,6 +17,7 @@ import {
   collectionQuerySchema,
   localeQuerySchema,
   openPackBodySchema,
+  recycleCardsBodySchema,
 } from './pokemon-controller-schemas'
 
 interface PokemonControllerOptions {
@@ -28,6 +30,7 @@ interface PokemonControllerOptions {
   sealedClient: ScrydexSealedClient
   sandboxService?: PokemonSandboxService
   service?: PokemonService
+  recycleService: RecycleService
 }
 
 export const createPokemonController = ({
@@ -40,6 +43,7 @@ export const createPokemonController = ({
   sealedClient,
   sandboxService,
   service,
+  recycleService,
 }: PokemonControllerOptions) => {
   const resolvedAuthService =
     authService ??
@@ -195,16 +199,39 @@ export const createPokemonController = ({
         body: openPackBodySchema,
       },
     )
+    .post(
+      '/cards/recycle',
+      async (context) => {
+        const { currentUser, body, locale, status } = getAuthenticatedContext(context)
+        const result = await recycleService.recycle(currentUser, {
+          ...body,
+          locale: resolveLocaleOverride(body.locale, locale),
+        })
+
+        if (!isPokemonServiceError(result)) {
+          return result
+        }
+
+        return status(toPokemonErrorStatus(result.error), result)
+      },
+      {
+        body: recycleCardsBodySchema,
+      },
+    )
 
   return new Elysia({ prefix: '/pokemon' }).use(publicRoutes).use(authenticatedPokemonRoutes)
 }
 
-const toPokemonErrorStatus = (error: string): 401 | 404 | 409 => {
+const toPokemonErrorStatus = (error: string): 400 | 401 | 404 | 409 => {
   switch (error) {
     case 'unauthenticated':
       return 401
+    case 'recycle_invalid':
+      return 400
     case 'pack_cooldown':
     case 'pokemon_sets_not_synced':
+    case 'recycle_nothing':
+    case 'recycle_conflict':
       return 409
     default:
       return 404
@@ -219,7 +246,10 @@ const mustProvideAuthStore = (store: AuthStore | undefined): AuthStore => {
   return store
 }
 
-const getAuthenticatedContext = <TContext>(
-  context: TContext,
-): TContext & { currentUser: AuthUser; locale: SupportedLocale } =>
-  context as TContext & { currentUser: AuthUser; locale: SupportedLocale }
+type AuthenticatedContext<TContext> = TContext & {
+  currentUser: AuthUser
+  locale: SupportedLocale
+}
+
+const getAuthenticatedContext = <TContext>(context: TContext): AuthenticatedContext<TContext> =>
+  context as AuthenticatedContext<TContext>

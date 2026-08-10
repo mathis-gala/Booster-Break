@@ -1,4 +1,5 @@
 import { useMemo, useState } from 'react'
+import type { ReactNode } from 'react'
 import { ChevronDownIcon, SearchIcon } from 'lucide-react'
 import type {
   CollectionSetOption,
@@ -28,32 +29,38 @@ interface CollectionPanelProps {
   totalCards: number
   sort: CollectionSort
   searchQuery: string
-  sets: CollectionSetOption[]
+  sets?: CollectionSetOption[]
   selectedSetId?: string
   onSortChange: (sort: CollectionSort) => void
   onSearchChange: (query: string) => void
-  onSetChange: (setId: string | undefined) => void
+  onSetChange?: (setId: string | undefined) => void
   onPageChange: (page: number) => void
+  hideRaritySort?: boolean
+  toolbar?: ReactNode
+  renderCard?: (card: UserCollectionCard) => ReactNode
+  renderGrid?: (cards: UserCollectionCard[]) => ReactNode
+  title?: ReactNode
+  subtitle?: ReactNode
 }
 
-const getSortActions = (): Array<{ label: string; value: CollectionSort }> => [
-  {
-    label: m.sort_recent(),
-    value: 'recent',
-  },
-  {
-    label: m.sort_quantity(),
-    value: 'quantity',
-  },
-  {
-    label: m.sort_name(),
-    value: 'name',
-  },
-  {
-    label: m.sort_rarity(),
-    value: 'rarity',
-  },
-]
+interface SortAction {
+  label: string
+  value: CollectionSort
+}
+
+const getSortActions = (hideRaritySort: boolean): SortAction[] => {
+  const actions: SortAction[] = [
+    { label: m.sort_recent(), value: 'recent' },
+    { label: m.sort_quantity(), value: 'quantity' },
+    { label: m.sort_name(), value: 'name' },
+  ]
+
+  if (!hideRaritySort) {
+    actions.push({ label: m.sort_rarity(), value: 'rarity' })
+  }
+
+  return actions
+}
 
 export function CollectionPanel({
   cards,
@@ -65,15 +72,21 @@ export function CollectionPanel({
   totalCards,
   sort,
   searchQuery,
-  sets,
+  sets = [],
   selectedSetId,
   onSortChange,
   onSearchChange,
   onSetChange,
   onPageChange,
+  hideRaritySort = false,
+  toolbar,
+  renderCard,
+  renderGrid,
+  title,
+  subtitle,
 }: CollectionPanelProps) {
   const [selectedCard, setSelectedCard] = useState<UserCollectionCard>()
-  const sortActions = getSortActions()
+  const sortActions = getSortActions(hideRaritySort)
   const setNameById = useMemo(() => new Map(sets.map((set) => [set.id, set.name])), [sets])
   const activeSet = sets.find((set) => set.id === selectedSetId)
   const setTriggerLabel = activeSet
@@ -92,9 +105,9 @@ export function CollectionPanel({
         <div className="space-y-4">
           <div className="flex flex-wrap items-start gap-x-8 gap-y-4 sm:justify-between">
             <div>
-              <h2 className="text-lg font-black">{m.collection_title()}</h2>
+              <h2 className="text-lg font-black">{title ?? m.collection_title()}</h2>
               <p className="text-sm text-muted-foreground">
-                {m.collection_summary({ totalCards, total })}
+                {subtitle ?? m.collection_summary({ totalCards, total })}
               </p>
             </div>
             <div className="flex w-full flex-col gap-3 sm:w-auto sm:flex-row sm:flex-wrap sm:items-center sm:justify-start sm:gap-4">
@@ -112,49 +125,56 @@ export function CollectionPanel({
                     aria-label={m.trade_search_by_pokemon_aria()}
                   />
                 </div>
-                <div aria-hidden="true" className="hidden h-5 w-px shrink-0 bg-border sm:block" />
-                <DropdownMenu modal={false}>
-                  <DropdownMenuTrigger
-                    aria-label={m.collection_filter_set_label()}
-                    className="flex h-9 w-full min-w-0 cursor-pointer items-center justify-between gap-2 rounded-md border bg-background px-2.5 text-sm font-medium transition-colors hover:bg-muted focus-visible:border-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-foreground/15 sm:h-full sm:w-48 sm:flex-none sm:rounded-l-none sm:rounded-r-md sm:border-0 sm:focus-visible:ring-0"
-                  >
-                    <span className="truncate">{setTriggerLabel}</span>
-                    <ChevronDownIcon
+                {onSetChange ? (
+                  <>
+                    <div
                       aria-hidden="true"
-                      className="size-4 shrink-0 text-muted-foreground"
+                      className="hidden h-5 w-px shrink-0 bg-border sm:block"
                     />
-                  </DropdownMenuTrigger>
-                  <DropdownMenuContent
-                    align="start"
-                    sideOffset={6}
-                    className="max-h-72 w-auto min-w-(--anchor-width) max-w-64"
-                  >
-                    <DropdownMenuRadioGroup
-                      value={selectedSetId ?? ''}
-                      onValueChange={(value) => onSetChange(value || undefined)}
-                    >
-                      <DropdownMenuRadioItem
-                        value=""
-                        closeOnClick
-                        label={m.collection_filter_all_sets()}
-                        className="cursor-pointer focus:bg-muted focus:text-foreground"
+                    <DropdownMenu modal={false}>
+                      <DropdownMenuTrigger
+                        aria-label={m.collection_filter_set_label()}
+                        className="flex h-9 w-full min-w-0 cursor-pointer items-center justify-between gap-2 rounded-md border bg-background px-2.5 text-sm font-medium transition-colors hover:bg-muted focus-visible:border-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-foreground/15 sm:h-full sm:w-48 sm:flex-none sm:rounded-l-none sm:rounded-r-md sm:border-0 sm:focus-visible:ring-0"
                       >
-                        {m.collection_filter_all_sets()}
-                      </DropdownMenuRadioItem>
-                      {sets.map((set) => (
-                        <DropdownMenuRadioItem
-                          key={set.id}
-                          value={set.id}
-                          closeOnClick
-                          label={`${set.name} (${set.count})`}
-                          className="cursor-pointer focus:bg-muted focus:text-foreground"
+                        <span className="truncate">{setTriggerLabel}</span>
+                        <ChevronDownIcon
+                          aria-hidden="true"
+                          className="size-4 shrink-0 text-muted-foreground"
+                        />
+                      </DropdownMenuTrigger>
+                      <DropdownMenuContent
+                        align="start"
+                        sideOffset={6}
+                        className="max-h-72 w-auto min-w-(--anchor-width) max-w-64"
+                      >
+                        <DropdownMenuRadioGroup
+                          value={selectedSetId ?? ''}
+                          onValueChange={(value) => onSetChange(value || undefined)}
                         >
-                          {set.name} ({set.count})
-                        </DropdownMenuRadioItem>
-                      ))}
-                    </DropdownMenuRadioGroup>
-                  </DropdownMenuContent>
-                </DropdownMenu>
+                          <DropdownMenuRadioItem
+                            value=""
+                            closeOnClick
+                            label={m.collection_filter_all_sets()}
+                            className="cursor-pointer focus:bg-muted focus:text-foreground"
+                          >
+                            {m.collection_filter_all_sets()}
+                          </DropdownMenuRadioItem>
+                          {sets.map((set) => (
+                            <DropdownMenuRadioItem
+                              key={set.id}
+                              value={set.id}
+                              closeOnClick
+                              label={`${set.name} (${set.count})`}
+                              className="cursor-pointer focus:bg-muted focus:text-foreground"
+                            >
+                              {set.name} ({set.count})
+                            </DropdownMenuRadioItem>
+                          ))}
+                        </DropdownMenuRadioGroup>
+                      </DropdownMenuContent>
+                    </DropdownMenu>
+                  </>
+                ) : null}
               </div>
               <div className="flex flex-wrap gap-2">
                 {sortActions.map((action) => (
@@ -172,6 +192,7 @@ export function CollectionPanel({
             </div>
           </div>
         </div>
+        {toolbar ? <div className="mt-4">{toolbar}</div> : null}
         {isPending ? (
           <div className="mt-4 grid grid-cols-2 gap-3 sm:grid-cols-4">
             {Array.from({ length: 4 }).map((_, index) => (
@@ -179,17 +200,25 @@ export function CollectionPanel({
             ))}
           </div>
         ) : cards.length > 0 ? (
-          <div className="mt-4 flex min-h-[39rem] min-w-0 max-w-full flex-wrap content-start justify-center gap-3">
-            {cards.map((card) => (
-              <CollectionCardItem
-                key={`${card.id}-${card.finish ?? 'normal'}`}
-                card={card}
-                setName={setNameById.get(card.setId)}
-                onSelect={() => setSelectedCard(card)}
-                className="focus-visible:ring-2 focus-visible:ring-ring"
-              />
-            ))}
-          </div>
+          renderGrid ? (
+            <div className="mt-4 min-h-[39rem]">{renderGrid(cards)}</div>
+          ) : (
+            <div className="mt-4 flex min-h-[39rem] min-w-0 max-w-full flex-wrap content-start justify-center gap-3">
+              {cards.map((card) =>
+                renderCard ? (
+                  renderCard(card)
+                ) : (
+                  <CollectionCardItem
+                    key={`${card.id}-${card.finish ?? 'normal'}`}
+                    card={card}
+                    setName={setNameById.get(card.setId)}
+                    onSelect={() => setSelectedCard(card)}
+                    className="focus-visible:ring-2 focus-visible:ring-ring"
+                  />
+                ),
+              )}
+            </div>
+          )
         ) : searchQuery.trim() !== '' ? (
           <div className="mt-4 rounded-lg border bg-background p-4 text-sm font-semibold text-muted-foreground">
             {m.trade_search_no_match()}

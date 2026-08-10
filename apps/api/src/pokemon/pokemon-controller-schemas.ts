@@ -28,3 +28,18 @@ export const openPackBodySchema = z.object({
   setId: z.string().optional(),
   locale: localeSchema.optional(),
 })
+
+export const cardFinishSchema = z.enum(['normal', 'holo', 'reverse_holo'])
+
+export const recycleCardsBodySchema = z.object({
+  items: z
+    .array(
+      z.object({
+        cardId: z.string().min(1),
+        finish: cardFinishSchema,
+        quantity: z.coerce.number().int().positive(),
+      }),
+    )
+    .min(1),
+  locale: localeSchema.optional(),
+})
