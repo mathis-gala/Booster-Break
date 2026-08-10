@@ -39,7 +39,8 @@ export function PackBoosterStage({
   const shouldReduceMotion = useReducedMotion()
   const activeIndex = activeSet ? sets.findIndex((set) => set.id === activeSet.id) : -1
   const previousSet = activeIndex > 0 ? sets[activeIndex - 1] : undefined
-  const nextSet = activeIndex >= 0 && activeIndex < sets.length - 1 ? sets[activeIndex + 1] : undefined
+  const nextSet =
+    activeIndex >= 0 && activeIndex < sets.length - 1 ? sets[activeIndex + 1] : undefined
 
   const isCooldownActive =
     packOpenStatus?.authenticated === true &&

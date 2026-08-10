@@ -6,9 +6,7 @@ export function useBoosterCarouselSelection<T extends { id: string }>(sets: read
   const [selectedSetId, setSelectedSetId] = useState<string>()
   const [targetSetId, setTargetSetId] = useState<string>()
   const activeSetId =
-    selectedSetId && sets.some((set) => set.id === selectedSetId)
-      ? selectedSetId
-      : sets[0]?.id
+    selectedSetId && sets.some((set) => set.id === selectedSetId) ? selectedSetId : sets[0]?.id
   const activeSet = sets.find((set) => set.id === activeSetId)
   const isTravelling = Boolean(
     targetSetId && activeSetId !== targetSetId && sets.some((set) => set.id === targetSetId),

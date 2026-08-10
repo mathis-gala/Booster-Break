@@ -31,10 +31,7 @@ import {
   type ParticleRevealTier,
   type RevealParticleKind,
 } from '../lib/card-reveal'
-import {
-  getCardDismissalTransition,
-  getSwipeDismissDirection,
-} from '../lib/pack-opening-gesture'
+import { getCardDismissalTransition, getSwipeDismissDirection } from '../lib/pack-opening-gesture'
 import { FoilCardImage } from './FoilCardImage'
 import { InteractiveBooster } from './InteractiveBooster'
 import { WebGlCardViewer } from './WebGlCardViewer'
