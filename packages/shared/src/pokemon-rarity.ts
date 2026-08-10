@@ -59,8 +59,33 @@ const normalizeRarityValue = (value: string): string => {
     .toLowerCase()
 }
 
+const canonicalRarityAliases: Readonly<Record<string, string>> = {
+  commune: 'common',
+  'peu commune': 'uncommon',
+  'rare holo': 'holo rare',
+  'rare holo v': 'holo rare v',
+  'rare holo vmax': 'holo rare vmax',
+  'rare holo vstar': 'holo rare vstar',
+  'rare illustration': 'illustration rare',
+  'high tech rare': 'ace spec rare',
+  'high-tech rare': 'ace spec rare',
+  'high tecg rare': 'ace spec rare',
+  'high-tecg rare': 'ace spec rare',
+  'illustration speciale rare': 'special illustration rare',
+  'rare illustration speciale': 'special illustration rare',
+  'dresseur full art': 'full art trainer',
+  'radieux rare': 'radiant rare',
+  magnifique: 'amazing rare',
+  'magnifique rare': 'secret rare',
+}
+
 export const normalizeRarity = (value: string | null | undefined): string => {
   return normalizeRarityValue(value ?? '')
+}
+
+export const canonicalizeRarity = (value: string | null | undefined): string => {
+  const normalized = normalizeRarity(value)
+  return canonicalRarityAliases[normalized] ?? normalized
 }
 
 const finishRank: Record<CardFinish, number> = {
@@ -78,29 +103,25 @@ export const getFinishRank = (finish: string | null | undefined): number => {
 }
 
 export const isRareOrBetter = (rarity: string | null | undefined): boolean => {
-  return !['Common', 'Uncommon'].includes(rarity ?? '')
+  return !['common', 'uncommon'].includes(canonicalizeRarity(rarity))
 }
 
 export const getRarityWeight = (rarity: string | null | undefined): number => {
-  switch (rarity) {
-    case 'Rare':
+  switch (canonicalizeRarity(rarity)) {
+    case 'rare':
       return 64
-    case 'Double rare':
-    case 'Double Rare':
+    case 'double rare':
       return 18
-    case 'Illustration rare':
-    case 'Illustration Rare':
+    case 'illustration rare':
       return 12
-    case 'Ultra Rare':
+    case 'ultra rare':
       return 4
-    case 'ACE SPEC Rare':
+    case 'ace spec rare':
       return 3
-    case 'Special illustration rare':
-    case 'Special Illustration Rare':
+    case 'special illustration rare':
       return 1.5
-    case 'Mega Hyper Rare':
-    case 'Hyper rare':
-    case 'Hyper Rare':
+    case 'mega hyper rare':
+    case 'hyper rare':
       return 0.5
     default:
       return 1
@@ -116,42 +137,44 @@ export const getSetPackRarityChance = (
   rarity: string,
   cards: PokemonCardSummary[],
 ): number => {
-  if (rarity === 'Common') {
+  const canonicalRarity = canonicalizeRarity(rarity)
+
+  if (canonicalRarity === 'common') {
     return 40
   }
 
-  if (rarity === 'Uncommon') {
+  if (canonicalRarity === 'uncommon') {
     return 30
   }
 
-  const configuredChance = setId ? SET_RARITY_CHANCES[setId]?.[rarity] : undefined
+  const configuredChance = setId
+    ? Object.entries(SET_RARITY_CHANCES[setId] ?? {}).find(
+        ([candidate]) => canonicalizeRarity(candidate) === canonicalRarity,
+      )?.[1]
+    : undefined
 
   if (configuredChance !== undefined) {
     return configuredChance
   }
 
-  switch (rarity) {
-    case 'Rare':
+  switch (canonicalRarity) {
+    case 'rare':
       return 100 - 13.76 - 6.57
-    case 'Double rare':
-    case 'Double Rare':
+    case 'double rare':
       return 13.76
-    case 'Ultra Rare':
+    case 'ultra rare':
       return 6.57
-    case 'ACE SPEC Rare':
+    case 'ace spec rare':
       return 4.76
-    case 'Illustration rare':
-    case 'Illustration Rare':
+    case 'illustration rare':
       return 7.67
-    case 'Special illustration rare':
-    case 'Special Illustration Rare':
+    case 'special illustration rare':
       return 3.15
-    case 'Mega Hyper Rare':
-    case 'Hyper rare':
-    case 'Hyper Rare':
+    case 'mega hyper rare':
+    case 'hyper rare':
       return 1.85
     default:
-      return getEstimatedRarityChanceFromCards(rarity, cards)
+      return getEstimatedRarityChanceFromCards(canonicalRarity, cards)
   }
 }
 
@@ -192,7 +215,7 @@ const getEstimatedRarityChanceFromCards = (rarity: string, cards: PokemonCardSum
   const totalWeight = rareCards.reduce((total, card) => total + getRarityWeight(card.rarity), 0)
 
   const rarityWeight = rareCards
-    .filter((card) => (card.rarity ?? 'Other') === rarity)
+    .filter((card) => canonicalizeRarity(card.rarity) === rarity)
     .reduce((total, card) => total + getRarityWeight(card.rarity), 0)
 
   return totalWeight > 0 ? (rarityWeight / totalWeight) * 30 : 0

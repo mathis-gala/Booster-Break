@@ -40,10 +40,19 @@ describe('pack rarity details', () => {
       makeCard('common-fr', '002', 'Commune'),
       makeCard('double-lower', '003', 'Double rare'),
       makeCard('double-title', '004', 'Double Rare'),
+      makeCard('ace-spec-fr', '005', 'HIGH-TECH rare'),
+      makeCard('sir-fr', '006', 'Illustration spéciale rare'),
+      makeCard('mhr-fr', '007', 'Méga Hyper Rare'),
     ]
     const groups = groupCardsByRarity(cards)
 
-    expect(groups.map(([rarity]) => rarity)).toEqual(['Common', 'Double Rare'])
+    expect(groups.map(([rarity]) => rarity)).toEqual([
+      'Common',
+      'Double Rare',
+      'ACE SPEC Rare',
+      'Special Illustration Rare',
+      'Mega Hyper Rare',
+    ])
     expect(groups[0]?.[1]).toHaveLength(2)
     expect(groups[1]?.[1]).toHaveLength(2)
   })

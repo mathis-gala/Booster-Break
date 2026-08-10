@@ -98,6 +98,37 @@ describe('drawPokemonPackCards', () => {
     expect(cards[9]?.rarity).toBe('Ultra Rare')
   })
 
+  test('draws localized French premium rarities in their configured slots', () => {
+    const allCards = [
+      ...makeCards('commune', 'Commune', 6, ['normal', 'reverse_holo'], 'me04'),
+      ...makeCards('peu-commune', 'Peu Commune', 5, ['normal', 'reverse_holo'], 'me04'),
+      ...makeCards('rare', 'Rare', 2, ['holo', 'reverse_holo'], 'me04'),
+      ...makeCards('double-rare', 'Double rare', 2, ['holo'], 'me04'),
+      ...makeCards('illustration-rare', 'Illustration rare', 2, ['holo'], 'me04'),
+      ...makeCards('ultra-rare', 'Ultra Rare', 2, ['holo'], 'me04'),
+      ...makeCards('high-tech', 'HIGH-TECH rare', 2, ['holo'], 'me04'),
+      ...makeCards('special-illustration', 'Illustration spéciale rare', 2, ['holo'], 'me04'),
+      ...makeCards('mega-hyper', 'Méga Hyper Rare', 1, ['holo'], 'me04'),
+    ]
+
+    useRandomSequence([...Array<number>(7).fill(0), 0, 0, 0.112, 0, 0.5, 0])
+    const specialPack = drawPokemonPackCards(allCards, {
+      enableGodPack: false,
+      setId: 'me04',
+    }).cards
+
+    expect(specialPack[7]?.rarity).toBe('HIGH-TECH rare')
+    expect(specialPack[8]?.rarity).toBe('Illustration spéciale rare')
+
+    useRandomSequence([...Array<number>(7).fill(0), 0.99, 0, 0.119, 0, 0.5, 0])
+    const megaPack = drawPokemonPackCards(allCards, {
+      enableGodPack: false,
+      setId: 'me04',
+    }).cards
+
+    expect(megaPack[8]?.rarity).toBe('Méga Hyper Rare')
+  })
+
   test('moves an exact Mega Evolution threshold into the next rarity band', () => {
     useRandomSequence([...Array<number>(9).fill(0), 0.5, 0, 0.203, 0])
 

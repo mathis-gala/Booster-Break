@@ -65,9 +65,17 @@ const getNormalizedPreviewRarity = (card: PokemonCardSummary, setId?: string): s
     case 'Double rare':
       return 'Double Rare'
     case 'Illustration rare':
+    case 'Rare illustration':
       return 'Illustration Rare'
+    case 'HIGH-TECH rare':
+    case 'HIGH-TECG rare':
+      return 'ACE SPEC Rare'
     case 'Special illustration rare':
+    case 'Illustration spéciale rare':
+    case 'Rare illustration spéciale':
       return 'Special Illustration Rare'
+    case 'Méga Hyper Rare':
+      return 'Mega Hyper Rare'
     case 'Hyper rare':
       return 'Hyper Rare'
     case 'Radieux Rare':

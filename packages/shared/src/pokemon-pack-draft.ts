@@ -1,4 +1,5 @@
 import type { CardFinish, PokemonCardSummary } from './index'
+import { canonicalizeRarity, normalizeRarity } from './pokemon-rarity'
 import { getSwshGallerySetId } from './pokemon-swsh-gallery'
 
 const COMMON_CARD_SLOTS = 4
@@ -370,7 +371,7 @@ const drawHistoricalRareSlot = (
 ): PokemonCardSummary[] => {
   const normalRares = cards.filter(isHistoricalNormalRare)
   const explicitlyLabeledHoloRares = cards.filter((card) => {
-    const rarity = normalizeRarity(card.rarity)
+    const rarity = canonicalizeRarity(card.rarity)
     return (rarity === 'rare holo' || rarity === 'holo rare') && !isHistoricalNamedHit(card)
   })
   const holoRares = explicitlyLabeledHoloRares.length > 0 ? explicitlyLabeledHoloRares : normalRares
@@ -399,14 +400,14 @@ const isCosmicEclipseCharacterRare = (card: PokemonCardSummary): boolean => {
 }
 
 const isHistoricalNormalRare = (card: PokemonCardSummary): boolean =>
-  normalizeRarity(card.rarity) === 'rare' && !isHistoricalNamedHit(card)
+  canonicalizeRarity(card.rarity) === 'rare' && !isHistoricalNamedHit(card)
 
 const isHistoricalHit = (card: PokemonCardSummary): boolean => {
   if (card.setId === COSMIC_ECLIPSE_SET_ID && isCosmicEclipseCharacterRare(card)) {
     return false
   }
 
-  const rarity = normalizeRarity(card.rarity)
+  const rarity = canonicalizeRarity(card.rarity)
   return (
     isHistoricalNamedHit(card) ||
     (rarity.length > 0 &&
@@ -428,8 +429,6 @@ const getHistoricalReverseCandidates = (cards: PokemonCardSummary[]): PokemonCar
     ? advertisedCandidates
     : getCardsByRarity(cards, REVERSE_FOIL_RARITIES)
 }
-
-const normalizeRarity = (rarity: string | undefined): string => (rarity ?? '').trim().toLowerCase()
 
 const isHistoricalSetId = (setId: string): boolean =>
   /^(?:ecard|ex|dp|pl|hgss|bw|xy|sm)\d+(?:\.\d+)?$/i.test(setId)
@@ -472,7 +471,7 @@ const drawSwshReverseOrGallerySlot = (
   const reverseCandidates = allCards.filter(
     (card) =>
       card.setId === parentSetId &&
-      SWSH_REVERSE_FOIL_RARITIES.includes(card.rarity ?? '') &&
+      hasRarity(card, SWSH_REVERSE_FOIL_RARITIES) &&
       card.finishes?.includes('reverse_holo'),
   )
   const galleryChances = SWSH_GALLERY_SLOT_CHANCES[parentSetId]
@@ -487,9 +486,7 @@ const drawSwshReverseOrGallerySlot = (
     ? allCards.filter((card) => isCardFromSourceSet(card, gallerySetId))
     : []
   const insertCards = insertRule
-    ? allCards.filter(
-        (card) => card.setId === parentSetId && insertRule.rarities.includes(card.rarity ?? ''),
-      )
+    ? allCards.filter((card) => card.setId === parentSetId && hasRarity(card, insertRule.rarities))
     : []
   const category = drawSwshReverseSlotCategory(galleryChances, insertRule?.chance ?? 0)
 
@@ -856,7 +853,12 @@ const getCardsByRarity = (
   cards: PokemonCardSummary[],
   rarities: string[],
 ): PokemonCardSummary[] => {
-  return cards.filter((card) => rarities.includes(card.rarity ?? ''))
+  return cards.filter((card) => hasRarity(card, rarities))
+}
+
+const hasRarity = (card: PokemonCardSummary, rarities: readonly string[]): boolean => {
+  const rarity = canonicalizeRarity(card.rarity)
+  return rarities.some((candidate) => canonicalizeRarity(candidate) === rarity)
 }
 
 const drawManyUnique = (

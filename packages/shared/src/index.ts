@@ -409,6 +409,7 @@ export {
   getRarityRank,
   getRarityWeight,
   normalizeRarity,
+  canonicalizeRarity,
   isRareOrBetter,
   pokemonRarityOrder,
 } from './pokemon-rarity'
