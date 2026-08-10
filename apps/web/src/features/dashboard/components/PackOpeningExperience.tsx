@@ -232,6 +232,8 @@ export function PackOpeningExperience({
         : DEFAULT_CARD_ARTWORK_PALETTE))
     : DEFAULT_CARD_ARTWORK_PALETTE
   const glowStrength = getGlowStrength(currentRevealTier)
+  const glowChannels = glowColor.split(' ').join(', ')
+  const ambientGlowBackground = `radial-gradient(circle at 50% 38%, rgba(${glowChannels}, ${glowStrength.primary}), transparent 44%), radial-gradient(circle at 15% 85%, rgba(${glowChannels}, ${glowStrength.secondary}), transparent 36%)`
 
   useEffect(() => {
     for (const card of openPackResult.cards) {
@@ -322,20 +324,18 @@ export function PackOpeningExperience({
             className="pointer-events-none fixed inset-0 bg-linear-to-b from-slate-950/20 to-slate-950/75"
             aria-hidden="true"
           />
-          <AnimatePresence initial={false}>
-            <motion.div
-              key={`${currentCard?.id ?? openPackResult.set.id}-${glowColor}`}
-              className="pointer-events-none fixed inset-0"
-              style={{
-                backgroundImage: `radial-gradient(circle at 50% 38%, rgb(${glowColor} / ${glowStrength.primary}), transparent 44%), radial-gradient(circle at 15% 85%, rgb(${glowColor} / ${glowStrength.secondary}), transparent 36%)`,
-              }}
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-              exit={{ opacity: 0 }}
-              transition={{ duration: shouldReduceMotion ? 0.1 : 0.5 }}
-              aria-hidden="true"
-            />
-          </AnimatePresence>
+          <motion.div
+            className="pointer-events-none fixed inset-0"
+            initial={false}
+            animate={{ backgroundImage: ambientGlowBackground }}
+            transition={{
+              backgroundImage: {
+                duration: shouldReduceMotion ? 0.1 : 0.62,
+                ease: [0.32, 0.72, 0, 1],
+              },
+            }}
+            aria-hidden="true"
+          />
           <AnimatePresence initial={false}>
             {phase === 'reveal' && currentCard && currentRevealTier === 'jackpot' ? (
               <JackpotBackdrop
