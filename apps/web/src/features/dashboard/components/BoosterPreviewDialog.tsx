@@ -106,6 +106,14 @@ export function BoosterPreviewDialog({
                         {getRarityChanceLabel(rarity, cards, set.id)}
                       </span>
                     ) : null}
+                    {highlightOwned && canHighlightOwned ? (
+                      <span className="ml-2 text-xs font-black text-muted-foreground">
+                        {m.packs_owned_summary({
+                          owned: rarityCards.filter((card) => ownedCardIds?.has(card.id)).length,
+                          total: rarityCards.length,
+                        })}
+                      </span>
+                    ) : null}
                   </h4>
                   <div className="flex flex-wrap gap-2">
                     {rarityCards.map((card) => {
