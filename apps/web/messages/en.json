@@ -120,6 +120,7 @@
   "packs_owned_highlight_off": "Show my cards",
   "packs_owned_highlight_on": "Showing my cards",
   "packs_owned_summary": "{owned} / {total} cards owned",
+  "packs_new_card_chance": "Chance of getting a new card: {chance}%",
   "packs_rate_per_pack": "Estimated pack rate: {rate}",
   "packs_slots_per_pack": "{count} per pack",
   "packs_close_reveal": "Close pack reveal",

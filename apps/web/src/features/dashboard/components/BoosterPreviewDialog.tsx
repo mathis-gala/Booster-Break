@@ -5,7 +5,7 @@ import type { PokemonCardSummary, PokemonSetSummary } from '@tcg-collection/shar
 import { Button } from '@/components/ui/button'
 import { cn } from '@/lib/utils'
 import { formatRarity } from '@/features/i18n/rarity-labels'
-import { groupCardsByRarity, getRarityChanceLabel } from '../lib/pack-rarity'
+import { getNewCardChance, getRarityChanceLabel, groupCardsByRarity } from '../lib/pack-rarity'
 import { m } from '@/paraglide/messages'
 import { CardImageDialog } from './CardImageDialog'
 
@@ -34,6 +34,10 @@ export function BoosterPreviewDialog({
     () => (ownedCardIds ? cards.filter((card) => ownedCardIds.has(card.id)).length : 0),
     [cards, ownedCardIds],
   )
+  const newCardChance = useMemo(
+    () => (ownedCardIds ? getNewCardChance(cards, ownedCardIds, set.id) : 0),
+    [cards, ownedCardIds, set.id],
+  )
 
   function closePreview() {
     setSelectedPreviewCard(undefined)
@@ -60,7 +64,7 @@ export function BoosterPreviewDialog({
               </h3>
               <p className="text-sm font-semibold text-muted-foreground">
                 {highlightOwned && canHighlightOwned
-                  ? m.packs_owned_summary({ owned: ownedCount, total: cards.length })
+                  ? `${m.packs_owned_summary({ owned: ownedCount, total: cards.length })} · ${m.packs_new_card_chance({ chance: newCardChance.toFixed(1) })}`
                   : m.packs_sorted_by_rarity()}
               </p>
             </div>
