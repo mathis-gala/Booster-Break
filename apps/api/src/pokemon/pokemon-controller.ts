@@ -136,6 +136,8 @@ export const createPokemonController = ({
           sort: query.sort ?? 'recent',
           source: query.source ?? 'all',
           setId: query.setId,
+          minimumQuantity: query.minimumQuantity,
+          minimumRarity: query.minimumRarity,
           locale: resolveLocaleOverride(query.locale, context.locale),
         })
 

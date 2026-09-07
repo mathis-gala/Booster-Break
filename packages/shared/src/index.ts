@@ -83,6 +83,7 @@ export interface UserCollectionResponse {
   pagination: CollectionPagination
   sort: CollectionSort
   sets: CollectionSetOption[]
+  rarities: string[]
 }
 
 export interface OwnedCardIdsResponse {

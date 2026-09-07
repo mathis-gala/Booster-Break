@@ -74,6 +74,11 @@ export interface UseTradeCreateAuctionFormResult {
   selectedCard: UserCollectionCard | undefined
   setSearchQuery: (query: string) => void
   searchQuery: string
+  minimumQuantity: number
+  setMinimumQuantity: (quantity: number) => void
+  minimumRarity?: string
+  setMinimumRarity: (rarity: string | undefined) => void
+  collectionRarityOptions: string[]
   availableCards: UserCollectionCard[]
   filteredCards: UserCollectionCard[]
   collectionPage: number
@@ -99,6 +104,8 @@ export function useTradeCreateAuctionForm({
   const queryClient = useQueryClient()
   const [page, setPage] = useState(1)
   const [preference, setPreference] = useState<CollectionSort>('quantity')
+  const [minimumQuantity, setMinimumQuantity] = useState(1)
+  const [minimumRarity, setMinimumRarity] = useState<string>()
   const pageSize = 18
 
   const allCardsCollection = useQuery(
@@ -106,6 +113,8 @@ export function useTradeCreateAuctionForm({
       {
         sort: preference,
         source: 'owned',
+        minimumQuantity,
+        minimumRarity,
       },
       {
         enabled: authAuthenticated,
@@ -120,6 +129,8 @@ export function useTradeCreateAuctionForm({
         pageSize,
         sort: preference,
         source: 'owned',
+        minimumQuantity,
+        minimumRarity,
       },
       {
         keepPreviousData: true,
@@ -153,33 +164,32 @@ export function useTradeCreateAuctionForm({
   )
 
   const hasSearchQuery = searchQuery.trim().length > 0
+  const needsFullCollection = hasSearchQuery
   const availableCards = useMemo(
     () =>
-      hasSearchQuery ? (allCardsCollection.data?.cards ?? []) : (collection.data?.cards ?? []),
-    [allCardsCollection.data?.cards, collection.data?.cards, hasSearchQuery],
+      needsFullCollection
+        ? (allCardsCollection.data?.cards ?? [])
+        : (collection.data?.cards ?? []),
+    [allCardsCollection.data?.cards, collection.data?.cards, needsFullCollection],
   )
 
   const matchingCards = useMemo(() => {
-    if (!hasSearchQuery) {
-      return availableCards
-    }
-
     return availableCards.filter((card) => matchesCardNameSearch(card, searchQuery))
-  }, [availableCards, hasSearchQuery, searchQuery])
+  }, [availableCards, searchQuery])
 
-  const collectionPageCount = hasSearchQuery
+  const collectionPageCount = needsFullCollection
     ? Math.max(1, Math.ceil(matchingCards.length / pageSize))
     : (collection.data?.pagination.pageCount ?? 1)
   const collectionPage = Math.min(Math.max(page, 1), collectionPageCount)
   const filteredCards = useMemo(() => {
-    if (!hasSearchQuery) {
+    if (!needsFullCollection) {
       return matchingCards
     }
 
     const start = (collectionPage - 1) * pageSize
 
     return matchingCards.slice(start, start + pageSize)
-  }, [collectionPage, hasSearchQuery, matchingCards, pageSize])
+  }, [collectionPage, matchingCards, needsFullCollection, pageSize])
 
   const setIdOptions = useMemo<TradeFilterOption[]>(() => {
     return (setsQuery.data ?? [])
@@ -315,6 +325,12 @@ export function useTradeCreateAuctionForm({
     selectedCard,
     setSearchQuery,
     searchQuery,
+    minimumQuantity,
+    setMinimumQuantity,
+    minimumRarity,
+    setMinimumRarity,
+    collectionRarityOptions:
+      allCardsCollection.data?.rarities ?? collection.data?.rarities ?? [],
     availableCards,
     filteredCards,
     collectionPage,

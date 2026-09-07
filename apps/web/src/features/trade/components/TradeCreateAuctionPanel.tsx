@@ -34,6 +34,9 @@ export function TradeCreateAuctionPanel({
     isSubmitting,
     page,
     preference,
+    minimumQuantity,
+    minimumRarity,
+    collectionRarityOptions,
     requirements,
     searchQuery,
     selectedCard,
@@ -41,6 +44,8 @@ export function TradeCreateAuctionPanel({
     setFilters,
     setPage,
     setPreference,
+    setMinimumQuantity,
+    setMinimumRarity,
     setRequirements,
     setIdOptions,
     rarityOptions,
@@ -97,6 +102,16 @@ export function TradeCreateAuctionPanel({
     setPreference(next)
   }
 
+  const handleMinimumQuantityChange = (quantity: number) => {
+    setMinimumQuantity(quantity)
+    setPage(1)
+  }
+
+  const handleMinimumRarityChange = (rarity: string | undefined) => {
+    setMinimumRarity(rarity)
+    setPage(1)
+  }
+
   const goPrevPage = () => {
     setPage(Math.max(page - 1, 1))
   }
@@ -131,6 +146,11 @@ export function TradeCreateAuctionPanel({
             onSearchChange={handleSearch}
             preferenceOptions={tradePreferenceOptions}
             onPreferenceChange={handlePreferenceChange}
+            minimumQuantity={minimumQuantity}
+            minimumRarity={minimumRarity}
+            rarityOptions={collectionRarityOptions}
+            onMinimumQuantityChange={handleMinimumQuantityChange}
+            onMinimumRarityChange={handleMinimumRarityChange}
             filteredCards={filteredCards}
             isLoading={collectionIsPending}
             collectionHasCards={availableCards.length > 0}

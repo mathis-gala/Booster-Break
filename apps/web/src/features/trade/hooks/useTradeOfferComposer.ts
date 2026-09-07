@@ -50,6 +50,11 @@ export interface UseTradeOfferComposerResult {
   setPreference: (preference: CollectionSort) => void
   searchQuery: string
   setSearchQuery: (query: string) => void
+  minimumQuantity: number
+  setMinimumQuantity: (quantity: number) => void
+  minimumRarity?: string
+  setMinimumRarity: (rarity: string | undefined) => void
+  collectionRarityOptions: string[]
   collectionPageCount: number
   collectionPage: number
   isCollectionPending: boolean
@@ -73,6 +78,8 @@ export function useTradeOfferComposer({
   const [page, setPage] = useState(1)
   const [preference, setPreference] = useState<CollectionSort>('quantity')
   const [searchQuery, setSearchQuery] = useState('')
+  const [minimumQuantity, setMinimumQuantity] = useState(1)
+  const [minimumRarity, setMinimumRarity] = useState<string>()
   const [selection, setSelection] = useState<Record<string, SelectedOfferCard>>({})
 
   const collection = useQuery(
@@ -80,6 +87,8 @@ export function useTradeOfferComposer({
       {
         sort: preference,
         source: 'owned',
+        minimumQuantity,
+        minimumRarity,
       },
       {
         enabled: Boolean(userId),
@@ -140,10 +149,6 @@ export function useTradeOfferComposer({
   }, [collection.data?.cards, auction.requirements, auction.filters])
   const filteredCards = useMemo(() => {
     const query = searchQuery.trim().toLowerCase()
-
-    if (query.length === 0) {
-      return eligibleCards
-    }
 
     return eligibleCards.filter((card) => matchesCardNameSearch(card, query))
   }, [eligibleCards, searchQuery])
@@ -246,6 +251,11 @@ export function useTradeOfferComposer({
     setPreference,
     searchQuery,
     setSearchQuery,
+    minimumQuantity,
+    setMinimumQuantity,
+    minimumRarity,
+    setMinimumRarity,
+    collectionRarityOptions: collection.data?.rarities ?? [],
     collectionPageCount,
     collectionPage,
     isCollectionPending: collection.isPending,

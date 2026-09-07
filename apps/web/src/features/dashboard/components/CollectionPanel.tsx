@@ -17,6 +17,7 @@ import {
 import { m } from '@/paraglide/messages'
 import { CardImageDialog } from './CardImageDialog'
 import { CollectionCardItem } from './CollectionCardItem'
+import { CardListFiltersMenu } from './CardListFiltersMenu'
 
 interface CollectionPanelProps {
   cards: UserCollectionCard[]
@@ -30,9 +31,14 @@ interface CollectionPanelProps {
   searchQuery: string
   sets: CollectionSetOption[]
   selectedSetId?: string
+  minimumQuantity: number
+  minimumRarity?: string
+  rarityOptions: string[]
   onSortChange: (sort: CollectionSort) => void
   onSearchChange: (query: string) => void
   onSetChange: (setId: string | undefined) => void
+  onMinimumQuantityChange: (quantity: number) => void
+  onMinimumRarityChange: (rarity: string | undefined) => void
   onPageChange: (page: number) => void
 }
 
@@ -67,9 +73,14 @@ export function CollectionPanel({
   searchQuery,
   sets,
   selectedSetId,
+  minimumQuantity,
+  minimumRarity,
+  rarityOptions,
   onSortChange,
   onSearchChange,
   onSetChange,
+  onMinimumQuantityChange,
+  onMinimumRarityChange,
   onPageChange,
 }: CollectionPanelProps) {
   const [selectedCard, setSelectedCard] = useState<UserCollectionCard>()
@@ -157,6 +168,13 @@ export function CollectionPanel({
                 </DropdownMenu>
               </div>
               <div className="flex flex-wrap gap-2">
+                <CardListFiltersMenu
+                  minimumQuantity={minimumQuantity}
+                  minimumRarity={minimumRarity}
+                  rarityOptions={rarityOptions}
+                  onMinimumQuantityChange={onMinimumQuantityChange}
+                  onMinimumRarityChange={onMinimumRarityChange}
+                />
                 {sortActions.map((action) => (
                   <Button
                     key={action.value}
