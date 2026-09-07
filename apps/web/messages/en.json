@@ -119,6 +119,7 @@
   "packs_sorted_by_rarity": "Sorted by rarity",
   "packs_owned_highlight_off": "Show my cards",
   "packs_owned_highlight_on": "Showing my cards",
+  "packs_owned_summary_one": "{owned} / {total} card owned",
   "packs_owned_summary": "{owned} / {total} cards owned",
   "packs_new_card_chance": "Chance of getting a new card: {chance}%",
   "packs_rate_per_pack": "Estimated pack rate: {rate}",

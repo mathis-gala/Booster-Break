@@ -119,6 +119,7 @@
   "packs_sorted_by_rarity": "Trié par rareté",
   "packs_owned_highlight_off": "Voir mes cartes",
   "packs_owned_highlight_on": "Mes cartes affichées",
+  "packs_owned_summary_one": "{owned} / {total} carte obtenue",
   "packs_owned_summary": "{owned} / {total} cartes obtenues",
   "packs_new_card_chance": "Probabilité d’obtenir une nouvelle carte : {chance} %",
   "packs_rate_per_pack": "Taux estimé par booster : {rate}",

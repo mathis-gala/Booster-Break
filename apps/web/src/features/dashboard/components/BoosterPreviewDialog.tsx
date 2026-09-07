@@ -38,6 +38,10 @@ export function BoosterPreviewDialog({
     () => (ownedCardIds ? getNewCardChance(cards, ownedCardIds, set.id) : 0),
     [cards, ownedCardIds, set.id],
   )
+  const ownedSummary =
+    cards.length === 1
+      ? m.packs_owned_summary_one({ owned: ownedCount, total: cards.length })
+      : m.packs_owned_summary({ owned: ownedCount, total: cards.length })
 
   function closePreview() {
     setSelectedPreviewCard(undefined)
@@ -64,7 +68,7 @@ export function BoosterPreviewDialog({
               </h3>
               <p className="text-sm font-semibold text-muted-foreground">
                 {highlightOwned && canHighlightOwned
-                  ? `${m.packs_owned_summary({ owned: ownedCount, total: cards.length })} · ${m.packs_new_card_chance({ chance: newCardChance.toFixed(1) })}`
+                  ? `${ownedSummary} · ${m.packs_new_card_chance({ chance: newCardChance.toFixed(1) })}`
                   : m.packs_sorted_by_rarity()}
               </p>
             </div>
@@ -112,10 +116,17 @@ export function BoosterPreviewDialog({
                     ) : null}
                     {highlightOwned && canHighlightOwned ? (
                       <span className="ml-2 text-xs font-black text-muted-foreground">
-                        {m.packs_owned_summary({
-                          owned: rarityCards.filter((card) => ownedCardIds?.has(card.id)).length,
-                          total: rarityCards.length,
-                        })}
+                        {rarityCards.length === 1
+                          ? m.packs_owned_summary_one({
+                              owned: rarityCards.filter((card) => ownedCardIds?.has(card.id))
+                                .length,
+                              total: rarityCards.length,
+                            })
+                          : m.packs_owned_summary({
+                              owned: rarityCards.filter((card) => ownedCardIds?.has(card.id))
+                                .length,
+                              total: rarityCards.length,
+                            })}
                       </span>
                     ) : null}
                   </h4>
