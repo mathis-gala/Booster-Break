@@ -212,6 +212,8 @@ export class PokemonRepository {
       source: CollectionSource
       locale: SupportedLocale
       setId?: string
+      minimumQuantity?: number
+      minimumRarity?: string
     },
   ): Promise<UserCollectionResponse> {
     const allRows = await this.listUserCollectionRows(
@@ -220,8 +222,21 @@ export class PokemonRepository {
       options.sort,
       options.source,
     )
-    const sets = this.buildCollectionSetOptions(allRows, options.locale)
-    const rows = options.setId ? allRows.filter((row) => row.card.setId === options.setId) : allRows
+    const matchingSetRows = options.setId
+      ? allRows.filter((row) => row.card.setId === options.setId)
+      : allRows
+    const minimumRarityRank = options.minimumRarity
+      ? getRarityRank(options.minimumRarity)
+      : undefined
+    const rows = matchingSetRows.filter(
+      (row) =>
+        row.quantity >= (options.minimumQuantity ?? 1) &&
+        (minimumRarityRank === undefined || getRarityRank(row.card.rarity) >= minimumRarityRank),
+    )
+    const sets = this.buildCollectionSetOptions(rows, options.locale)
+    const rarities = [
+      ...new Set(allRows.map((row) => row.card.rarity).filter(Boolean) as string[]),
+    ].sort((first, second) => getRarityRank(first) - getRarityRank(second))
     const total = rows.length
     const totalCards = rows.reduce((count, row) => count + row.quantity, 0)
     const pageCount = Math.max(1, Math.ceil(total / options.pageSize))
@@ -244,6 +259,7 @@ export class PokemonRepository {
       },
       sort: options.sort,
       sets,
+      rarities,
     }
   }
 

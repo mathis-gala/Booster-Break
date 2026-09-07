@@ -25,6 +25,11 @@ export function TradeOfferComposer({ auction, userId, onOfferCreated }: TradeOff
     setPreference,
     searchQuery,
     setSearchQuery,
+    minimumQuantity,
+    setMinimumQuantity,
+    minimumRarity,
+    setMinimumRarity,
+    collectionRarityOptions,
     collectionPage,
     collectionPageCount,
     isCollectionPending,
@@ -57,6 +62,16 @@ export function TradeOfferComposer({ auction, userId, onOfferCreated }: TradeOff
 
   const handleSearchChange = (query: string) => {
     setSearchQuery(query)
+    setPage(1)
+  }
+
+  const handleMinimumQuantityChange = (quantity: number) => {
+    setMinimumQuantity(quantity)
+    setPage(1)
+  }
+
+  const handleMinimumRarityChange = (rarity: string | undefined) => {
+    setMinimumRarity(rarity)
     setPage(1)
   }
 
@@ -108,6 +123,11 @@ export function TradeOfferComposer({ auction, userId, onOfferCreated }: TradeOff
           onPreferenceChange={handlePreferenceChange}
           searchQuery={searchQuery}
           onSearchChange={handleSearchChange}
+          minimumQuantity={minimumQuantity}
+          minimumRarity={minimumRarity}
+          rarityOptions={collectionRarityOptions}
+          onMinimumQuantityChange={handleMinimumQuantityChange}
+          onMinimumRarityChange={handleMinimumRarityChange}
           tradePreferenceOptions={tradePreferenceOptions}
           filteredCards={filteredCards}
           selectedCardsCount={selectedCardsCount}

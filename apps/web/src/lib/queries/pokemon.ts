@@ -17,6 +17,8 @@ export interface CollectionQueryParams {
   sort: CollectionSort
   source?: CollectionSource
   setId?: string
+  minimumQuantity?: number
+  minimumRarity?: string
   enabled?: boolean
   keepPreviousData?: boolean
 }
@@ -25,6 +27,8 @@ export interface CollectionAllQueryParams {
   sort: CollectionSort
   source?: CollectionSource
   setId?: string
+  minimumQuantity?: number
+  minimumRarity?: string
   enabled?: boolean
 }
 
@@ -67,6 +71,8 @@ export const usePokemonCollectionQueryOption = (
         sort: params.sort,
         source: params.source,
         setId: params.setId,
+        minimumQuantity: params.minimumQuantity,
+        minimumRarity: params.minimumRarity,
       },
     },
     queryKey: pokemonQueryKeys.collection.page({ ...params, locale }),
@@ -93,6 +99,8 @@ export const usePokemonCollectionAllQueryOption = (
         sort: params.sort,
         source: params.source,
         setId: params.setId,
+        minimumQuantity: params.minimumQuantity,
+        minimumRarity: params.minimumRarity,
       },
     },
     queryKey: pokemonQueryKeys.collection.allCards(
@@ -100,6 +108,8 @@ export const usePokemonCollectionAllQueryOption = (
       params.sort,
       params.source,
       params.setId,
+      params.minimumQuantity,
+      params.minimumRarity,
     ),
     enabled: options.enabled ?? true,
     placeholderData: keepPreviousData,
@@ -215,6 +225,8 @@ const loadUserCollectionPage = async (
       sort: params.sort,
       source: params.source,
       setId: params.setId,
+      minimumQuantity: params.minimumQuantity,
+      minimumRarity: params.minimumRarity,
     },
   })
 
@@ -240,4 +252,5 @@ const emptyCollection = (params: CollectionQueryParams): UserCollectionResponse 
   },
   sort: params.sort,
   sets: [],
+  rarities: [],
 })

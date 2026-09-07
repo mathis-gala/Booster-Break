@@ -99,6 +99,8 @@ export class PokemonService {
       source: CollectionSource
       locale: SupportedLocale
       setId?: string
+      minimumQuantity?: number
+      minimumRarity?: string
     },
   ): Promise<UserCollectionResponse> {
     return this.options.pokemonRepository.listUserCollection(user.id, options)

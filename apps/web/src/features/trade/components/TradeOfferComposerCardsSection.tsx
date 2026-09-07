@@ -5,6 +5,7 @@ import { useState } from 'react'
 import { CardImageDialog } from '@/features/dashboard/components/CardImageDialog'
 import { TradeCollectionCardItem } from './TradeCollectionCardItem'
 import { TradeSortPreferenceMenu } from './TradeSortPreferenceMenu'
+import { CardListFiltersMenu } from '@/features/dashboard/components/CardListFiltersMenu'
 import { MAX_PENDING_OFFERS_PER_AUCTION_BY_USER, offerCardKey } from '../lib/trade-utils'
 
 interface TradeOfferComposerCardsSectionProps {
@@ -15,6 +16,11 @@ interface TradeOfferComposerCardsSectionProps {
   onPreferenceChange: (preference: CollectionSort) => void
   searchQuery: string
   onSearchChange: (query: string) => void
+  minimumQuantity: number
+  minimumRarity?: string
+  rarityOptions: readonly string[]
+  onMinimumQuantityChange: (quantity: number) => void
+  onMinimumRarityChange: (rarity: string | undefined) => void
   tradePreferenceOptions: readonly { value: CollectionSort; label: string }[]
   filteredCards: UserCollectionCard[]
   selectedCardsCount: number
@@ -35,6 +41,11 @@ export function TradeOfferComposerCardsSection({
   onPreferenceChange,
   searchQuery,
   onSearchChange,
+  minimumQuantity,
+  minimumRarity,
+  rarityOptions,
+  onMinimumQuantityChange,
+  onMinimumRarityChange,
   tradePreferenceOptions,
   filteredCards,
   selectedCardsCount,
@@ -50,14 +61,23 @@ export function TradeOfferComposerCardsSection({
 
   return (
     <>
-      <label className="flex items-center justify-between gap-2 rounded-md bg-background px-3 py-2 text-xs text-muted-foreground">
-        {m.trade_card_preference_label()}
-        <TradeSortPreferenceMenu
-          value={preference}
-          options={tradePreferenceOptions}
-          onValueChange={onPreferenceChange}
-        />
-      </label>
+      <div className="flex items-center justify-between gap-2 rounded-md bg-background px-3 py-2 text-xs text-muted-foreground">
+        <span>{m.trade_card_preference_label()}</span>
+        <div className="flex items-center gap-2">
+          <CardListFiltersMenu
+            minimumQuantity={minimumQuantity}
+            minimumRarity={minimumRarity}
+            rarityOptions={rarityOptions}
+            onMinimumQuantityChange={onMinimumQuantityChange}
+            onMinimumRarityChange={onMinimumRarityChange}
+          />
+          <TradeSortPreferenceMenu
+            value={preference}
+            options={tradePreferenceOptions}
+            onValueChange={onPreferenceChange}
+          />
+        </div>
+      </div>
 
       <div className="rounded-md bg-background px-3 py-2 text-xs text-muted-foreground">
         <p>

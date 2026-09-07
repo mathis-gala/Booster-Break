@@ -21,6 +21,8 @@ export const collectionQuerySchema = z.object({
   sort: collectionSortSchema.optional(),
   source: collectionSourceSchema.optional(),
   setId: z.string().trim().min(1).max(128).optional(),
+  minimumQuantity: z.coerce.number().int().min(1).max(999).optional(),
+  minimumRarity: z.string().trim().min(1).max(128).optional(),
   locale: localeSchema.optional(),
 })
 

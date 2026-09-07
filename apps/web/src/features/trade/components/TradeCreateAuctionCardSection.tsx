@@ -2,6 +2,7 @@ import { m } from '@/paraglide/messages'
 import { FoilCardImage } from '@/features/dashboard/components/FoilCardImage'
 import { TradeCollectionCardItem } from './TradeCollectionCardItem'
 import { TradeSortPreferenceMenu } from './TradeSortPreferenceMenu'
+import { CardListFiltersMenu } from '@/features/dashboard/components/CardListFiltersMenu'
 import { offerCardKey } from '../lib/trade-utils'
 import type { CollectionSort, UserCollectionCard } from '@tcg-collection/shared'
 
@@ -11,6 +12,11 @@ interface TradeCreateAuctionCardSectionProps {
   onSearchChange: (query: string) => void
   preferenceOptions: readonly { value: CollectionSort; label: string }[]
   onPreferenceChange: (preference: CollectionSort) => void
+  minimumQuantity: number
+  minimumRarity?: string
+  rarityOptions: readonly string[]
+  onMinimumQuantityChange: (quantity: number) => void
+  onMinimumRarityChange: (rarity: string | undefined) => void
   filteredCards: UserCollectionCard[]
   isLoading: boolean
   collectionHasCards: boolean
@@ -30,6 +36,11 @@ export function TradeCreateAuctionCardSection({
   onSearchChange,
   preferenceOptions,
   onPreferenceChange,
+  minimumQuantity,
+  minimumRarity,
+  rarityOptions,
+  onMinimumQuantityChange,
+  onMinimumRarityChange,
   filteredCards,
   isLoading,
   collectionHasCards,
@@ -48,15 +59,24 @@ export function TradeCreateAuctionCardSection({
         <p className="text-xs font-black uppercase tracking-wide text-muted-foreground">
           {m.trade_card_selection_step()}
         </p>
-        <label className="flex items-center gap-1 text-xs text-muted-foreground">
-          {m.trade_card_preference_label()}
-          <TradeSortPreferenceMenu
-            value={preference}
-            options={preferenceOptions}
-            onValueChange={onPreferenceChange}
-            className="min-w-32"
+        <div className="flex items-center gap-2 text-xs text-muted-foreground">
+          <CardListFiltersMenu
+            minimumQuantity={minimumQuantity}
+            minimumRarity={minimumRarity}
+            rarityOptions={rarityOptions}
+            onMinimumQuantityChange={onMinimumQuantityChange}
+            onMinimumRarityChange={onMinimumRarityChange}
           />
-        </label>
+          <label className="flex items-center gap-1">
+            {m.trade_card_preference_label()}
+            <TradeSortPreferenceMenu
+              value={preference}
+              options={preferenceOptions}
+              onValueChange={onPreferenceChange}
+              className="min-w-32"
+            />
+          </label>
+        </div>
       </div>
 
       <label className="mt-2 flex w-full items-center gap-2">
