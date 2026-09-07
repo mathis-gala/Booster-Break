@@ -112,6 +112,42 @@ export const getRarityChanceLabel = (
   return m.packs_rate_per_pack({ rate: `${formatChance(packChance)}%` })
 }
 
+export const getNewCardChance = (
+  cards: PokemonCardSummary[],
+  ownedCardIds: ReadonlySet<string>,
+  setId?: string,
+): number => {
+  if (cards.length === 0) {
+    return 0
+  }
+
+  const noNewCardChance = groupCardsByRarity(cards, setId).reduce(
+    (chance, [rarity, rarityCards]) => {
+      const ownedRatio =
+        rarityCards.filter((card) => ownedCardIds.has(card.id)).length / rarityCards.length
+      const slotCount = getGuaranteedSlotCount(rarity, setId)
+
+      if (slotCount > 0) {
+        return chance * ownedRatio ** slotCount
+      }
+
+      const rarityChance = getSetPackRarityChance(setId, rarity, cards) / 100
+      return chance * (1 - rarityChance * (1 - ownedRatio))
+    },
+    1,
+  )
+
+  return Math.max(0, Math.min(100, (1 - noNewCardChance) * 100))
+}
+
+const getGuaranteedSlotCount = (rarity: string, setId?: string): number => {
+  if (rarity === 'Common') {
+    return setId?.startsWith('swsh') ? 5 : 4
+  }
+
+  return rarity === 'Uncommon' ? 3 : 0
+}
+
 const formatChance = (chance: number): string => {
   if (chance === 0) {
     return '0'

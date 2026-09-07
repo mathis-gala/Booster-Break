@@ -1,6 +1,6 @@
 import { describe, expect, test } from 'bun:test'
 import { getRarityRank, pokemonRarityOrder, type PokemonCardSummary } from '@tcg-collection/shared'
-import { getRarityChanceLabel, groupCardsByRarity } from './pack-rarity'
+import { getNewCardChance, getRarityChanceLabel, groupCardsByRarity } from './pack-rarity'
 
 describe('pack rarity details', () => {
   test('orders Crown Zenith main rarities and separates every Galarian Gallery tier', () => {
@@ -61,6 +61,24 @@ describe('pack rarity details', () => {
     for (const rarity of pokemonRarityOrder) {
       expect(getRarityRank(rarity)).not.toBe(999)
     }
+  })
+
+  test('estimates the chance of getting a new card from the owned cards', () => {
+    const cards = [
+      ...Array.from({ length: 10 }, (_, index) =>
+        makeCard(`common-${index}`, `${index}`, 'Common'),
+      ),
+      ...Array.from({ length: 6 }, (_, index) =>
+        makeCard(`uncommon-${index}`, `${index}`, 'Uncommon'),
+      ),
+      makeCard('rare', '999', 'Rare'),
+    ]
+
+    expect(getNewCardChance(cards, new Set(), 'me05')).toBe(100)
+    expect(getNewCardChance(cards, new Set(cards.map((card) => card.id)), 'me05')).toBe(0)
+    expect(
+      getNewCardChance(cards, new Set(cards.slice(0, -1).map((card) => card.id)), 'me05'),
+    ).toBeGreaterThan(0)
   })
 })
 
