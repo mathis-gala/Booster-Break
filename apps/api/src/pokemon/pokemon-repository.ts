@@ -234,9 +234,9 @@ export class PokemonRepository {
         (minimumRarityRank === undefined || getRarityRank(row.card.rarity) >= minimumRarityRank),
     )
     const sets = this.buildCollectionSetOptions(rows, options.locale)
-    const rarities = [...new Set(allRows.map((row) => row.card.rarity).filter(Boolean) as string[])].sort(
-      (first, second) => getRarityRank(first) - getRarityRank(second),
-    )
+    const rarities = [
+      ...new Set(allRows.map((row) => row.card.rarity).filter(Boolean) as string[]),
+    ].sort((first, second) => getRarityRank(first) - getRarityRank(second))
     const total = rows.length
     const totalCards = rows.reduce((count, row) => count + row.quantity, 0)
     const pageCount = Math.max(1, Math.ceil(total / options.pageSize))

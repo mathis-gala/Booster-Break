@@ -67,7 +67,9 @@ export function CollectionView() {
     return filteredMatches.slice(start, start + pageSize)
   }, [filteredMatches, filteredPage, pageSize])
   const cards = needsFullCollection ? filteredCards : (collection.data?.cards ?? [])
-  const total = needsFullCollection ? filteredMatches.length : (collection.data?.pagination.total ?? 0)
+  const total = needsFullCollection
+    ? filteredMatches.length
+    : (collection.data?.pagination.total ?? 0)
   const totalCards = needsFullCollection
     ? filteredMatches.reduce((count, card) => count + card.quantity, 0)
     : (collection.data?.pagination.totalCards ?? 0)
@@ -79,7 +81,9 @@ export function CollectionView() {
         isPending={isSearching ? searchableCollection.isPending : collection.isPending}
         fitContent
         page={needsFullCollection ? filteredPage : (collection.data?.pagination.page ?? page)}
-        pageCount={needsFullCollection ? filteredPageCount : (collection.data?.pagination.pageCount ?? 1)}
+        pageCount={
+          needsFullCollection ? filteredPageCount : (collection.data?.pagination.pageCount ?? 1)
+        }
         total={total}
         totalCards={totalCards}
         sort={sort}

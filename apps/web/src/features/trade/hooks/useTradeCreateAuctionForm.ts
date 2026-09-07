@@ -167,9 +167,7 @@ export function useTradeCreateAuctionForm({
   const needsFullCollection = hasSearchQuery
   const availableCards = useMemo(
     () =>
-      needsFullCollection
-        ? (allCardsCollection.data?.cards ?? [])
-        : (collection.data?.cards ?? []),
+      needsFullCollection ? (allCardsCollection.data?.cards ?? []) : (collection.data?.cards ?? []),
     [allCardsCollection.data?.cards, collection.data?.cards, needsFullCollection],
   )
 
@@ -329,8 +327,7 @@ export function useTradeCreateAuctionForm({
     setMinimumQuantity,
     minimumRarity,
     setMinimumRarity,
-    collectionRarityOptions:
-      allCardsCollection.data?.rarities ?? collection.data?.rarities ?? [],
+    collectionRarityOptions: allCardsCollection.data?.rarities ?? collection.data?.rarities ?? [],
     availableCards,
     filteredCards,
     collectionPage,
