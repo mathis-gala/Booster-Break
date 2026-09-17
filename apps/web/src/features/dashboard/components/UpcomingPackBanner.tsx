@@ -9,8 +9,7 @@ import { formatCountdown } from '../time'
 import { useLocale } from '@/features/i18n/useLocale'
 import { m } from '@/paraglide/messages'
 
-// Module state on purpose: a closed teaser stays closed while moving around the app,
-// and comes back on the next reload.
+// Module-level: a closed teaser stays closed across views, and returns on reload.
 const dismissedSetIds = new Set<string>()
 
 const RELEASE_RECHECK_MS = 5_000
@@ -27,9 +26,7 @@ export function UpcomingPackBanner({ sets, dataUpdatedAt }: UpcomingPackBannerPr
   const nextReleaseAt =
     sets.length > 0 ? Math.min(...sets.map((set) => new Date(set.releasesAt).getTime())) : undefined
 
-  // Lives here rather than in a row so that closing the banner never stops the auto-release.
-  // The API decides when a booster is out: past the countdown we only ask it again, and keep
-  // asking (re-armed by dataUpdatedAt) while it disagrees, e.g. when this clock runs ahead.
+  // Kept in the parent so closing the banner can't stop it. dataUpdatedAt re-arms it.
   useEffect(() => {
     if (nextReleaseAt === undefined) {
       return
@@ -90,7 +87,7 @@ function UpcomingPackRow({ set, onDismiss }: UpcomingPackRowProps) {
           className="font-black"
         >
           <span className="sr-only">{countdown}</span>
-          {/* Fixed-width digit cells: the bar must not resize as the countdown ticks. */}
+          {/* 1ch cells: the fallback font ignores tabular-nums. */}
           <span aria-hidden="true">
             {[...countdown].map((character, index) =>
               /\d/.test(character) ? (

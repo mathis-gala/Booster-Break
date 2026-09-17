@@ -2,9 +2,7 @@ export const POKEMON_SYNC_START_DATE = '2024-01-01'
 export const SYNCED_BOOSTER_LIMIT = 8
 export const PINNED_MODERN_BOOSTER_SET_IDS = ['me05', 'me04'] as const
 export const FEATURED_HISTORICAL_BOOSTER_SET_IDS = ['swsh12.5'] as const
-// Boosters listed here stay hidden and unopenable until their release instant, are teased
-// for BOOSTER_TEASE_MS before it, and then release on their own. Entries can stay forever.
-// Instants are absolute on purpose: a redeploy or restart must never shift a release.
+// Absolute instants: a redeploy must never shift a release.
 export const SCHEDULED_BOOSTER_RELEASES: Readonly<Record<string, string>> = {
   me05: '2026-09-28T10:00:00+02:00',
 }
@@ -15,7 +13,7 @@ export const REQUIRED_AVAILABLE_BOOSTER_SETS = {
   'swsh12.5': 230,
 } as const
 const getBoosterReleaseAt = (setId: string): number => Date.parse(SCHEDULED_BOOSTER_RELEASES[setId])
-// `!(now >= ...)` rather than `now < ...`: an unparsable instant must keep a booster locked.
+// NaN-safe: an unparsable instant keeps the booster locked.
 export const getUnreleasedBoosterSetIds = (now = Date.now()): string[] =>
   Object.keys(SCHEDULED_BOOSTER_RELEASES).filter((setId) => !(now >= getBoosterReleaseAt(setId)))
 export const getTeasedBoosterSetIds = (now = Date.now()): string[] =>
