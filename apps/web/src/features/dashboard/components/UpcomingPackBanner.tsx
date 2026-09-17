@@ -9,23 +9,9 @@ import { describeAuctionRemaining } from '@/features/trade/lib/trade-utils'
 import { m } from '@/paraglide/messages'
 import { getLocale } from '@/paraglide/runtime'
 
-const dismissedUpcomingPacksStorageKey = 'booster-break-dismissed-upcoming-packs'
-
-const getDismissedSetIds = (): string[] => {
-  if (typeof window === 'undefined') {
-    return []
-  }
-
-  try {
-    const stored: unknown = JSON.parse(
-      window.localStorage.getItem(dismissedUpcomingPacksStorageKey) ?? '[]',
-    )
-
-    return Array.isArray(stored) ? stored.filter((id) => typeof id === 'string') : []
-  } catch {
-    return []
-  }
-}
+// Module state on purpose: a closed teaser stays closed while moving around the app,
+// and comes back on the next reload.
+const dismissedSetIds = new Set<string>()
 
 interface UpcomingPackBannerProps {
   sets: UpcomingPokemonSet[]
@@ -33,7 +19,7 @@ interface UpcomingPackBannerProps {
 
 export function UpcomingPackBanner({ sets }: UpcomingPackBannerProps) {
   const queryClient = useQueryClient()
-  const [dismissedSetIds, setDismissedSetIds] = useState(getDismissedSetIds)
+  const [hiddenSetIds, setHiddenSetIds] = useState(() => [...dismissedSetIds])
   const nextReleaseAt = sets[0] ? new Date(sets[0].releasesAt).getTime() : undefined
 
   // Lives here rather than in a row so that closing the banner never stops the auto-release.
@@ -51,20 +37,15 @@ export function UpcomingPackBanner({ sets }: UpcomingPackBannerProps) {
     return () => window.clearTimeout(timerId)
   }, [nextReleaseAt, queryClient])
 
-  const visibleSets = sets.filter((set) => !dismissedSetIds.includes(set.id))
+  const visibleSets = sets.filter((set) => !hiddenSetIds.includes(set.id))
 
   if (visibleSets.length === 0) {
     return null
   }
 
   const dismiss = (setId: string) => {
-    const nextDismissedSetIds = [...dismissedSetIds, setId]
-
-    setDismissedSetIds(nextDismissedSetIds)
-    window.localStorage.setItem(
-      dismissedUpcomingPacksStorageKey,
-      JSON.stringify(nextDismissedSetIds),
-    )
+    dismissedSetIds.add(setId)
+    setHiddenSetIds([...dismissedSetIds])
   }
 
   return (
@@ -97,9 +78,19 @@ function UpcomingPackRow({ set, onDismiss }: UpcomingPackRowProps) {
           title={new Intl.DateTimeFormat(locale, { dateStyle: 'long', timeStyle: 'short' }).format(
             release,
           )}
-          className="font-black tabular-nums"
+          className="font-black"
         >
-          {describeAuctionRemaining(Math.max(release.getTime() - now, 1), locale)}
+          {/* Fixed-width digit cells: the bar must not resize as the countdown ticks. */}
+          {[...describeAuctionRemaining(Math.max(release.getTime() - now, 1), locale)].map(
+            (character, index) =>
+              /\d/.test(character) ? (
+                <span key={index} className="inline-block w-[1ch] text-center">
+                  {character}
+                </span>
+              ) : (
+                character
+              ),
+          )}
         </time>
       </p>
       <button
