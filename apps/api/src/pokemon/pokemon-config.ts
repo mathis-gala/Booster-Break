@@ -6,7 +6,7 @@ export const FEATURED_HISTORICAL_BOOSTER_SET_IDS = ['swsh12.5'] as const
 // for BOOSTER_TEASE_MS before it, and then release on their own. Entries can stay forever.
 // Instants are absolute on purpose: a redeploy or restart must never shift a release.
 export const SCHEDULED_BOOSTER_RELEASES: Readonly<Record<string, string>> = {
-  me05: '2026-09-24T10:00:00+02:00',
+  me05: '2026-09-28T10:00:00+02:00',
 }
 export const BOOSTER_TEASE_MS = 7 * 24 * 60 * 60 * 1_000
 export const REQUIRED_AVAILABLE_BOOSTER_SETS = {
