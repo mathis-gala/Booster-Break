@@ -71,6 +71,8 @@
   "api_sign_in_open_pack": "Sign in to open booster packs and save cards to your collection.",
   "api_unable_open_sandbox_pack": "Unable to open sandbox pack",
   "api_unable_load_sandbox_sets": "Unable to load sandbox booster sets",
+  "upcoming_pack_eyebrow": "New booster",
+  "upcoming_pack_title": "{name} available in",
   "packs_title": "Pokemon boosters",
   "packs_description": "Open booster packs and add every pull directly to your private collection.",
   "sandbox_title": "Sandbox unboxing",

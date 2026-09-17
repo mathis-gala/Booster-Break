@@ -6,6 +6,7 @@ import type {
   PokemonCardSummary,
   PokemonSetSummary,
   SupportedLocale,
+  UpcomingPokemonSet,
   UserCollectionResponse,
 } from '@tcg-collection/shared'
 import { getFinishRank, getRarityRank } from '@tcg-collection/shared'
@@ -22,10 +23,11 @@ import {
   toSetWrite,
 } from './pokemon-mappers'
 import {
-  DISABLED_BOOSTER_SET_IDS,
   FEATURED_HISTORICAL_BOOSTER_SET_IDS,
   PINNED_MODERN_BOOSTER_SET_IDS,
   SYNCED_BOOSTER_LIMIT,
+  getTeasedBoosterReleases,
+  getUnreleasedBoosterSetIds,
 } from './pokemon-config'
 import { consumeBoosterCharge, getBoosterChargeStatus, PackCooldownError } from './pack-cooldown'
 import type { Set as TcgDexSet } from '@tcgdex/sdk'
@@ -114,7 +116,7 @@ export class PokemonRepository {
     const sets = await this.db.pokemonSet.findMany({
       where: {
         id: {
-          notIn: [...DISABLED_BOOSTER_SET_IDS],
+          notIn: getUnreleasedBoosterSetIds(),
         },
         releaseDate: {
           contains: '-',
@@ -150,6 +152,22 @@ export class PokemonRepository {
     return [...recentSets, ...historicalSets].map((set) => toSetSummary(set, locale))
   }
 
+  async listUpcomingSets(locale: SupportedLocale = 'fr'): Promise<UpcomingPokemonSet[]> {
+    const releases = getTeasedBoosterReleases()
+    const sets = await this.db.pokemonSet.findMany({
+      where: {
+        id: {
+          in: releases.map((release) => release.setId),
+        },
+      },
+    })
+
+    return releases.flatMap(({ setId, releasesAt }) => {
+      const set = sets.find((candidate) => candidate.id === setId)
+      return set ? [{ ...toSetSummary(set, locale), releasesAt }] : []
+    })
+  }
+
   async hasCompleteSet(setId: string, expectedTotal: number): Promise<boolean> {
     const set = await this.db.pokemonSet.findUnique({
       where: { id: setId },
@@ -169,7 +187,7 @@ export class PokemonRepository {
     setId: string,
     locale: SupportedLocale = 'fr',
   ): Promise<PokemonSetSummary | undefined> {
-    if (DISABLED_BOOSTER_SET_IDS.includes(setId)) {
+    if (getUnreleasedBoosterSetIds().includes(setId)) {
       return undefined
     }
 

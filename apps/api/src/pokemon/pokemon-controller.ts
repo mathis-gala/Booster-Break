@@ -66,6 +66,17 @@ export const createPokemonController = ({
       },
     )
     .get(
+      '/sets/upcoming',
+      async ({ locale, query }) => ({
+        upcoming: await pokemonService.listUpcomingSets(
+          resolveLocaleOverride(query.locale, locale),
+        ),
+      }),
+      {
+        query: localeQuerySchema,
+      },
+    )
+    .get(
       '/cards',
       async ({ locale, query }) => ({
         cards: await pokemonService.listCards(

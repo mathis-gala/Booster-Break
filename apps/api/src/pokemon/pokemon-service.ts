@@ -7,6 +7,7 @@ import type {
   PokemonCardSummary,
   PokemonSetSummary,
   SupportedLocale,
+  UpcomingPokemonSet,
   UserCollectionResponse,
 } from '@tcg-collection/shared'
 import { DEFAULT_LOCALE } from '@tcg-collection/shared'
@@ -81,6 +82,10 @@ export class PokemonService {
     sets = await this.options.pokemonRepository.listSets(locale)
 
     return sets
+  }
+
+  async listUpcomingSets(locale: SupportedLocale): Promise<UpcomingPokemonSet[]> {
+    return this.options.pokemonRepository.listUpcomingSets(locale)
   }
 
   async listCards(

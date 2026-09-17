@@ -71,6 +71,8 @@
   "api_sign_in_open_pack": "Connecte-toi pour ouvrir des boosters et enregistrer tes cartes.",
   "api_unable_open_sandbox_pack": "Impossible d'ouvrir un booster de démonstration",
   "api_unable_load_sandbox_sets": "Impossible de charger les boosters de démonstration",
+  "upcoming_pack_eyebrow": "Nouveau booster",
+  "upcoming_pack_title": "{name} disponible dans",
   "packs_title": "Boosters Pokémon",
   "packs_description": "Ouvre des boosters et ajoute chaque tirage directement à ta collection privée.",
   "sandbox_title": "Ouverture en bac à sable",

@@ -2,6 +2,7 @@ import { useMemo, useState } from 'react'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 
 import { PackStage } from '../components/PackStage'
+import { UpcomingPackBanner } from '../components/UpcomingPackBanner'
 import { usePackOpenStatusClock } from '../hooks/usePackOpenStatusClock'
 import { useLocale } from '@/features/i18n/useLocale'
 import { useOpenPokemonPackMutationOption } from '@/lib/mutations/pokemon'
@@ -12,6 +13,7 @@ import {
   usePokemonCollectionCountQueryOption,
   usePokemonPreviewCardsQueryOption,
   usePokemonSetsQueryOption,
+  useUpcomingPokemonSetsQueryOption,
 } from '@/lib/queries/pokemon'
 
 export function PacksView() {
@@ -21,6 +23,7 @@ export function PacksView() {
   const [previewSetId, setPreviewSetId] = useState<string>()
   const queryClient = useQueryClient()
   const sets = useQuery(usePokemonSetsQueryOption())
+  const upcomingSets = useQuery(useUpcomingPokemonSetsQueryOption())
   const packStatusQuery = useQuery(usePackOpenStatusQueryOption())
   const packOpenStatus = usePackOpenStatusClock(packStatusQuery.data, packStatusQuery.dataUpdatedAt)
   const openPack = useMutation(
@@ -48,6 +51,7 @@ export function PacksView() {
 
   return (
     <div className="w-full max-w-6xl">
+      <UpcomingPackBanner sets={upcomingSets.data ?? []} />
       <PackStage
         sets={sets.data ?? []}
         setsIsPending={sets.isPending}
