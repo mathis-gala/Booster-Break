@@ -10,6 +10,7 @@ const start = () => {
     return
   }
 
+  now = Date.now()
   timerId = window.setInterval(() => {
     now = Date.now()
     emit()

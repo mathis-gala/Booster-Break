@@ -1,29 +1,35 @@
-import { useEffect, useState, useSyncExternalStore } from 'react'
+import { useEffect, useReducer, useSyncExternalStore } from 'react'
 import { useQueryClient } from '@tanstack/react-query'
 import { XIcon } from 'lucide-react'
 import type { UpcomingPokemonSet } from '@tcg-collection/shared'
 
 import { packOpenClock } from '../lib/pack-open-clock'
 import { pokemonQueryKeys } from '../lib/query-keys'
-import { describeAuctionRemaining } from '@/features/trade/lib/trade-utils'
+import { formatCountdown } from '../time'
+import { useLocale } from '@/features/i18n/useLocale'
 import { m } from '@/paraglide/messages'
-import { getLocale } from '@/paraglide/runtime'
 
 // Module state on purpose: a closed teaser stays closed while moving around the app,
 // and comes back on the next reload.
 const dismissedSetIds = new Set<string>()
 
+const RELEASE_RECHECK_MS = 5_000
+const MAX_TIMEOUT_MS = 2_147_483_647
+
 interface UpcomingPackBannerProps {
   sets: UpcomingPokemonSet[]
+  dataUpdatedAt: number
 }
 
-export function UpcomingPackBanner({ sets }: UpcomingPackBannerProps) {
+export function UpcomingPackBanner({ sets, dataUpdatedAt }: UpcomingPackBannerProps) {
   const queryClient = useQueryClient()
-  const [hiddenSetIds, setHiddenSetIds] = useState(() => [...dismissedSetIds])
-  const nextReleaseAt = sets[0] ? new Date(sets[0].releasesAt).getTime() : undefined
+  const [, forceRender] = useReducer((tick: number) => tick + 1, 0)
+  const nextReleaseAt =
+    sets.length > 0 ? Math.min(...sets.map((set) => new Date(set.releasesAt).getTime())) : undefined
 
   // Lives here rather than in a row so that closing the banner never stops the auto-release.
-  // The API decides when a booster is out; once the countdown is over we only ask it again.
+  // The API decides when a booster is out: past the countdown we only ask it again, and keep
+  // asking (re-armed by dataUpdatedAt) while it disagrees, e.g. when this clock runs ahead.
   useEffect(() => {
     if (nextReleaseAt === undefined) {
       return
@@ -31,27 +37,29 @@ export function UpcomingPackBanner({ sets }: UpcomingPackBannerProps) {
 
     const timerId = window.setTimeout(
       () => queryClient.invalidateQueries({ queryKey: pokemonQueryKeys.setsAll }),
-      nextReleaseAt - Date.now() + 1_000,
+      Math.min(Math.max(nextReleaseAt - Date.now() + 1_000, RELEASE_RECHECK_MS), MAX_TIMEOUT_MS),
     )
 
     return () => window.clearTimeout(timerId)
-  }, [nextReleaseAt, queryClient])
+  }, [nextReleaseAt, dataUpdatedAt, queryClient])
 
-  const visibleSets = sets.filter((set) => !hiddenSetIds.includes(set.id))
+  const visibleSets = sets.filter((set) => !dismissedSetIds.has(set.id))
 
   if (visibleSets.length === 0) {
     return null
   }
 
-  const dismiss = (setId: string) => {
-    dismissedSetIds.add(setId)
-    setHiddenSetIds([...dismissedSetIds])
-  }
-
   return (
     <aside className="pointer-events-none fixed inset-x-0 top-[4.5rem] z-20 flex flex-col items-center gap-2 px-3 md:top-3 md:left-44">
       {visibleSets.map((set) => (
-        <UpcomingPackRow key={set.id} set={set} onDismiss={() => dismiss(set.id)} />
+        <UpcomingPackRow
+          key={set.id}
+          set={set}
+          onDismiss={() => {
+            dismissedSetIds.add(set.id)
+            forceRender()
+          }}
+        />
       ))}
     </aside>
   )
@@ -64,8 +72,9 @@ interface UpcomingPackRowProps {
 
 function UpcomingPackRow({ set, onDismiss }: UpcomingPackRowProps) {
   const now = useSyncExternalStore(packOpenClock.subscribe, packOpenClock.getSnapshot)
-  const locale = getLocale()
+  const { locale } = useLocale()
   const release = new Date(set.releasesAt)
+  const countdown = formatCountdown(release.getTime() - now, locale)
 
   return (
     <div className="pointer-events-auto flex max-w-full items-center gap-x-3 rounded-lg border bg-accent py-2 pr-2 pl-4 text-accent-foreground shadow-md">
@@ -80,9 +89,10 @@ function UpcomingPackRow({ set, onDismiss }: UpcomingPackRowProps) {
           )}
           className="font-black"
         >
+          <span className="sr-only">{countdown}</span>
           {/* Fixed-width digit cells: the bar must not resize as the countdown ticks. */}
-          {[...describeAuctionRemaining(Math.max(release.getTime() - now, 1), locale)].map(
-            (character, index) =>
+          <span aria-hidden="true">
+            {[...countdown].map((character, index) =>
               /\d/.test(character) ? (
                 <span key={index} className="inline-block w-[1ch] text-center">
                   {character}
@@ -90,7 +100,8 @@ function UpcomingPackRow({ set, onDismiss }: UpcomingPackRowProps) {
               ) : (
                 character
               ),
-          )}
+            )}
+          </span>
         </time>
       </p>
       <button

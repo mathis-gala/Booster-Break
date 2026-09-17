@@ -14,20 +14,14 @@ export const REQUIRED_AVAILABLE_BOOSTER_SETS = {
   me04: 122,
   'swsh12.5': 230,
 } as const
+const getBoosterReleaseAt = (setId: string): number => Date.parse(SCHEDULED_BOOSTER_RELEASES[setId])
+// `!(now >= ...)` rather than `now < ...`: an unparsable instant must keep a booster locked.
 export const getUnreleasedBoosterSetIds = (now = Date.now()): string[] =>
-  Object.keys(SCHEDULED_BOOSTER_RELEASES).filter(
-    (setId) => now < Date.parse(SCHEDULED_BOOSTER_RELEASES[setId]),
+  Object.keys(SCHEDULED_BOOSTER_RELEASES).filter((setId) => !(now >= getBoosterReleaseAt(setId)))
+export const getTeasedBoosterSetIds = (now = Date.now()): string[] =>
+  getUnreleasedBoosterSetIds(now).filter(
+    (setId) => now >= getBoosterReleaseAt(setId) - BOOSTER_TEASE_MS,
   )
-export const getTeasedBoosterReleases = (
-  now = Date.now(),
-): Array<{ setId: string; releasesAt: string }> =>
-  getUnreleasedBoosterSetIds(now)
-    .map((setId) => ({
-      setId,
-      releasesAt: new Date(SCHEDULED_BOOSTER_RELEASES[setId]).toISOString(),
-    }))
-    .filter(({ releasesAt }) => now >= Date.parse(releasesAt) - BOOSTER_TEASE_MS)
-    .sort((first, second) => first.releasesAt.localeCompare(second.releasesAt))
 export const isBoosterOpeningEnabled = (setId: string, now = Date.now()): boolean =>
   !getUnreleasedBoosterSetIds(now).includes(setId)
 export const PACK_OPEN_COOLDOWN_SECONDS = 2 * 60 * 60

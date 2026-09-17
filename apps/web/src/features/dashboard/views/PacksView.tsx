@@ -51,7 +51,10 @@ export function PacksView() {
 
   return (
     <div className="w-full max-w-6xl">
-      <UpcomingPackBanner sets={upcomingSets.data ?? []} />
+      <UpcomingPackBanner
+        sets={upcomingSets.data ?? []}
+        dataUpdatedAt={upcomingSets.dataUpdatedAt}
+      />
       <PackStage
         sets={sets.data ?? []}
         setsIsPending={sets.isPending}
