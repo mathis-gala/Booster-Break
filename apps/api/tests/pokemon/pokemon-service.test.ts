@@ -7,7 +7,7 @@ import type { ScrydexSealedClient } from '../../src/pokemon/scrydex-sealed-clien
 import type { TcgDexClient } from '../../src/pokemon/tcgdex-client'
 
 describe('PokemonService booster availability', () => {
-  test('rejects a direct Pitch Black opening before loading the set or cooldown', async () => {
+  test('lets a direct Pitch Black opening through to the set lookup', async () => {
     let getSetCalled = false
     const pokemonRepository = {
       getSet: async () => {
@@ -34,8 +34,8 @@ describe('PokemonService booster availability', () => {
 
     expect(result).toEqual({
       error: 'pack_unavailable',
-      message: 'This booster set is not available for opening yet.',
+      message: 'No cards are available for this booster set.',
     })
-    expect(getSetCalled).toBe(false)
+    expect(getSetCalled).toBe(true)
   })
 })
