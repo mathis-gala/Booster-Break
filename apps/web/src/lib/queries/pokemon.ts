@@ -45,6 +45,20 @@ export const usePokemonSetsQueryOption = () => {
   })
 }
 
+export const useUpcomingPokemonSetsQueryOption = () => {
+  const locale = getLocale()
+
+  return edenQueryOption({
+    edenQuery: api.pokemon.sets.upcoming.get,
+    queryKey: pokemonQueryKeys.upcomingSets(locale),
+    mapData: (data) => data.upcoming,
+    meta: {
+      suppressToast: true,
+    },
+    toError: () => new Error(m.api_unable_load_sets()),
+  })
+}
+
 export const useSandboxPokemonSetsQueryOption = () => {
   const locale = getLocale()
 

@@ -9,6 +9,7 @@ import { matchesTradeConstraints } from '@tcg-collection/shared'
 import { DEFAULT_LOCALE } from '@tcg-collection/shared'
 import { m } from '@/paraglide/messages'
 import { formatCardFinish } from '@/features/dashboard/lib/card-format'
+import { formatCountdown } from '@/features/dashboard/time'
 import { formatRarity } from '@/features/i18n/rarity-labels'
 
 export const MAX_ACTIVE_AUCTIONS_PER_USER = 3
@@ -100,26 +101,7 @@ export const describeAuctionRemaining = (
   remainingMs: number,
   locale: SupportedLocale = DEFAULT_LOCALE,
 ): string => {
-  if (remainingMs <= 0) {
-    return m.trade_auction_expired()
-  }
-
-  const totalSeconds = Math.floor(remainingMs / 1000)
-  const days = Math.floor(totalSeconds / 86_400)
-  const hours = Math.floor((totalSeconds % 86_400) / 3600)
-  const minutes = Math.floor((totalSeconds % 3600) / 60)
-  const seconds = totalSeconds % 60
-
-  const dayUnit = locale === 'fr' ? 'j' : 'd'
-
-  const parts = [
-    days > 0 ? `${days}${dayUnit}` : null,
-    `${hours.toString().padStart(2, '0')}h`,
-    `${minutes.toString().padStart(2, '0')}m`,
-    `${seconds.toString().padStart(2, '0')}s`,
-  ].filter(Boolean)
-
-  return parts.join(' ')
+  return remainingMs <= 0 ? m.trade_auction_expired() : formatCountdown(remainingMs, locale)
 }
 
 export const summarizeTradeRequirements = (requirements: AuctionRequirements = {}): string => {

@@ -105,6 +105,7 @@ export const apiRateLimitRules: RateLimitRule[] = [
   { method: 'GET', path: '/auth/github/callback', limit: 30, windowMs: 60_000 },
   { method: 'GET', path: '/auth/magic/callback', limit: 30, windowMs: 60_000 },
   { method: 'GET', path: '/pokemon/sets', limit: 60, windowMs: 60_000 },
+  { method: 'GET', path: '/pokemon/sets/upcoming', limit: 60, windowMs: 60_000 },
   { method: 'GET', path: '/pokemon/cards', limit: 120, windowMs: 60_000 },
   { method: 'GET', path: '/pokemon/packs/sandbox/sets', limit: 60, windowMs: 60_000 },
   { method: 'GET', path: '/pokemon/packs/sandbox/cards', limit: 60, windowMs: 60_000 },
